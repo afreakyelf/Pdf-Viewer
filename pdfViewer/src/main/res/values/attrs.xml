@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <declare-styleable name="PdfRendererView">
+        <attr name="pdfView_quality" format="enum">
+            <enum name="fast" value="1" />
+            <enum name="normal" value="2" />
+            <enum name="enhanced" value="3" />
+        </attr>
+        <attr name="pdfView_engine" format="enum">
+            <enum name="internal" value="100" />
+            <enum name="google" value="200" />
+        </attr>
+        <attr name="pdfView_showDivider" format="boolean" />
+        <attr name="pdfView_divider" format="reference" />
+    </declare-styleable>
+</resources>
