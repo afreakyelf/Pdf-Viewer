@@ -26,7 +26,7 @@ allprojects {
 Step 2. Add the dependency
 ```java
 dependencies {
-    implementation 'com.github.afreakyelf:Pdf-Viewer:<check-badge-for-latest-version>'
+    implementation 'com.github.afreakyelf:Pdf-Viewer:Tag'
 }
 ```
 
