@@ -13,9 +13,9 @@ class MainActivity : AppCompatActivity() {
             startActivity(
                 PdfViewerActivity.buildIntent(
                     this,
-                    "https://www.dbs.com.sg/ibanking/pdf/right_to_cancel.pdf",
+                    "URl",
                     false,
-                    "Right to cancel",
+                    "title",
                     "",
                     false
                 )
