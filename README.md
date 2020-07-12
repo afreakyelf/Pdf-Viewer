@@ -1,9 +1,8 @@
 <h1 align="center">Pdf Viewer</h1>
 
-## About
-
 <p align="center">
 A Simple PDF Viewer library which only occupies around 125kb while most of the Pdf viewer occupies upto 16MB space.
+  
 </br>
 </br>
 <img src="https://raw.githubusercontent.com/afreakyelf/Pdf-Viewer/master/Screenshot_2020-07-11-23-59-31-606_com.rajat.pdfviewer.jpg" width="420" height="840" />
