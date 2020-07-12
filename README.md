@@ -10,7 +10,7 @@ A Simple PDF Viewer library which only occupies around <b>125kb</b> while most o
 [![](https://jitpack.io/v/afreakyelf/Pdf-Viewer.svg)](https://jitpack.io/#afreakyelf/Pdf-Viewer)
 
 ## How to integrate into your app?
-Integrating the project is simple a refined all you need to do is follow the below steps
+Integrating the project is simple, All you need to do is follow the below steps
 
 Step 1. Add the JitPack repository to your build file. Add it in your root build.gradle at the end of repositories:
 
@@ -30,7 +30,7 @@ dependencies {
 ```
 
 ## How to use the library?
-Okay seems like you integrated the library in your project but **how do you use it**? Well its really easy just launch the intent with in following way:
+Okay seems like you have integrated the library in your project but **how do you use it**? Well its really easy just launch the intent with in following way:
 
 ```kotlin
 open_pdf.setOnClickListener {
@@ -47,7 +47,7 @@ open_pdf.setOnClickListener {
         }
 ```
 
-That's pretty much it and your all wrapped up.
+That's pretty much it and you're all wrapped up.
 
 ## Author
 Maintained by [Rajat Mittal](https://www.github.com/afreakyelf)
