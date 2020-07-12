@@ -1,4 +1,4 @@
-<h1 align="center">Pdf Viewer</h1>
+<h1 align="center">Pdf Viewer For Android</h1>
 
 <p align="center">
 A Simple PDF Viewer library which only occupies around <b>125kb</b> while most of the Pdf viewer occupies upto <b>16MB</b> space.
