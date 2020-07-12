@@ -1,5 +1,7 @@
 <h1 align="center">Pdf Viewer</h1>
+
 ## About
+
 <p align="center">
 A Simple PDF Viewer library which only occupies around 125kb while most of the Pdf viewer occupies upto 16MB space.
 </br>
