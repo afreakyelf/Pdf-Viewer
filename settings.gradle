@@ -1,3 +1,3 @@
 include ':pdfViewer'
 include ':app'
-rootProject.name = "pdfViewer"
+rootProject.name = "androidpdfviewer"
