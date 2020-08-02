@@ -13,7 +13,7 @@ class MainActivity : AppCompatActivity() {
             startActivity(
                 PdfViewerActivity.buildIntent(
                     this,
-                    "https://www.dbs.com.sg/ibanking/pdf/right_to_cancel.pdf",
+                    "url",
                     false,
                     "title",
                     ""
@@ -22,5 +22,4 @@ class MainActivity : AppCompatActivity() {
         }
 
     }
-
 }

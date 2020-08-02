@@ -47,6 +47,7 @@ class PdfViewerActivity : AppCompatActivity() {
         var engine = PdfEngine.INTERNAL
         var enableDownload = true
 
+
         fun buildIntent(
             context: Context?,
             pdfUrl: String?,
@@ -93,7 +94,7 @@ class PdfViewerActivity : AppCompatActivity() {
         if (intent.extras!!.containsKey(FILE_URL)) {
             fileUrl = intent.extras!!.getString(FILE_URL)
             if (checkInternetConnection(this)) {
-                loadFileFromNetwork(fileUrl)
+                loadFileFromNetwork(this.fileUrl)
             } else {
                 Toast.makeText(
                     this,
@@ -184,7 +185,7 @@ class PdfViewerActivity : AppCompatActivity() {
         try {
             binding.pdfView.initWithUrl(
                 fileUrl!!,
-                PdfQuality.ENHANCED,
+                PdfQuality.NORMAL,
                 engine
             )
         } catch (e: Exception) {
@@ -324,6 +325,11 @@ class PdfViewerActivity : AppCompatActivity() {
             permissionGranted = true
             downloadPdf()
         }
+    }
+
+    override fun onStop() {
+        super.onStop()
+        binding.pdfView.closePdfRender()
     }
 
 }

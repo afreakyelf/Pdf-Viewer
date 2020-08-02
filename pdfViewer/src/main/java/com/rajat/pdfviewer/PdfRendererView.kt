@@ -38,6 +38,7 @@ class PdfRendererView @JvmOverloads constructor(
     private var showDivider = true
     private var divider: Drawable? = null
     private var runnable = Runnable {}
+    private var pdfRendererCoreInitialised = false
 
     var statusListener: StatusCallBack? = null
     val totalPageCount: Int
@@ -103,6 +104,7 @@ class PdfRendererView @JvmOverloads constructor(
 
     private fun init(file: File, pdfQuality: PdfQuality) {
         pdfRendererCore = PdfRendererCore(context, file, pdfQuality)
+        pdfRendererCoreInitialised = true
         pdfViewAdapter = PdfViewAdapter(pdfRendererCore)
         val v = LayoutInflater.from(context).inflate(R.layout.pdf_rendererview, this, false)
         addView(v)
@@ -230,4 +232,10 @@ class PdfRendererView @JvmOverloads constructor(
 
         typedArray.recycle()
     }
+
+    fun closePdfRender() {
+        if (pdfRendererCoreInitialised)
+            pdfRendererCore.closePdfRender()
+    }
+
 }

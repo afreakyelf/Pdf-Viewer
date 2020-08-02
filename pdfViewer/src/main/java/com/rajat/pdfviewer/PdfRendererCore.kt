@@ -125,10 +125,14 @@ internal class PdfRendererCore(
             pdfPage.close()
             writeBitmapToCache(pageNo, bitmap)
 
-
             onBitmap(bitmap)
         } catch (e: Exception) {
             e.printStackTrace()
         }
+    }
+
+    fun closePdfRender() {
+        if (pdfRenderer != null)
+            pdfRenderer!!.close()
     }
 }

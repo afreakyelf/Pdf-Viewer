@@ -1,3 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="com.rajat.pdfviewer">
 
@@ -5,6 +6,7 @@
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 
     <application>
+        <activity android:name=".PdfRenderActivity"></activity>
         <activity
             android:name=".PdfViewerActivity"
             android:theme="@style/Theme.AppCompat.NoActionBar" />
