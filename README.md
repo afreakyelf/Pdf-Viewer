@@ -50,5 +50,18 @@ open_pdf.setOnClickListener {
 
 That's pretty much it and you're all wrapped up.
 
+
+## Donations
+
+**This project needs you!** If you would like to support this project's further development, the creator of this project or the continuous maintenance of this project, **feel free to donate**. Your donation is highly appreciated (and I love food, Tea and beer). Thank you!
+
+**PayPal**
+
+- [**Donate 5 $**](https://www.paypal.me/afreakyelf): Thank's for creating this project, here's a Tea (or some beer) for you!
+- [**Donate 10 $**](https://www.paypal.me/afreakyelf): Wow, I am stunned. Let me take you to the movies!
+- [**Donate 15 $**](https://www.paypal.me/afreakyelf): I really appreciate your work, let's grab some lunch!
+- [**Donate 25 $**](https://www.paypal.me/afreakyelf): That's some awesome stuff you did right there, dinner is on me!
+- Or you can also [**choose what you want to donate**](https://www.paypal.me/afreakyelf), all donations are awesome!
+
 ## Author
 Maintained by [Rajat Mittal](https://www.github.com/afreakyelf)
