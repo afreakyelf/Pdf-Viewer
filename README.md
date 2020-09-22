@@ -7,7 +7,7 @@ A Simple PDF Viewer library which only occupies around <b>125kb</b> while most o
 <img src="https://raw.githubusercontent.com/afreakyelf/Pdf-Viewer/master/Screenshot_2020-07-11-23-59-31-606_com.rajat.pdfviewer.jpg" width="420" height="840" />
 </p>
 
-[![](https://jitpack.io/v/afreakyelf/Pdf-Viewer.svg)](https://jitpack.io/#afreakyelf/Pdf-Viewer) [![License](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/Apache-2.0) [![HitCount](http://hits.dwyl.com/afreakyelf/https://githubcom/afreakyelf/Pdf-Viewer.svg)](http://hits.dwyl.com/afreakyelf/https://githubcom/afreakyelf/Pdf-Viewer)
+[![](https://jitpack.io/v/afreakyelf/Pdf-Viewer.svg)](https://jitpack.io/#afreakyelf/Pdf-Viewer) [![License](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/Apache-2.0)
 
 
 ## How to integrate into your app?
@@ -52,16 +52,9 @@ That's pretty much it and you're all wrapped up.
 
 
 ## Donations
+If this project help you reduce time to develop, you can give me a cup of coffee :) 
 
-**This project needs you!** If you would like to support this project's further development, the creator of this project or the continuous maintenance of this project, **feel free to donate**. Your donation is highly appreciated (and I love food, Tea and beer). Thank you!
-
-**PayPal**
-
-- [**Donate 5 $**](https://www.paypal.me/afreakyelf): Thank's for creating this project, here's a Tea (or some beer) for you!
-- [**Donate 10 $**](https://www.paypal.me/afreakyelf): Wow, I am stunned. Let me take you to the movies!
-- [**Donate 15 $**](https://www.paypal.me/afreakyelf): I really appreciate your work, let's grab some lunch!
-- [**Donate 25 $**](https://www.paypal.me/afreakyelf): That's some awesome stuff you did right there, dinner is on me!
-- Or you can also [**choose what you want to donate**](https://www.paypal.me/afreakyelf), all donations are awesome!
+[![paypal](https://www.paypalobjects.com/en_US/i/btn/btn_donateCC_LG.gif)](https://www.paypal.com/paypalme/afreakyelf)
 
 ## Author
 Maintained by [Rajat Mittal](https://www.github.com/afreakyelf)
