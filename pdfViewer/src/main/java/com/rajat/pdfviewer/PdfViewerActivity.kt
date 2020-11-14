@@ -23,8 +23,7 @@ import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
-import androidx.databinding.DataBindingUtil
-import com.rajat.pdfviewer.databinding.ActivityPdfViewerBinding
+import kotlinx.android.synthetic.main.activity_pdf_viewer.*
 
 /**
  * Created by Rajat on 11,July,2020
@@ -33,7 +32,6 @@ import com.rajat.pdfviewer.databinding.ActivityPdfViewerBinding
 class PdfViewerActivity : AppCompatActivity() {
 
     private var permissionGranted: Boolean? = false
-    private lateinit var binding: ActivityPdfViewerBinding
     private var menuItem: MenuItem? = null
     private var fileUrl: String? = null
 
@@ -69,9 +67,6 @@ class PdfViewerActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-
-        //Set binding to view
-        binding = DataBindingUtil.setContentView(this, R.layout.activity_pdf_viewer)
 
         setUpToolbar(
             intent.extras!!.getString(
@@ -146,7 +141,7 @@ class PdfViewerActivity : AppCompatActivity() {
     }
 
     private fun setUpToolbar(toolbarTitle: String) {
-        setSupportActionBar(binding.toolbar)
+        setSupportActionBar(toolbar)
         supportActionBar?.setDisplayHomeAsUpEnabled(true)
         supportActionBar?.setDisplayShowHomeEnabled(true)
         supportActionBar?.title = toolbarTitle
@@ -183,7 +178,7 @@ class PdfViewerActivity : AppCompatActivity() {
 
         //Initiating PDf Viewer with URL
         try {
-            binding.pdfView.initWithUrl(
+            pdfView.initWithUrl(
                 fileUrl!!,
                 PdfQuality.NORMAL,
                 engine
@@ -195,7 +190,7 @@ class PdfViewerActivity : AppCompatActivity() {
         //Check permission for download
         checkPermissionOnInit()
 
-        binding.pdfView.statusListener = object : PdfRendererView.StatusCallBack {
+        pdfView.statusListener = object : PdfRendererView.StatusCallBack {
             override fun onDownloadStart() {
                 true.showProgressBar()
             }
@@ -241,7 +236,7 @@ class PdfViewerActivity : AppCompatActivity() {
     }
 
     private fun Boolean.showProgressBar() {
-        binding.progressBar.visibility = if (this) View.VISIBLE else GONE
+        progressBar.visibility = if (this) View.VISIBLE else GONE
     }
 
     private var onComplete: BroadcastReceiver = object : BroadcastReceiver() {
@@ -327,9 +322,9 @@ class PdfViewerActivity : AppCompatActivity() {
         }
     }
 
-    override fun onStop() {
-        super.onStop()
-        binding.pdfView.closePdfRender()
+    override fun onDestroy() {
+        super.onDestroy()
+        pdfView.closePdfRender()
     }
 
 }

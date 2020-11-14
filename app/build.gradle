@@ -1,14 +1,10 @@
-    apply plugin: 'com.android.application'
+apply plugin: 'com.android.application'
 apply plugin: 'kotlin-android'
 apply plugin: 'kotlin-android-extensions'
 apply plugin: 'kotlin-kapt'
 
 android {
     compileSdkVersion 29
-
-    dataBinding {
-        enabled = true
-    }
 
     defaultConfig {
         applicationId "com.rajat.pdfviewer"

@@ -6,7 +6,6 @@
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 
     <application>
-        <activity android:name=".PdfRenderActivity"></activity>
         <activity
             android:name=".PdfViewerActivity"
             android:theme="@style/Theme.AppCompat.NoActionBar" />

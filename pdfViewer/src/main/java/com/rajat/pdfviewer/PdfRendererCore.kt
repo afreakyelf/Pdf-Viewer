@@ -9,6 +9,7 @@ import android.graphics.BitmapFactory
 import android.graphics.pdf.PdfRenderer
 import android.os.Build
 import android.os.ParcelFileDescriptor
+import android.util.Log
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.async
@@ -133,6 +134,10 @@ internal class PdfRendererCore(
 
     fun closePdfRender() {
         if (pdfRenderer != null)
-            pdfRenderer!!.close()
+            try {
+                pdfRenderer!!.close()
+            } catch (e: Exception) {
+                Log.e("PdfRendererCore", e.toString())
+            }
     }
 }
