@@ -8,7 +8,8 @@ A Simple PDF Viewer library which only occupies around <b>125kb</b> while most o
 </p>
 
 [![](https://jitpack.io/v/afreakyelf/Pdf-Viewer.svg)](https://jitpack.io/#afreakyelf/Pdf-Viewer) [![License](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/Apache-2.0) ![](https://img.shields.io/github/forks/afreakyelf/Pdf-Viewer?label=Forks)
-![](https://img.shields.io/github/stars/afreakyelf/Pdf-Viewer?label=Stars&color=9cf)
+![](https://img.shields.io/github/stars/afreakyelf/Pdf-Viewer?label=Stars&color=9cf) ![](https://visitor-badge.glitch.me/badge?page_id=afreakyelf.Pdf-Viewer)
+
 
 
 ## How to integrate into your app?
@@ -46,7 +47,7 @@ open_pdf.setOnClickListener {
                     enableDownload = false                    // This param is true by defualt.
                 )
             )
-        }
+        } 
 ```
 
 That's pretty much it and you're all wrapped up.
