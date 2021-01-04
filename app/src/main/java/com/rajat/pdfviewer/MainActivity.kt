@@ -1,4 +1,7 @@
+
+
 package com.rajat.pdfviewer
+
 
 import android.os.Bundle
 import androidx.appcompat.app.AppCompatActivity
@@ -11,15 +14,15 @@ class MainActivity : AppCompatActivity() {
 
         open_pdf.setOnClickListener {
             startActivity(
-                PdfViewerActivity.buildIntent(
+                PdfViewerActivity.launchPdfFromPath(
                     this,
-                    "url",
-                    false,
-                    "title",
-                    ""
+                    "quote.pdf",
+                    "Thailand Trip",
+                    "Trip",
+                    false
                 )
+
             )
         }
-
     }
 }

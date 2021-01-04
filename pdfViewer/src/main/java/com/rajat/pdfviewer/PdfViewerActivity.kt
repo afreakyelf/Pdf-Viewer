@@ -44,9 +44,10 @@ class PdfViewerActivity : AppCompatActivity() {
         const val PERMISSION_CODE = 4040
         var engine = PdfEngine.INTERNAL
         var enableDownload = true
+        var isPDFFromPath = false
 
 
-        fun buildIntent(
+        fun launchPdfFromUrl(
             context: Context?,
             pdfUrl: String?,
             isGoogleEngine: Boolean?,
@@ -60,6 +61,23 @@ class PdfViewerActivity : AppCompatActivity() {
             intent.putExtra(FILE_DIRECTORY, directoryName)
             intent.putExtra(ENABLE_FILE_DOWNLOAD, enableDownload)
             intent.putExtra(IS_GOOGLE_ENGINE, isGoogleEngine)
+            isPDFFromPath = false
+            return intent
+        }
+
+        fun launchPdfFromPath(
+            context: Context?,
+            path: String?,
+            pdfTitle: String?,
+            directoryName: String?,
+            enableDownload: Boolean = true
+        ): Intent {
+            val intent = Intent(context, PdfViewerActivity::class.java)
+            intent.putExtra(FILE_URL, path)
+            intent.putExtra(FILE_TITLE, pdfTitle)
+            intent.putExtra(FILE_DIRECTORY, directoryName)
+            intent.putExtra(ENABLE_FILE_DOWNLOAD, enableDownload)
+            isPDFFromPath = true
             return intent
         }
 
@@ -89,14 +107,18 @@ class PdfViewerActivity : AppCompatActivity() {
 
         if (intent.extras!!.containsKey(FILE_URL)) {
             fileUrl = intent.extras!!.getString(FILE_URL)
-            if (checkInternetConnection(this)) {
-                loadFileFromNetwork(this.fileUrl)
-            } else {
-                Toast.makeText(
-                    this,
-                    "No Internet Connection. Please Check your internet connection.",
-                    Toast.LENGTH_SHORT
-                ).show()
+            if (isPDFFromPath){
+                initPdfViewerWithPath(this.fileUrl)
+            }else {
+                if (checkInternetConnection(this)) {
+                    loadFileFromNetwork(this.fileUrl)
+                } else {
+                    Toast.makeText(
+                        this,
+                        "No Internet Connection. Please Check your internet connection.",
+                        Toast.LENGTH_SHORT
+                    ).show()
+                }
             }
         }
 
@@ -188,6 +210,26 @@ class PdfViewerActivity : AppCompatActivity() {
             onPdfError()
         }
 
+        enableDownload()
+
+    }
+
+    private fun initPdfViewerWithPath(filePath: String?) {
+        if (TextUtils.isEmpty(filePath)) onPdfError()
+
+        //Initiating PDf Viewer with URL
+        try {
+            pdfView.initWithFile(
+                com.rajat.pdfviewer.util.FileUtils.fileFromAsset(this,filePath!!),
+            PdfQuality.NORMAL)
+        } catch (e: Exception) {
+            onPdfError()
+        }
+
+        enableDownload()
+    }
+
+    private fun enableDownload() {
         //Check permission for download
         checkPermissionOnInit()
 
@@ -217,7 +259,6 @@ class PdfViewerActivity : AppCompatActivity() {
             }
 
         }
-
     }
 
     private fun checkPermissionOnInit() {
@@ -260,34 +301,39 @@ class PdfViewerActivity : AppCompatActivity() {
                 if (TextUtils.isEmpty(directoryName)) "/$fileName.pdf" else "/$directoryName/$fileName.pdf"
 
             try {
-                val downloadUrl = Uri.parse(fileUrl)
-                val downloadManger = getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager?
-                val request = DownloadManager.Request(downloadUrl)
-                request.setAllowedNetworkTypes(
-                    DownloadManager.Request.NETWORK_WIFI or
-                            DownloadManager.Request.NETWORK_MOBILE
-                )
-                request.setAllowedOverRoaming(true)
-                request.setTitle(fileName)
-                request.setDescription("Downloading $fileName")
-                request.setVisibleInDownloadsUi(true)
-                request.setDestinationInExternalPublicDir(
-                    Environment.DIRECTORY_DOWNLOADS,
-                    filePath
-                )
-                request.setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
-                registerReceiver(
-                    onComplete,
-                    IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE)
-                )
-                if (permissionGranted!!) downloadManger!!.enqueue(request)
-            } catch (e: Exception) {
-                Toast.makeText(
-                    this,
-                    "Unable to download file",
-                    Toast.LENGTH_SHORT
-                ).show()
-            }
+                if (isPDFFromPath) {
+                    com.rajat.pdfviewer.util.FileUtils.downloadFile(this,fileUrl!!,directoryName!!,fileName)
+                } else {
+                    val downloadUrl = Uri.parse(fileUrl)
+                    val downloadManger =
+                        getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager?
+                    val request = DownloadManager.Request(downloadUrl)
+                    request.setAllowedNetworkTypes(
+                        DownloadManager.Request.NETWORK_WIFI or
+                                DownloadManager.Request.NETWORK_MOBILE
+                    )
+                    request.setAllowedOverRoaming(true)
+                    request.setTitle(fileName)
+                    request.setDescription("Downloading $fileName")
+                    request.setVisibleInDownloadsUi(true)
+                    request.setDestinationInExternalPublicDir(
+                        Environment.DIRECTORY_DOWNLOADS,
+                        filePath
+                    )
+                    request.setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
+                    registerReceiver(
+                        onComplete,
+                        IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE)
+                    )
+                    if (permissionGranted!!) downloadManger!!.enqueue(request)
+                }
+            }catch (e: Exception) {
+                    Toast.makeText(
+                        this,
+                        "Unable to download file",
+                        Toast.LENGTH_SHORT
+                    ).show()
+                }
 
         } catch (e: Exception) {
             Log.e("Error", e.toString())
