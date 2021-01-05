@@ -38,7 +38,7 @@ Okay seems like you have integrated the library in your project but **how do you
 ```kotlin
 open_pdf.setOnClickListener {
             startActivity(
-                PdfViewerActivity.buildIntent(
+                PdfViewerActivity.launchPdfFromUrl(           // Use 'launchPdfFromPath' if you want to use assets file
                     context,                                                                      
                     "pdf_url",                                // PDF URL in String format
                     false,
