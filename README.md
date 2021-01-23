@@ -35,13 +35,17 @@ dependencies {
 ## How to use the library?
 Okay seems like you have integrated the library in your project but **how do you use it**? Well its really easy just launch the intent with in following way:
 
+**IMPORTANT : Please make sure you have provided permissions for read and write from external storage. Check [MainActivity.kt](https://github.com/afreakyelf/Pdf-Viewer/blob/master/app/src/main/java/com/rajat/pdfviewer/MainActivity.kt) for reference.
+
 ```kotlin
 open_pdf.setOnClickListener {
             startActivity(
-                PdfViewerActivity.launchPdfFromUrl(           // Use 'launchPdfFromPath' if you want to use assets file
+            
+            // Use 'launchPdfFromPath' if you want to use assets file (enable "fromAssets" flag) / internal directory
+           
+                PdfViewerActivity.launchPdfFromUrl(           
                     context,                                                                      
                     "pdf_url",                                // PDF URL in String format
-                    false,
                     "Pdf title/name ",                        // PDF Name/Title in String format
                     "pdf directory to save",                  // If nothing specific, Put "" it will save to Downloads
                     enableDownload = false                    // This param is true by defualt.
