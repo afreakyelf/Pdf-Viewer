@@ -21,6 +21,7 @@ import android.view.View
 import android.view.View.GONE
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import kotlinx.android.synthetic.main.activity_pdf_viewer.*
 import java.io.File
@@ -45,6 +46,7 @@ class PdfViewerActivity : AppCompatActivity() {
         var enableDownload = true
         var isPDFFromPath = false
         var isFromAssets = false
+        var PERMISSION_CODE = 4040
 
 
         fun launchPdfFromUrl(
@@ -87,8 +89,6 @@ class PdfViewerActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_pdf_viewer)
 
-        checkPermissionOnInit()
-
         setUpToolbar(
             intent.extras!!.getString(
                 FILE_TITLE,
@@ -108,9 +108,7 @@ class PdfViewerActivity : AppCompatActivity() {
 
         engine = PdfEngine.INTERNAL
 
-        if (permissionGranted!!)
-            init()
-        else checkPermissionOnInit()
+        init()
     }
 
     private fun init() {
@@ -190,7 +188,7 @@ class PdfViewerActivity : AppCompatActivity() {
     }
 
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
-        if (item.itemId == R.id.download) downloadPdf()
+        if (item.itemId == R.id.download) checkPermission(PERMISSION_CODE)
         if (item.itemId == android.R.id.home) {
             finish() // close this activity and return to preview activity (if there is any)
         }
@@ -246,6 +244,8 @@ class PdfViewerActivity : AppCompatActivity() {
 
     private fun enableDownload() {
 
+        checkPermissionOnInit()
+
         pdfView.statusListener = object : PdfRendererView.StatusCallBack {
             override fun onDownloadStart() {
                 true.showProgressBar()
@@ -275,20 +275,12 @@ class PdfViewerActivity : AppCompatActivity() {
     }
 
     private fun checkPermissionOnInit() {
-
         if (ContextCompat.checkSelfPermission(
                 this,
                 permission.WRITE_EXTERNAL_STORAGE
-            ) == PackageManager.PERMISSION_GRANTED ||
-            ContextCompat.checkSelfPermission(
-                this,
-                permission.READ_EXTERNAL_STORAGE
-            ) == PackageManager.PERMISSION_GRANTED
+            ) === PackageManager.PERMISSION_GRANTED
         ) {
             permissionGranted = true
-        } else {
-            Toast.makeText(this, "Permission not granted", Toast.LENGTH_SHORT).show()
-            finish()
         }
     }
 
@@ -367,6 +359,35 @@ class PdfViewerActivity : AppCompatActivity() {
 
         } catch (e: Exception) {
             Log.e("Error", e.toString())
+        }
+    }
+
+    private fun checkPermission(requestCode: Int) {
+        if (ContextCompat.checkSelfPermission(this, permission.WRITE_EXTERNAL_STORAGE)
+            == PackageManager.PERMISSION_DENIED
+        ) {
+            ActivityCompat.requestPermissions(
+                this, arrayOf(permission.WRITE_EXTERNAL_STORAGE),
+                requestCode
+            )
+        } else {
+            permissionGranted = true
+            downloadPdf()
+        }
+    }
+
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<out String>,
+        grantResults: IntArray
+    ) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (requestCode == PERMISSION_CODE &&
+            grantResults.isNotEmpty() &&
+            grantResults[0] == PackageManager.PERMISSION_GRANTED
+        ) {
+            permissionGranted = true
+            downloadPdf()
         }
     }
 
