@@ -33,9 +33,7 @@ dependencies {
 ```
 
 ## How to use the library?
-Okay seems like you have integrated the library in your project but **how do you use it**? Well its really easy just launch the intent with in following way:
-
-**IMPORTANT : Please make sure you have provided permissions for read and write from external storage. Check [MainActivity.kt](https://github.com/afreakyelf/Pdf-Viewer/blob/master/app/src/main/java/com/rajat/pdfviewer/MainActivity.kt) for reference.
+Now you have integrated the library in your project but **how do you use it**? Well its really easy just launch the intent with in following way:
 
 ```kotlin
 open_pdf.setOnClickListener {
