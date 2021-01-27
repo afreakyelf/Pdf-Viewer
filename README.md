@@ -54,6 +54,25 @@ open_pdf.setOnClickListener {
 
 That's pretty much it and you're all wrapped up.
 
+### Ui Customizations
+You need to add the custom theme to styles.xml/themes.xml file and override the required attribute values.
+Parent theme can be either the default **Theme.PdfView.Light** or the one with no actionbar from the application.
+Note: If parent is not **Theme.PdfView.Light**, all of the pdfView attributes should be added to that theme.
+
+    <style name="Theme.PdfView.SelectedTheme" parent="@style/Theme.PdfView.Light">
+        <item name="pdfView_backIcon">@drawable/ic_arrow_back</item>
+        ...
+    </style>
+    
+#### Supported attributes
+
+| Attribute Name | Type | Expected changes |
+|--|--|--|
+|pdfView_backIcon|drawable|Navigation icon|
+|pdfView_downloadIcon|drawable|Download icon|
+|pdfView_downloadIconTint|color|Download icon tint|
+|pdfView_actionBarTint|color|Actionbar background color|
+|pdfView_titleTextStyle|style|Actionbar title text appearance|
 
 ## Donations
 If this project help you reduce time to develop, you can give me a cup of coffee :) 

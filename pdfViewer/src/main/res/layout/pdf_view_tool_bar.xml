@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.appcompat.widget.Toolbar xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/toolbar"
+    android:layout_width="match_parent"
+    android:layout_height="?actionBarSize"
+    android:background="?pdfView_actionBarTint"
+    app:navigationIcon="?pdfView_backIcon">
+
+    <TextView
+        android:id="@+id/tvAppBarTitle"
+        style="?pdfView_titleTextStyle"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_marginEnd="?actionBarSize"
+        android:layout_marginRight="?actionBarSize"
+        android:clickable="false"
+        android:focusable="false"
+        android:longClickable="false"
+        android:text="@string/pdfView_appName" />
+
+</androidx.appcompat.widget.Toolbar>
+

@@ -7,4 +7,17 @@
         <item name="colorAccent">@color/colorAccent</item>
     </style>
 
+
+    <style name="Theme.PdfView.SelectedTheme" parent="@style/Theme.PdfView.Light">
+        <item name="pdfView_actionBarTint">@color/colorPrimary</item>
+        <item name="pdfView_downloadIconTint">#ffffff</item>
+        <item name="pdfView_titleTextStyle">@style/actionBarTitleAppearance</item>
+    </style>
+
+    <style name="actionBarTitleAppearance" parent="TextAppearance.AppCompat.Title">
+        <item name="android:gravity">center</item>
+        <item name="android:textColor">#ffffff</item>
+    </style>
+
+
 </resources>

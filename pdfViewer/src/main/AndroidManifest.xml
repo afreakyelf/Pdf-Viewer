@@ -12,7 +12,7 @@
     <application android:requestLegacyExternalStorage="true">
         <activity
             android:name=".PdfViewerActivity"
-            android:theme="@style/Theme.AppCompat.NoActionBar" />
+            android:theme="@style/Theme.PdfView.SelectedTheme" />
     </application>
 
 </manifest>
