@@ -24,6 +24,7 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import kotlinx.android.synthetic.main.activity_pdf_viewer.*
+import kotlinx.android.synthetic.main.pdf_view_tool_bar.*
 import java.io.File
 
 /**
@@ -171,9 +172,18 @@ class PdfViewerActivity : AppCompatActivity() {
 
     private fun setUpToolbar(toolbarTitle: String) {
         setSupportActionBar(toolbar)
-        supportActionBar?.setDisplayHomeAsUpEnabled(true)
-        supportActionBar?.setDisplayShowHomeEnabled(true)
-        supportActionBar?.title = toolbarTitle
+        supportActionBar?.apply {
+            setDisplayHomeAsUpEnabled(true)
+            setDisplayShowHomeEnabled(true)
+            if(tvAppBarTitle!=null) {
+                tvAppBarTitle?.text = toolbarTitle
+                setDisplayShowTitleEnabled(false)
+            }else{
+                setDisplayShowTitleEnabled(true)
+                title = toolbarTitle
+            }
+        }
+
     }
 
     override fun onCreateOptionsMenu(menu: Menu?): Boolean {

@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <style name="Theme.PdfView.SelectedTheme" parent="@style/Theme.PdfView.Light" />
+
+    <style name="Theme.PdfView.Light" parent="@style/Theme.AppCompat.Light.NoActionBar">
+        <item name="pdfView_backIcon">@drawable/ic_arrow_back</item>
+        <item name="pdfView_downloadIcon">@android:drawable/stat_sys_download</item>
+        <item name="pdfView_downloadIconTint">#888A87</item>
+        <item name="pdfView_actionBarTint">#000000</item>
+        <item name="pdfView_titleTextStyle">@style/pdfView_titleTextAppearance</item>
+        <item name="pdfView_progressBar">@style/pdfView_progressBarStyle</item>
+    </style>
+
+    <style name="Theme.PdfView.Dark" parent="@style/Theme.AppCompat.Light.NoActionBar">
+        <item name="pdfView_backIcon">@drawable/ic_arrow_back_alt</item>
+        <item name="pdfView_downloadIcon">@android:drawable/stat_sys_download</item>
+        <item name="pdfView_downloadIconTint">#2f2f2f</item>
+        <item name="pdfView_actionBarTint">#ffffff</item>
+        <item name="pdfView_titleTextStyle">@style/pdfView_titleTextAppearanceDark</item>
+        <item name="pdfView_progressBar">@style/pdfView_progressBarStyle</item>
+    </style>
+
+    <style name="pdfView_titleTextAppearance" parent="TextAppearance.AppCompat.Widget.ActionBar.Title">
+        <item name="android:gravity">center_vertical</item>
+        <item name="android:textColor">#ffffff</item>
+    </style>
+
+    <style name="pdfView_titleTextAppearanceDark" parent="TextAppearance.AppCompat.Widget.ActionBar.Title">
+        <item name="android:gravity">center_vertical</item>
+        <item name="android:textColor">#2f2f2f</item>
+    </style>
+
+    <style name="pdfView_progressBarStyle" parent="Widget.AppCompat.ProgressBar">
+        <item name="android:layout_width">wrap_content</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:layout_gravity">center</item>
+    </style>
+
+</resources>

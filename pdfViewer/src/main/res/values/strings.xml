@@ -1,4 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="pdfView_appName">Pdf View</string>
     <string name="content_des">PDF PAGE</string>
 </resources>

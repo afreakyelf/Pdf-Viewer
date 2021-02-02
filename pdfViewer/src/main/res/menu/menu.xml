@@ -4,8 +4,8 @@
 
     <item
         android:id="@+id/download"
-        android:icon="@android:drawable/stat_sys_download"
-        android:iconTint="#888A87"
+        android:icon="?pdfView_downloadIcon"
         android:title="Download"
+        app:iconTint="?attr/pdfView_downloadIconTint"
         app:showAsAction="always" />
 </menu>
