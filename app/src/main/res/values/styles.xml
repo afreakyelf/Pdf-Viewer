@@ -12,12 +12,22 @@
         <item name="pdfView_actionBarTint">@color/colorPrimary</item>
         <item name="pdfView_downloadIconTint">#ffffff</item>
         <item name="pdfView_titleTextStyle">@style/actionBarTitleAppearance</item>
+        <item name="pdfView_progressBar">@style/customProgressBar</item>
     </style>
 
     <style name="actionBarTitleAppearance" parent="TextAppearance.AppCompat.Title">
         <item name="android:gravity">center</item>
+        <item name="android:layout_gravity">center</item>
         <item name="android:textColor">#ffffff</item>
     </style>
 
+    <style name="customProgressBar" parent="Widget.AppCompat.ProgressBar">
+        <item name="android:layout_gravity">center</item>
+        <item name="android:layout_width">wrap_content</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:indeterminateDrawable">@drawable/progress_circle</item>
+        <item name="android:interpolator">@android:interpolator/accelerate_decelerate</item>
+        <item name="android:visibility">gone</item>
+    </style>
 
 </resources>

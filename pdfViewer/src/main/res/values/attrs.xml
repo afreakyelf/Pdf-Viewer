@@ -24,4 +24,6 @@
 
     <!-- Text Appearance Customizations - Common -->
     <attr name="pdfView_titleTextStyle" format="reference" />
+
+    <attr name="pdfView_progressBar" format="reference"/>
 </resources>

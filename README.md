@@ -56,8 +56,8 @@ That's pretty much it and you're all wrapped up.
 
 ### Ui Customizations
 You need to add the custom theme to styles.xml/themes.xml file and override the required attribute values.
-Parent theme can be either the default **Theme.PdfView.Light** or the one with no actionbar from the application.
-Note: If parent is not **Theme.PdfView.Light**, all of the pdfView attributes should be added to that theme.
+Parent theme can be either **Theme.PdfView.Light** or **Theme.PdfView.Dark** or the one with no actionbar from the application.
+Note: If parent is not one of the themes from this library, all of the pdfView attributes should be added to that theme.
 
     <style name="Theme.PdfView.SelectedTheme" parent="@style/Theme.PdfView.Light">
         <item name="pdfView_backIcon">@drawable/ic_arrow_back</item>
@@ -73,6 +73,7 @@ Note: If parent is not **Theme.PdfView.Light**, all of the pdfView attributes sh
 |pdfView_downloadIconTint|color|Download icon tint|
 |pdfView_actionBarTint|color|Actionbar background color|
 |pdfView_titleTextStyle|style|Actionbar title text appearance|
+|pdfView_progressBar|style|Progress bar style|
 
 ## Donations
 If this project help you reduce time to develop, you can give me a cup of coffee :) 
