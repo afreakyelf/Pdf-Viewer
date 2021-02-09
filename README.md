@@ -11,7 +11,6 @@ A Simple PDF Viewer library which only occupies around <b>125kb</b> while most o
 ![](https://img.shields.io/github/stars/afreakyelf/Pdf-Viewer?label=Stars&color=9cf) ![](https://visitor-badge.glitch.me/badge?page_id=afreakyelf.Pdf-Viewer)
 
 
-
 ## How to integrate into your app?
 Integrating the project is simple, All you need to do is follow the below steps
 
@@ -74,6 +73,16 @@ Note: If parent is not one of the themes from this library, all of the pdfView a
 |pdfView_actionBarTint|color|Actionbar background color|
 |pdfView_titleTextStyle|style|Actionbar title text appearance|
 |pdfView_progressBar|style|Progress bar style|
+
+## Contributing
+
+Any contributions you make are **greatly appreciated**.
+
+1. Fork the Project
+2. Create your Feature Branch (`git checkout -b feature/NewFeature`)
+3. Commit your Changes (`git commit -m 'Add some NewFeature'`)
+4. Push to the Branch (`git push origin feature/NewFeature`)
+5. Open a Pull Request
 
 ## Donations
 If this project help you reduce time to develop, you can give me a cup of coffee :) 
