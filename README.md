@@ -40,7 +40,7 @@ open_pdf.setOnClickListener {
             
             // Use 'launchPdfFromPath' if you want to use assets file (enable "fromAssets" flag) / internal directory
            
-                PdfViewerActivity.launchPdfFromUrl(           
+                PdfViewerActivity.launchPdfFromUrl(           //PdfViewerActivity.Companion.launchPdfFromUrl(..   :: incase of JAVA       
                     context,                                                                      
                     "pdf_url",                                // PDF URL in String format
                     "Pdf title/name ",                        // PDF Name/Title in String format
