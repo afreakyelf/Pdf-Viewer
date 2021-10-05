@@ -24,16 +24,23 @@ allprojects {
   }
 }
 ```
+
 Step 2. Add the dependency
 ```java
 dependencies {
-    implementation 'com.github.afreakyelf:Pdf-Viewer:Tag'
+    implementation 'com.github.afreakyelf:Pdf-Viewer:{Tag}'
 }
+```
+NOTE: Replace the tag with current release version, e.g
+
+```java
+implementation 'com.github.afreakyelf:Pdf-Viewer:v1.0.7'
 ```
 
 ## How to use the library?
 Now you have integrated the library in your project but **how do you use it**? Well its really easy just launch the intent with in following way:
 
+### Kotlin
 ```kotlin
 open_pdf.setOnClickListener {
             startActivity(
@@ -49,6 +56,27 @@ open_pdf.setOnClickListener {
                 )
             )
         } 
+```
+
+### Java
+
+```java
+        open_pdf.setOnClickListener(view -> {
+            startActivity(
+            
+            // Opening pdf from assets folder 
+            
+                    PdfViewerActivity.Companion.launchPdfFromPath(
+                            this,
+                            "file_name.pdf",
+                            "Pdf title/name",
+                            "assets",
+                            false,
+                            true
+                    )
+            );
+        });
+
 ```
 
 That's pretty much it and you're all wrapped up.
