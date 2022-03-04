@@ -7,9 +7,12 @@ import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
-import kotlinx.android.synthetic.main.activity_main.*
+import com.rajat.pdfviewer.databinding.ActivityMainBinding
 
 class MainActivity : AppCompatActivity() {
+
+    private lateinit var binding: ActivityMainBinding
+
 
     private val requiredPermissionList = arrayOf(
         Manifest.permission.WRITE_EXTERNAL_STORAGE,
@@ -22,9 +25,11 @@ class MainActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_main)
+        binding = ActivityMainBinding.inflate(layoutInflater)
+        val view = binding.root
+        setContentView(view)
 
-        open_pdf.setOnClickListener {
+        binding.openPdf.setOnClickListener {
             if (checkAndRequestPermission())
                 launchPdf()
         }
@@ -67,6 +72,7 @@ class MainActivity : AppCompatActivity() {
         permissions: Array<out String>,
         grantResults: IntArray
     ) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
         when (requestCode) {
             PERMISSION_CODE -> if (grantResults.isNotEmpty()) {
                 val readPermission = grantResults[0] == PackageManager.PERMISSION_GRANTED
