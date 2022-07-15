@@ -2,7 +2,7 @@
 <ImageView xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@+id/pageView"
     android:layout_width="match_parent"
-    android:layout_height="wrap_content"
+    android:layout_height="480dp"
     android:layout_margin="0dp"
     android:background="#ffffff"
     android:contentDescription="@string/content_des"
