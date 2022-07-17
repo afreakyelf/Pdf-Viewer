@@ -13,13 +13,12 @@ class MainActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityMainBinding
 
-
     private val requiredPermissionList = arrayOf(
         Manifest.permission.WRITE_EXTERNAL_STORAGE,
         Manifest.permission.READ_EXTERNAL_STORAGE
     )
 
-    private var download_file_url = "https://github.com/afreakyelf/Pdf-Viewer/files/5856345/AA.pdf"
+    private var download_file_url = "https://github.com/afreakyelf/afreakyelf/raw/main/Log4_Shell_Mid_Term_final.pdf"
     var per = 0f
     private val PERMISSION_CODE = 4040
 
