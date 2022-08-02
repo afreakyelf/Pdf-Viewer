@@ -23,6 +23,7 @@ import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
+import com.rajat.pdfviewer.util.Languages
 import kotlinx.android.synthetic.main.activity_pdf_viewer.*
 import kotlinx.android.synthetic.main.pdf_view_tool_bar.*
 import java.io.File
@@ -112,6 +113,10 @@ class PdfViewerActivity : AppCompatActivity() {
         init()
     }
 
+    override fun attachBaseContext(newBase: Context) {
+        super.attachBaseContext(Languages.setLocale(newBase))
+    }
+
     private fun init() {
         if (intent.extras!!.containsKey(FILE_URL)) {
             fileUrl = intent.extras!!.getString(FILE_URL)
@@ -175,10 +180,10 @@ class PdfViewerActivity : AppCompatActivity() {
         supportActionBar?.apply {
             setDisplayHomeAsUpEnabled(true)
             setDisplayShowHomeEnabled(true)
-            if(tvAppBarTitle!=null) {
+            if (tvAppBarTitle != null) {
                 tvAppBarTitle?.text = toolbarTitle
                 setDisplayShowTitleEnabled(false)
-            }else{
+            } else {
                 setDisplayShowTitleEnabled(true)
                 title = toolbarTitle
             }
