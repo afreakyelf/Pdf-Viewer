@@ -23,7 +23,6 @@ import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
-import com.rajat.pdfviewer.util.Languages
 import kotlinx.android.synthetic.main.activity_pdf_viewer.*
 import kotlinx.android.synthetic.main.pdf_view_tool_bar.*
 import java.io.File
@@ -38,6 +37,7 @@ class PdfViewerActivity : AppCompatActivity() {
     private var menuItem: MenuItem? = null
     private var fileUrl: String? = null
 
+
     companion object {
         const val FILE_URL = "pdf_file_url"
         const val FILE_DIRECTORY = "pdf_file_directory"
@@ -49,15 +49,17 @@ class PdfViewerActivity : AppCompatActivity() {
         var isPDFFromPath = false
         var isFromAssets = false
         var PERMISSION_CODE = 4040
-
+        var contextLanguage: Context? = null
 
         fun launchPdfFromUrl(
             context: Context?,
+            contextLanguage: Context?,
             pdfUrl: String?,
             pdfTitle: String?,
             directoryName: String?,
             enableDownload: Boolean = true
         ): Intent {
+            this.contextLanguage = contextLanguage
             val intent = Intent(context, PdfViewerActivity::class.java)
             intent.putExtra(FILE_URL, pdfUrl)
             intent.putExtra(FILE_TITLE, pdfTitle)
@@ -114,7 +116,7 @@ class PdfViewerActivity : AppCompatActivity() {
     }
 
     override fun attachBaseContext(newBase: Context) {
-        super.attachBaseContext(Languages.setLocale(newBase))
+        super.attachBaseContext(contextLanguage)
     }
 
     private fun init() {
