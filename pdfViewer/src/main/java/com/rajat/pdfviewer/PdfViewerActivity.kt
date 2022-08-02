@@ -53,6 +53,22 @@ class PdfViewerActivity : AppCompatActivity() {
 
         fun launchPdfFromUrl(
             context: Context?,
+            pdfUrl: String?,
+            pdfTitle: String?,
+            directoryName: String?,
+            enableDownload: Boolean = true
+        ): Intent {
+            val intent = Intent(context, PdfViewerActivity::class.java)
+            intent.putExtra(FILE_URL, pdfUrl)
+            intent.putExtra(FILE_TITLE, pdfTitle)
+            intent.putExtra(FILE_DIRECTORY, directoryName)
+            intent.putExtra(ENABLE_FILE_DOWNLOAD, enableDownload)
+            isPDFFromPath = false
+            return intent
+        }
+
+        fun launchPdfFromUrlLanguage(
+            context: Context?,
             contextLanguage: Context?,
             pdfUrl: String?,
             pdfTitle: String?,
@@ -116,7 +132,7 @@ class PdfViewerActivity : AppCompatActivity() {
     }
 
     override fun attachBaseContext(newBase: Context) {
-        super.attachBaseContext(contextLanguage)
+        super.attachBaseContext(contextLanguage ?: newBase)
     }
 
     private fun init() {
