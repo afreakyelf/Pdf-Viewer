@@ -138,7 +138,7 @@ class PdfRendererView @JvmOverloads constructor(
 
                 pageNo.run {
                     if (foundPosition != NO_POSITION)
-                        text = "${(foundPosition + 1)} of $totalPageCount"
+                        text = context.getString(R.string.pdfView_page_no,"${(foundPosition + 1)}","$totalPageCount")
                     pageNo.visibility = View.VISIBLE
                 }
 
