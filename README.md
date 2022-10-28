@@ -91,6 +91,19 @@ Note: If parent is not one of the themes from this library, all of the pdfView a
         <item name="pdfView_backIcon">@drawable/ic_arrow_back</item>
         ...
     </style>
+
+
+#### Ui Page number
+
+You need to add the custom string to strings.xml file and override the required strings.xml values.
+
+Default:
+
+    <string name="pdfView_page_no">%1$s of %2$s</string>
+
+Custom:
+
+    <string name="pdfView_page_no" >%1$s / %2$s</string>
     
 #### Supported attributes
 
