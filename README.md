@@ -93,6 +93,28 @@ Note: If parent is not one of the themes from this library, all of the pdfView a
     </style>
 
 
+#### Ui Customizations - Page number
+
+You need to add the custom layout to pdf_view_page_no.xml file and override the required attribute
+values.
+
+    <?xml version="1.0" encoding="utf-8"?>  
+    <TextView xmlns:android="http://schemas.android.com/apk/res/android"  
+      android:id="@+id/pageNo"  
+      android:layout_width="wrap_content"  
+      android:layout_height="wrap_content"  
+      android:layout_margin="18dp"  
+      android:background="#9C27B0"  
+      android:paddingStart="12dp"  
+      android:paddingTop="4dp"  
+      android:paddingEnd="12dp"  
+      android:paddingBottom="4dp"  
+      android:textColor="#ffffff"  
+      android:textSize="16sp"  
+      android:visibility="gone" />
+
+
+
 #### Ui Page number
 
 You need to add the custom string to strings.xml file and override the required strings.xml values.
@@ -104,7 +126,7 @@ Default:
 Custom:
 
     <string name="pdfView_page_no" >%1$s / %2$s</string>
-    
+
 #### Supported attributes
 
 | Attribute Name | Type | Expected changes |
@@ -127,7 +149,7 @@ Any contributions you make are **greatly appreciated**.
 5. Open a Pull Request
 
 ## Donations
-If this project help you reduce time to develop, you can give me a cup of coffee :) 
+If this project help you reduce time to develop, you can give me a cup of coffee :)
 
 [![paypal](https://www.paypalobjects.com/en_US/i/btn/btn_donateCC_LG.gif)](https://www.paypal.com/paypalme/afreakyelf)
 
