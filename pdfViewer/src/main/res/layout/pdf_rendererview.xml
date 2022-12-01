@@ -1,14 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
-    android:layout_height="match_parent">
+    android:layout_height="match_parent"
+    xmlns:tools="http://schemas.android.com/tools">
 
     <com.rajat.pdfviewer.PinchZoomRecyclerView
         android:id="@+id/recyclerView"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:background="@android:color/white"
-        android:scrollbars="vertical" />
+        android:background="@android:color/transparent"
+        android:scrollbars="vertical"
+        tools:listitem="@layout/list_item_pdf_page" />
 
     <WebView
         android:id="@+id/webView"
