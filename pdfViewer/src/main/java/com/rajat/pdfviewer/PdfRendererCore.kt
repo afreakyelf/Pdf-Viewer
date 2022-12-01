@@ -59,6 +59,11 @@ internal class PdfRendererCore(
             null
         }
     }
+    fun pageExistInCache(pageNo: Int): Boolean {
+        val loadPath = File(File(context.cacheDir, cachePath), pageNo.toString())
+
+        return loadPath.exists()
+    }
 
     @Throws(IOException::class)
     private fun writeBitmapToCache(pageNo: Int, bitmap: Bitmap) {

@@ -41,6 +41,8 @@ class PdfRendererView @JvmOverloads constructor(
     private var showDivider = true
     private var divider: Drawable? = null
     private var runnable = Runnable {}
+    var enableLoadingForPages: Boolean = false
+
     private var pdfRendererCoreInitialised = false
     var pageMargin: Rect = Rect(0,0,0,0)
     var statusListener: StatusCallBack? = null
@@ -234,9 +236,9 @@ class PdfRendererView @JvmOverloads constructor(
         engine = PdfEngine.values().first { it.value == engineValue }
         showDivider = typedArray.getBoolean(R.styleable.PdfRendererView_pdfView_showDivider, true)
         divider = typedArray.getDrawable(R.styleable.PdfRendererView_pdfView_divider)
+        enableLoadingForPages = typedArray.getBoolean(R.styleable.PdfRendererView_pdfView_enableLoadingForPages, enableLoadingForPages)
 
         val marginDim = typedArray.getDimensionPixelSize(R.styleable.PdfRendererView_pdfView_page_margin, 0)
-
         pageMargin = Rect(marginDim, marginDim, marginDim, marginDim).apply {
             top = typedArray.getDimensionPixelSize(R.styleable.PdfRendererView_pdfView_page_marginTop, top)
             left = typedArray.getDimensionPixelSize(R.styleable.PdfRendererView_pdfView_page_marginLeft, left)

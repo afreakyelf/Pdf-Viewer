@@ -41,6 +41,8 @@ internal class PdfViewAdapter(
     inner class PdfPageViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
         fun bind(position: Int) {
             with(itemView) {
+                handleLoadingForPage(position)
+
                 pageView.setImageBitmap(null)
                 renderer.renderPage(position) { bitmap: Bitmap?, pageNo: Int ->
                     if (pageNo != position)
@@ -59,8 +61,23 @@ internal class PdfViewAdapter(
                             interpolator = LinearInterpolator()
                             duration = 300
                         }
+
+                        pdf_view_page_loading_progress.hide()
                     }
                 }
+            }
+        }
+
+        private fun View.handleLoadingForPage(position: Int) {
+            if (!enableLoadingForPages) {
+                pdf_view_page_loading_progress.hide()
+                return
+            }
+
+            if (renderer.pageExistInCache(position)) {
+                pdf_view_page_loading_progress.hide()
+            } else {
+                pdf_view_page_loading_progress.show()
             }
         }
     }
