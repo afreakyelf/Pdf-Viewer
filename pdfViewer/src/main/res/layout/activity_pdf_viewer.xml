@@ -5,6 +5,7 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
+    android:background="?attr/pdfView_backgroundColor"
     tools:context=".PdfViewerActivity">
 
     <include layout="@layout/pdf_view_tool_bar" />
