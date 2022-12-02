@@ -37,9 +37,8 @@ class MainActivity : AppCompatActivity() {
     private fun launchPdf() {
         startActivity(
             PdfViewerActivity.launchPdfFromUrl(
-                this, download_file_url,
-                "Title", "dir",true
-            )
+                context = this, pdfUrl = download_file_url,
+                pdfTitle = "Title", directoryName = "dir", enableDownload = true)
         )
     }
 

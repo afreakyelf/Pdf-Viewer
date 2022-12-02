@@ -10,10 +10,7 @@ import android.graphics.pdf.PdfRenderer
 import android.os.Build
 import android.os.ParcelFileDescriptor
 import android.util.Log
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.GlobalScope
-import kotlinx.coroutines.async
-import kotlinx.coroutines.launch
+import kotlinx.coroutines.*
 import java.io.File
 import java.io.FileOutputStream
 import java.io.IOException
@@ -59,6 +56,11 @@ internal class PdfRendererCore(
             null
         }
     }
+    fun pageExistInCache(pageNo: Int): Boolean {
+        val loadPath = File(File(context.cacheDir, cachePath), pageNo.toString())
+
+        return loadPath.exists()
+    }
 
     @Throws(IOException::class)
     private fun writeBitmapToCache(pageNo: Int, bitmap: Bitmap) {
@@ -86,10 +88,10 @@ internal class PdfRendererCore(
         if (pageNo >= getPageCount())
             return
 
-        GlobalScope.async {
+        CoroutineScope(Dispatchers.IO).launch {
             synchronized(this@PdfRendererCore) {
                 buildBitmap(pageNo) { bitmap ->
-                    GlobalScope.launch(Dispatchers.Main) { onBitmapReady?.invoke(bitmap, pageNo) }
+                    CoroutineScope(Dispatchers.Main).launch { onBitmapReady?.invoke(bitmap, pageNo) }
                 }
                 onBitmapReady?.let {
                     //prefetchNext(pageNo + 1)
@@ -111,8 +113,6 @@ internal class PdfRendererCore(
             onBitmap(it)
             return@buildBitmap
         }
-
-        val startTime = System.currentTimeMillis()
 
         try {
             val pdfPage = pdfRenderer!!.openPage(pageNo)

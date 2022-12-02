@@ -12,6 +12,14 @@
         </attr>
         <attr name="pdfView_showDivider" format="boolean" />
         <attr name="pdfView_divider" format="reference" />
+
+        <attr name="pdfView_enableLoadingForPages" format="reference|boolean" />
+
+        <attr name="pdfView_page_margin" format="reference|dimension"  />
+        <attr name="pdfView_page_marginLeft" format="reference|dimension"  />
+        <attr name="pdfView_page_marginTop" format="reference|dimension" />
+        <attr name="pdfView_page_marginRight" format="reference|dimension"  />
+        <attr name="pdfView_page_marginBottom" format="reference|dimension"  />
     </declare-styleable>
 
     <!-- icons -->
@@ -26,4 +34,5 @@
     <attr name="pdfView_titleTextStyle" format="reference" />
 
     <attr name="pdfView_progressBar" format="reference"/>
+    <attr name="pdfView_backgroundColor" format="reference|color"/>
 </resources>
