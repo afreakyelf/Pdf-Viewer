@@ -199,6 +199,7 @@ class PdfRendererView @JvmOverloads constructor(
             statusListener?.onError(Throwable("Web resource error"))
         }
 
+        @Deprecated("Deprecated in Java")
         override fun onReceivedError(
             view: WebView?,
             errorCode: Int,
