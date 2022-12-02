@@ -50,7 +50,7 @@ internal class PdfViewAdapter(
                     bitmap?.let {
                         container_view.updateLayoutParams<ViewGroup.MarginLayoutParams> {
                             height =
-                                (pageView.width.toFloat() / ((bitmap.width.toFloat() / bitmap.height.toFloat()))).toInt()
+                                (container_view.width.toFloat() / ((bitmap.width.toFloat() / bitmap.height.toFloat()))).toInt()
                             this.topMargin = pageSpacing.top
                             this.leftMargin = pageSpacing.left
                             this.rightMargin = pageSpacing.right
