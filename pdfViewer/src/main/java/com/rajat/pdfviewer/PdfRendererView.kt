@@ -138,11 +138,11 @@ class PdfRendererView @JvmOverloads constructor(
         override fun onScrolled(recyclerView: RecyclerView, dx: Int, dy: Int) {
             super.onScrolled(recyclerView, dx, dy)
             (recyclerView.layoutManager as LinearLayoutManager).run {
-                var foundPosition = findFirstCompletelyVisibleItemPosition()
+                var foundPosition : Int = findFirstCompletelyVisibleItemPosition()
 
                 pageNo.run {
                     if (foundPosition != NO_POSITION)
-                        text = context.getString(R.string.pdfView_page_no,"${(foundPosition + 1)}","$totalPageCount")
+                        text = context.getString(R.string.pdfView_page_no,foundPosition + 1,totalPageCount)
                     pageNo.visibility = View.VISIBLE
                 }
 
