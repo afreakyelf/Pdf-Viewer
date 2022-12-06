@@ -30,7 +30,7 @@ allprojects {
 Step 2. Add the dependency
 ```java
 dependencies {
-    implementation 'com.github.afreakyelf:Pdf-Viewer:{Tag}'
+    implementation 'com.github.afreakyelf:Pdf-Viewer:v{Tag}'
 }
 ```
 NOTE: Replace the tag with current release version, e.g
