@@ -1,6 +1,5 @@
 package com.rajat.pdfviewer
 
-import android.view.View
 import android.graphics.Rect
 import android.view.ViewGroup
 import android.graphics.Bitmap
@@ -11,6 +10,7 @@ import android.view.animation.AlphaAnimation
 import androidx.core.view.updateLayoutParams
 import android.view.animation.LinearInterpolator
 import androidx.recyclerview.widget.RecyclerView
+import com.rajat.pdfviewer.databinding.ListItemPdfPageBinding
 import kotlinx.android.synthetic.main.list_item_pdf_page.view.*
 import kotlinx.android.synthetic.main.pdf_view_page_loading_layout.view.*
 
@@ -25,9 +25,13 @@ internal class PdfViewAdapter(
 ) :
     RecyclerView.Adapter<PdfViewAdapter.PdfPageViewHolder>() {
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): PdfPageViewHolder {
-        val v = LayoutInflater.from(parent.context)
-                .inflate(R.layout.list_item_pdf_page, parent, false)
-        return PdfPageViewHolder(v)
+        return PdfPageViewHolder(
+            ListItemPdfPageBinding.inflate(
+                LayoutInflater.from(parent.context),
+                parent,
+                false
+            )
+        )
     }
 
     override fun getItemCount(): Int {
@@ -38,12 +42,12 @@ internal class PdfViewAdapter(
         holder.bind(position)
     }
 
-    inner class PdfPageViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
+    inner class PdfPageViewHolder(itemView: ListItemPdfPageBinding) : RecyclerView.ViewHolder(itemView.root) {
         fun bind(position: Int) {
             with(itemView) {
                 handleLoadingForPage(position)
 
-                pageView.setImageBitmap(null)
+                itemView.pageView.setImageBitmap(null)
                 renderer.renderPage(position) { bitmap: Bitmap?, pageNo: Int ->
                     if (pageNo != position)
                         return@renderPage
@@ -56,8 +60,8 @@ internal class PdfViewAdapter(
                             this.rightMargin = pageSpacing.right
                             this.bottomMargin = pageSpacing.bottom
                         }
-                        pageView.setImageBitmap(bitmap)
-                        pageView.animation = AlphaAnimation(0F, 1F).apply {
+                        itemView.pageView.setImageBitmap(bitmap)
+                        itemView.pageView.animation = AlphaAnimation(0F, 1F).apply {
                             interpolator = LinearInterpolator()
                             duration = 300
                         }
@@ -68,16 +72,16 @@ internal class PdfViewAdapter(
             }
         }
 
-        private fun View.handleLoadingForPage(position: Int) {
+        private fun handleLoadingForPage(position: Int) {
             if (!enableLoadingForPages) {
-                pdf_view_page_loading_progress.hide()
+                itemView.pdf_view_page_loading_progress.hide()
                 return
             }
 
             if (renderer.pageExistInCache(position)) {
-                pdf_view_page_loading_progress.hide()
+                itemView.pdf_view_page_loading_progress.hide()
             } else {
-                pdf_view_page_loading_progress.show()
+                itemView.pdf_view_page_loading_progress.show()
             }
         }
     }
