@@ -1,4 +1,4 @@
-package com.rajat.pdfviewer
+package com.rajat.sample.pdfviewer
 
 import android.Manifest
 import android.content.pm.PackageManager
@@ -7,7 +7,9 @@ import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
-import com.rajat.pdfviewer.databinding.ActivityMainBinding
+import com.rajat.pdfviewer.PdfViewerActivity
+import com.rajat.sample.pdfviewer.databinding.ActivityMainBinding
+
 
 class MainActivity : AppCompatActivity() {
 

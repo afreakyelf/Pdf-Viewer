@@ -6,7 +6,7 @@ android {
     compileSdkVersion 33
 
     defaultConfig {
-        applicationId "com.rajat.pdfviewer"
+        applicationId "com.rajat.sample.pdfviewer"
         minSdkVersion 16
         targetSdkVersion 33
         versionCode 2
