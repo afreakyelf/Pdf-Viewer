@@ -134,8 +134,8 @@ class PinchZoomRecyclerView : RecyclerView {
         override fun onScale(detector: ScaleGestureDetector): Boolean {
 
             val scale = detector.scaleFactor
-            mScaleFactor = 1.0f.coerceAtLeast((mScaleFactor * scale).coerceAtMost(3.0f))
-            if (mScaleFactor < 3f) {
+            mScaleFactor = 1.0f.coerceAtLeast((mScaleFactor * scale).coerceAtMost(10.0f))
+            if (mScaleFactor < 10f) {
                 val centerX = detector.focusX
                 val centerY = detector.focusY
                 var diffX = centerX - mPosX
