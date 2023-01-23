@@ -1,4 +1,4 @@
-package com.rajat.pdfviewer
+package com.rajat.sample.pdfviewer
 
 import android.Manifest
 import android.content.pm.PackageManager
@@ -7,7 +7,9 @@ import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
-import com.rajat.pdfviewer.databinding.ActivityMainBinding
+import com.rajat.pdfviewer.PdfViewerActivity
+import com.rajat.sample.pdfviewer.databinding.ActivityMainBinding
+
 
 class MainActivity : AppCompatActivity() {
 
@@ -18,8 +20,7 @@ class MainActivity : AppCompatActivity() {
         Manifest.permission.READ_EXTERNAL_STORAGE
     )
 
-    private var download_file_url =
-        "https://github.com/afreakyelf/afreakyelf/raw/main/Log4_Shell_Mid_Term_final.pdf"
+    private var download_file_url = "https://github.com/afreakyelf/afreakyelf/raw/main/Log4_Shell_Mid_Term_final.pdf"
     var per = 0f
     private val PERMISSION_CODE = 4040
 
@@ -38,9 +39,8 @@ class MainActivity : AppCompatActivity() {
     private fun launchPdf() {
         startActivity(
             PdfViewerActivity.launchPdfFromUrl(
-                this, download_file_url,
-                "Title", "dir", true
-            )
+                context = this, pdfUrl = download_file_url,
+                pdfTitle = "Title", directoryName = "dir", enableDownload = true)
         )
     }
 

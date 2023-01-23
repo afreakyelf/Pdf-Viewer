@@ -19,6 +19,7 @@ import android.view.Menu
 import android.view.MenuItem
 import android.view.View
 import android.view.View.GONE
+import android.webkit.CookieManager
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
@@ -342,6 +343,7 @@ class PdfViewerActivity : AppCompatActivity() {
                         val downloadUrl = Uri.parse(fileUrl)
                         val downloadManger =
                             getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager?
+                        val cookie = CookieManager.getInstance().getCookie(fileUrl);
                         val request = DownloadManager.Request(downloadUrl)
                         request.setAllowedNetworkTypes(
                             DownloadManager.Request.NETWORK_WIFI or
@@ -356,6 +358,8 @@ class PdfViewerActivity : AppCompatActivity() {
                             filePath
                         )
                         request.setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
+                        if (!TextUtils.isEmpty(cookie))
+                            request.addRequestHeader("Cookie", cookie)
                         registerReceiver(
                             onComplete,
                             IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE)

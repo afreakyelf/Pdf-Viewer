@@ -1,3 +1,5 @@
 <resources>
     <string name="app_name">pdfViewer</string>
+    <string name="pdfView_page_no" translatable="false">%1$s / %2$s</string>
+
 </resources>

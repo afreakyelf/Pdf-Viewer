@@ -3,6 +3,7 @@ package com.rajat.pdfviewer
 import android.annotation.SuppressLint
 import android.content.Context
 import android.content.res.TypedArray
+import android.graphics.Rect
 import android.graphics.drawable.Drawable
 import android.os.Build
 import android.util.AttributeSet
@@ -13,6 +14,7 @@ import android.webkit.WebResourceRequest
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import android.widget.FrameLayout
+import android.widget.TextView
 import androidx.recyclerview.widget.DefaultItemAnimator
 import androidx.recyclerview.widget.DividerItemDecoration
 import androidx.recyclerview.widget.LinearLayoutManager
@@ -31,6 +33,7 @@ class PdfRendererView @JvmOverloads constructor(
 ) : FrameLayout(context, attrs, defStyleAttr) {
 
     private lateinit var recyclerView: RecyclerView
+    private lateinit var pageNo: TextView
     private lateinit var pdfRendererCore: PdfRendererCore
     private lateinit var pdfViewAdapter: PdfViewAdapter
     private var quality = PdfQuality.NORMAL
@@ -38,9 +41,12 @@ class PdfRendererView @JvmOverloads constructor(
     private var showDivider = true
     private var divider: Drawable? = null
     private var runnable = Runnable {}
-    private var pdfRendererCoreInitialised = false
+    var enableLoadingForPages: Boolean = false
 
+    private var pdfRendererCoreInitialised = false
+    var pageMargin: Rect = Rect(0,0,0,0)
     var statusListener: StatusCallBack? = null
+
     val totalPageCount: Int
         get() {
             return pdfRendererCore.getPageCount()
@@ -105,10 +111,11 @@ class PdfRendererView @JvmOverloads constructor(
     private fun init(file: File, pdfQuality: PdfQuality) {
         pdfRendererCore = PdfRendererCore(context, file, pdfQuality)
         pdfRendererCoreInitialised = true
-        pdfViewAdapter = PdfViewAdapter(pdfRendererCore)
+        pdfViewAdapter = PdfViewAdapter(pdfRendererCore, pageMargin, enableLoadingForPages)
         val v = LayoutInflater.from(context).inflate(R.layout.pdf_rendererview, this, false)
         addView(v)
         recyclerView = findViewById(R.id.recyclerView)
+        pageNo = findViewById(R.id.pageNumber)
         recyclerView.apply {
             adapter = pdfViewAdapter
             layoutManager = LinearLayoutManager(context, LinearLayoutManager.VERTICAL, false)
@@ -131,11 +138,11 @@ class PdfRendererView @JvmOverloads constructor(
         override fun onScrolled(recyclerView: RecyclerView, dx: Int, dy: Int) {
             super.onScrolled(recyclerView, dx, dy)
             (recyclerView.layoutManager as LinearLayoutManager).run {
-                var foundPosition = findFirstCompletelyVisibleItemPosition()
+                var foundPosition : Int = findFirstCompletelyVisibleItemPosition()
 
                 pageNo.run {
                     if (foundPosition != NO_POSITION)
-                        text = "${(foundPosition + 1)} of $totalPageCount"
+                        text = context.getString(R.string.pdfView_page_no,foundPosition + 1,totalPageCount)
                     pageNo.visibility = View.VISIBLE
                 }
 
@@ -199,6 +206,7 @@ class PdfRendererView @JvmOverloads constructor(
             statusListener?.onError(Throwable("Web resource error"))
         }
 
+        @Deprecated("Deprecated in Java")
         override fun onReceivedError(
             view: WebView?,
             errorCode: Int,
@@ -229,6 +237,16 @@ class PdfRendererView @JvmOverloads constructor(
         engine = PdfEngine.values().first { it.value == engineValue }
         showDivider = typedArray.getBoolean(R.styleable.PdfRendererView_pdfView_showDivider, true)
         divider = typedArray.getDrawable(R.styleable.PdfRendererView_pdfView_divider)
+        enableLoadingForPages = typedArray.getBoolean(R.styleable.PdfRendererView_pdfView_enableLoadingForPages, enableLoadingForPages)
+
+        val marginDim = typedArray.getDimensionPixelSize(R.styleable.PdfRendererView_pdfView_page_margin, 0)
+        pageMargin = Rect(marginDim, marginDim, marginDim, marginDim).apply {
+            top = typedArray.getDimensionPixelSize(R.styleable.PdfRendererView_pdfView_page_marginTop, top)
+            left = typedArray.getDimensionPixelSize(R.styleable.PdfRendererView_pdfView_page_marginLeft, left)
+            right = typedArray.getDimensionPixelSize(R.styleable.PdfRendererView_pdfView_page_marginRight, right)
+            bottom = typedArray.getDimensionPixelSize(R.styleable.PdfRendererView_pdfView_page_marginBottom, bottom)
+
+        }
 
         typedArray.recycle()
     }
