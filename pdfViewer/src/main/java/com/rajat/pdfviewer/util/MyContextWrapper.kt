@@ -2,7 +2,7 @@ package com.rajat.pdfviewer.util
 
 import android.content.Context
 import android.content.res.Configuration
-import androidx.preference.PreferenceManager
+import android.preference.PreferenceManager
 import java.util.*
 
 object Languages {

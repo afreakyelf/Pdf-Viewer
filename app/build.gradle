@@ -7,7 +7,7 @@ android {
 
     defaultConfig {
         applicationId "com.rajat.sample.pdfviewer"
-        minSdkVersion 16
+        minSdkVersion 23
         targetSdkVersion 33
         versionCode 2
         versionName "1.1"
@@ -47,4 +47,7 @@ dependencies {
     androidTestImplementation 'androidx.test.espresso:espresso-core:3.4.0'
     implementation 'com.android.support:multidex:2.0.0'
     implementation project(":pdfViewer")
+    // easy permissions
+    implementation 'com.vmadalin:easypermissions-ktx:1.0.0'
+    implementation 'androidx.lifecycle:lifecycle-viewmodel-ktx:2.4.0'
 }

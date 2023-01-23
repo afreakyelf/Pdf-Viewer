@@ -6,7 +6,7 @@ android {
     compileSdkVersion 33
 
     defaultConfig {
-        minSdkVersion 16
+        minSdkVersion 23
         targetSdkVersion 33
         multiDexEnabled true
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
@@ -48,5 +48,8 @@ dependencies {
     testImplementation 'junit:junit:4.13.2'
     androidTestImplementation 'androidx.test.ext:junit:1.1.4'
     androidTestImplementation 'androidx.test.espresso:espresso-core:3.5.0'
+    // easy permissions
+    implementation 'com.vmadalin:easypermissions-ktx:1.0.0'
+    implementation 'androidx.lifecycle:lifecycle-viewmodel-ktx:2.4.0'
 
 }

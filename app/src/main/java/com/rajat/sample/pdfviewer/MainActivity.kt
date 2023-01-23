@@ -1,28 +1,20 @@
 package com.rajat.sample.pdfviewer
 
-import android.Manifest
-import android.content.pm.PackageManager
+import android.Manifest.permission.READ_EXTERNAL_STORAGE
+import android.Manifest.permission.READ_MEDIA_IMAGES
+import android.os.Build
 import android.os.Bundle
-import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
-import androidx.core.app.ActivityCompat
-import androidx.core.content.ContextCompat
 import com.rajat.pdfviewer.PdfViewerActivity
-import com.rajat.sample.pdfviewer.databinding.ActivityMainBinding
+import com.rajat.pdfviewer.databinding.ActivityMainBinding
+import com.vmadalin.easypermissions.EasyPermissions
 
-
-class MainActivity : AppCompatActivity() {
+class MainActivity : AppCompatActivity(), EasyPermissions.PermissionCallbacks {
 
     private lateinit var binding: ActivityMainBinding
 
-    private val requiredPermissionList = arrayOf(
-        Manifest.permission.WRITE_EXTERNAL_STORAGE,
-        Manifest.permission.READ_EXTERNAL_STORAGE
-    )
-
-    private var download_file_url = "https://github.com/afreakyelf/afreakyelf/raw/main/Log4_Shell_Mid_Term_final.pdf"
-    var per = 0f
-    private val PERMISSION_CODE = 4040
+    private var download_file_url =
+        "https://github.com/afreakyelf/afreakyelf/raw/main/Log4_Shell_Mid_Term_final.pdf"
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -31,8 +23,7 @@ class MainActivity : AppCompatActivity() {
         setContentView(view)
 
         binding.openPdf.setOnClickListener {
-            if (checkAndRequestPermission())
-                launchPdf()
+            requestFilesPermission()
         }
     }
 
@@ -40,31 +31,34 @@ class MainActivity : AppCompatActivity() {
         startActivity(
             PdfViewerActivity.launchPdfFromUrl(
                 context = this, pdfUrl = download_file_url,
-                pdfTitle = "Title", directoryName = "dir", enableDownload = true)
+                pdfTitle = "Title", directoryName = "dir", enableDownload = true
+            )
         )
     }
 
-    private fun checkAndRequestPermission(): Boolean {
-        val permissionsNeeded = ArrayList<String>()
-
-        for (permission in requiredPermissionList) {
-            if (ContextCompat.checkSelfPermission(this, permission) !=
-                PackageManager.PERMISSION_GRANTED
-            ) {
-                permissionsNeeded.add(permission)
+    private fun requestFilesPermission() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            if (hasPermission(READ_MEDIA_IMAGES)) {
+                launchPdf()
+            } else if (enableRequestPermission(READ_MEDIA_IMAGES)) {
+                requestPermission(READ_MEDIA_IMAGES, 1, "")
+            }
+        } else {
+            if (this.hasPermission(READ_EXTERNAL_STORAGE)) {
+                launchPdf()
+            } else if (enableRequestPermission(READ_EXTERNAL_STORAGE)) {
+                requestPermission(READ_EXTERNAL_STORAGE, 1, "")
             }
         }
+    }
 
-        if (permissionsNeeded.isNotEmpty()) {
-            ActivityCompat.requestPermissions(
-                this,
-                permissionsNeeded.toTypedArray(),
-                PERMISSION_CODE
-            )
-            return false
+    override fun onPermissionsDenied(requestCode: Int, perms: List<String>) {
+    }
+
+    override fun onPermissionsGranted(requestCode: Int, perms: List<String>) {
+        if (requestCode == 1) {
+            launchPdf()
         }
-
-        return true
     }
 
     override fun onRequestPermissionsResult(
@@ -73,17 +67,8 @@ class MainActivity : AppCompatActivity() {
         grantResults: IntArray
     ) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
-        when (requestCode) {
-            PERMISSION_CODE -> if (grantResults.isNotEmpty()) {
-                val readPermission = grantResults[0] == PackageManager.PERMISSION_GRANTED
-                val writePermission = grantResults[1] == PackageManager.PERMISSION_GRANTED
-                if (readPermission && writePermission)
-                    launchPdf()
-                else {
-                    Toast.makeText(this, " Permission Denied", Toast.LENGTH_SHORT).show()
-                }
-            }
+        if (requestCode == 1) {
+            launchPdf()
         }
     }
-
 }

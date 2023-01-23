@@ -6,7 +6,6 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
-import android.content.pm.PackageManager
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
 import android.net.Uri
@@ -22,9 +21,11 @@ import android.view.View.GONE
 import android.webkit.CookieManager
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
-import androidx.core.app.ActivityCompat
-import androidx.core.content.ContextCompat
 import com.rajat.pdfviewer.util.Languages
+import com.rajat.pdfviewer.util.enableRequestPermission
+import com.rajat.pdfviewer.util.hasPermission
+import com.rajat.pdfviewer.util.requestPermission
+import com.vmadalin.easypermissions.EasyPermissions
 import kotlinx.android.synthetic.main.activity_pdf_viewer.*
 import kotlinx.android.synthetic.main.pdf_view_tool_bar.*
 import java.io.File
@@ -33,7 +34,7 @@ import java.io.File
  * Created by Rajat on 11,July,2020
  */
 
-class PdfViewerActivity : AppCompatActivity() {
+class PdfViewerActivity : AppCompatActivity(), EasyPermissions.PermissionCallbacks {
 
     private var permissionGranted: Boolean? = false
     private var menuItem: MenuItem? = null
@@ -205,7 +206,7 @@ class PdfViewerActivity : AppCompatActivity() {
     }
 
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
-        if (item.itemId == R.id.download) checkPermission(PERMISSION_CODE)
+        if (item.itemId == R.id.download) requestFilesPermission()
         if (item.itemId == android.R.id.home) {
             finish() // close this activity and return to preview activity (if there is any)
         }
@@ -260,9 +261,6 @@ class PdfViewerActivity : AppCompatActivity() {
     }
 
     private fun enableDownload() {
-
-        checkPermissionOnInit()
-
         pdfView.statusListener = object : PdfRendererView.StatusCallBack {
             override fun onDownloadStart() {
                 true.showProgressBar()
@@ -288,16 +286,6 @@ class PdfViewerActivity : AppCompatActivity() {
                 //Page change. Not require
             }
 
-        }
-    }
-
-    private fun checkPermissionOnInit() {
-        if (ContextCompat.checkSelfPermission(
-                this,
-                permission.WRITE_EXTERNAL_STORAGE
-            ) === PackageManager.PERMISSION_GRANTED
-        ) {
-            permissionGranted = true
         }
     }
 
@@ -374,7 +362,7 @@ class PdfViewerActivity : AppCompatActivity() {
                     ).show()
                 }
             } else {
-                checkPermissionOnInit()
+                requestFilesPermission()
             }
 
         } catch (e: Exception) {
@@ -382,17 +370,39 @@ class PdfViewerActivity : AppCompatActivity() {
         }
     }
 
-    private fun checkPermission(requestCode: Int) {
-        if (ContextCompat.checkSelfPermission(this, permission.WRITE_EXTERNAL_STORAGE)
-            == PackageManager.PERMISSION_DENIED
-        ) {
-            ActivityCompat.requestPermissions(
-                this, arrayOf(permission.WRITE_EXTERNAL_STORAGE),
-                requestCode
-            )
+    override fun onDestroy() {
+        super.onDestroy()
+        pdfView.closePdfRender()
+    }
+
+    private fun requestFilesPermission() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            if (hasPermission(permission.READ_MEDIA_IMAGES)) {
+                permissionGranted = true
+                downloadPdf()
+            } else if (enableRequestPermission(permission.READ_MEDIA_IMAGES)) {
+                requestPermission(permission.READ_MEDIA_IMAGES, 1, "")
+            }
         } else {
+            if (this.hasPermission(permission.READ_EXTERNAL_STORAGE)) {
+                permissionGranted = true
+                downloadPdf()
+            } else if (enableRequestPermission(permission.READ_EXTERNAL_STORAGE)) {
+                requestPermission(permission.READ_EXTERNAL_STORAGE, 1, "")
+            }
+        }
+    }
+
+    override fun onPermissionsDenied(requestCode: Int, perms: List<String>) {
+        permissionGranted = false
+    }
+
+    override fun onPermissionsGranted(requestCode: Int, perms: List<String>) {
+        if (requestCode == 1) {
             permissionGranted = true
             downloadPdf()
+        } else {
+            permissionGranted = false
         }
     }
 
@@ -402,18 +412,12 @@ class PdfViewerActivity : AppCompatActivity() {
         grantResults: IntArray
     ) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
-        if (requestCode == PERMISSION_CODE &&
-            grantResults.isNotEmpty() &&
-            grantResults[0] == PackageManager.PERMISSION_GRANTED
-        ) {
+        if (requestCode == 1) {
             permissionGranted = true
             downloadPdf()
+        } else {
+            permissionGranted = false
         }
-    }
-
-    override fun onDestroy() {
-        super.onDestroy()
-        pdfView.closePdfRender()
     }
 
 }
