@@ -2,8 +2,8 @@ package com.rajat.pdfviewer.util
 
 import android.content.Context
 import android.os.Environment
-import android.provider.MediaStore
-import android.text.TextUtils
+import android.os.Environment.DIRECTORY_DOWNLOADS
+import android.os.Environment.getExternalStoragePublicDirectory
 import java.io.*
 
 object FileUtils {
@@ -37,15 +37,22 @@ object FileUtils {
     }
 
     @Throws(IOException::class)
-    fun downloadFile(context: Context, assetName: String, filePath: String, fileName: String?){
-
-       val dirPath = "${Environment.getExternalStorageDirectory()}/${filePath}"
+    fun downloadFile(context: Context, assetName: String, filePath: String, fileName: String?) {
+       val dirPath = "${Environment.getExternalStorageDirectory()}/$filePath"
         val outFile = File(dirPath)
-        //Create New File if not present
+        // Create New File if not present
         if (!outFile.exists()) {
             outFile.mkdirs()
         }
+        
         val outFile1 = File(dirPath, "/$fileName.pdf")
         copy(context.assets.open(assetName), outFile1)
+    }
+
+    fun copyFile(fullPath: String, destPath: String?, fileName: String) {
+        val outFile = File(destPath
+            ?: getExternalStoragePublicDirectory(
+                DIRECTORY_DOWNLOADS).path, "/$fileName.pdf")
+        File(fullPath).copyTo(outFile, true)
     }
 }
