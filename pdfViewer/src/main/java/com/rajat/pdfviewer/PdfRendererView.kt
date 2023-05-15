@@ -15,12 +15,16 @@ import android.webkit.WebView
 import android.webkit.WebViewClient
 import android.widget.FrameLayout
 import android.widget.TextView
+import androidx.appcompat.app.AppCompatActivity
+import androidx.lifecycle.LifecycleCoroutineScope
+import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.DefaultItemAnimator
 import androidx.recyclerview.widget.DividerItemDecoration
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import androidx.recyclerview.widget.RecyclerView.NO_POSITION
 import kotlinx.android.synthetic.main.pdf_rendererview.view.*
+import kotlinx.coroutines.CoroutineScope
 import java.io.File
 import java.net.URLEncoder
 
@@ -63,7 +67,8 @@ class PdfRendererView @JvmOverloads constructor(
     fun initWithUrl(
         url: String,
         pdfQuality: PdfQuality = this.quality,
-        engine: PdfEngine = this.engine
+        engine: PdfEngine = this.engine,
+        lifecycleScope: LifecycleCoroutineScope = (context as AppCompatActivity).lifecycleScope
     ) {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.LOLLIPOP || engine == PdfEngine.GOOGLE) {
             initUnderKitkat(url)
@@ -93,6 +98,8 @@ class PdfRendererView @JvmOverloads constructor(
                 error.printStackTrace()
                 statusListener?.onError(error)
             }
+
+            override fun getCoroutineScope(): CoroutineScope = lifecycleScope
         })
     }
 
