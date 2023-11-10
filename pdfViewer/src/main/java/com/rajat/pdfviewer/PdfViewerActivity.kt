@@ -287,11 +287,15 @@ class PdfViewerActivity : AppCompatActivity() {
     }
 
     private fun checkPermissionOnInit() {
-        if (ContextCompat.checkSelfPermission(
-                this,
-                permission.WRITE_EXTERNAL_STORAGE
-            ) === PackageManager.PERMISSION_GRANTED
-        ) {
+        if(Build.VERSION.SDK_INT < Build.VERSION_CODES.R){
+            if (ContextCompat.checkSelfPermission(
+                    this,
+                    permission.WRITE_EXTERNAL_STORAGE
+                ) == PackageManager.PERMISSION_GRANTED
+            ) {
+                permissionGranted = true
+            }
+        }else{
             permissionGranted = true
         }
     }
