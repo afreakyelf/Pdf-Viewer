@@ -389,14 +389,20 @@ class PdfViewerActivity : AppCompatActivity() {
     }
 
     private fun checkPermission(requestCode: Int) {
-        if (ContextCompat.checkSelfPermission(this, permission.WRITE_EXTERNAL_STORAGE)
-            == PackageManager.PERMISSION_DENIED
-        ) {
-            ActivityCompat.requestPermissions(
-                this, arrayOf(permission.WRITE_EXTERNAL_STORAGE),
-                requestCode
-            )
-        } else {
+        if(Build.VERSION.SDK_INT < Build.VERSION_CODES.R) {
+            if (ContextCompat.checkSelfPermission(this, permission.WRITE_EXTERNAL_STORAGE)
+                == PackageManager.PERMISSION_DENIED
+            ) {
+                ActivityCompat.requestPermissions(
+                    this, arrayOf(permission.WRITE_EXTERNAL_STORAGE),
+                    requestCode
+                )
+            } else {
+                permissionGranted = true
+                downloadPdf()
+            }
+        }
+        else {
             permissionGranted = true
             downloadPdf()
         }
@@ -408,10 +414,16 @@ class PdfViewerActivity : AppCompatActivity() {
         grantResults: IntArray
     ) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
-        if (requestCode == PERMISSION_CODE &&
-            grantResults.isNotEmpty() &&
-            grantResults[0] == PackageManager.PERMISSION_GRANTED
-        ) {
+        if(Build.VERSION.SDK_INT < Build.VERSION_CODES.R) {
+            if (requestCode == PERMISSION_CODE &&
+                grantResults.isNotEmpty() &&
+                grantResults[0] == PackageManager.PERMISSION_GRANTED
+            ) {
+                permissionGranted = true
+                downloadPdf()
+            }
+        }
+        else {
             permissionGranted = true
             downloadPdf()
         }
