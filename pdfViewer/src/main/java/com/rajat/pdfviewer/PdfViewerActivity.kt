@@ -24,6 +24,7 @@ import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
+import com.rajat.pdfviewer.util.FileUtils.copyFile
 import kotlinx.android.synthetic.main.activity_pdf_viewer.*
 import kotlinx.android.synthetic.main.pdf_view_tool_bar.*
 import java.io.File
@@ -286,11 +287,15 @@ class PdfViewerActivity : AppCompatActivity() {
     }
 
     private fun checkPermissionOnInit() {
-        if (ContextCompat.checkSelfPermission(
-                this,
-                permission.WRITE_EXTERNAL_STORAGE
-            ) === PackageManager.PERMISSION_GRANTED
-        ) {
+        if(Build.VERSION.SDK_INT < Build.VERSION_CODES.R){
+            if (ContextCompat.checkSelfPermission(
+                    this,
+                    permission.WRITE_EXTERNAL_STORAGE
+                ) == PackageManager.PERMISSION_GRANTED
+            ) {
+                permissionGranted = true
+            }
+        }else{
             permissionGranted = true
         }
     }
@@ -326,14 +331,20 @@ class PdfViewerActivity : AppCompatActivity() {
                     if (TextUtils.isEmpty(directoryName)) "/$fileName.pdf" else "/$directoryName/$fileName.pdf"
 
                 try {
-                    if (isPDFFromPath) {
+                    if (isPDFFromPath)
+                        if (isFromAssets)
                         com.rajat.pdfviewer.util.FileUtils.downloadFile(
                             this,
                             fileUrl!!,
                             directoryName!!,
-                            fileName
-                        )
-                    } else {
+                            fileName)
+                        else {
+                            copyFile(fileUrl!!, directoryName!!, fileName!!)
+                            Toast.makeText(this,
+                                "PDF successfully saved to $directoryName/$fileName.pdf",
+                                Toast.LENGTH_LONG).show()
+                        }
+                    else {
                         val downloadUrl = Uri.parse(fileUrl)
                         val downloadManger =
                             getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager?
@@ -366,6 +377,7 @@ class PdfViewerActivity : AppCompatActivity() {
                         "Unable to download file",
                         Toast.LENGTH_SHORT
                     ).show()
+                    e.printStackTrace()
                 }
             } else {
                 checkPermissionOnInit()
@@ -377,14 +389,20 @@ class PdfViewerActivity : AppCompatActivity() {
     }
 
     private fun checkPermission(requestCode: Int) {
-        if (ContextCompat.checkSelfPermission(this, permission.WRITE_EXTERNAL_STORAGE)
-            == PackageManager.PERMISSION_DENIED
-        ) {
-            ActivityCompat.requestPermissions(
-                this, arrayOf(permission.WRITE_EXTERNAL_STORAGE),
-                requestCode
-            )
-        } else {
+        if(Build.VERSION.SDK_INT < Build.VERSION_CODES.R) {
+            if (ContextCompat.checkSelfPermission(this, permission.WRITE_EXTERNAL_STORAGE)
+                == PackageManager.PERMISSION_DENIED
+            ) {
+                ActivityCompat.requestPermissions(
+                    this, arrayOf(permission.WRITE_EXTERNAL_STORAGE),
+                    requestCode
+                )
+            } else {
+                permissionGranted = true
+                downloadPdf()
+            }
+        }
+        else {
             permissionGranted = true
             downloadPdf()
         }
@@ -396,10 +414,16 @@ class PdfViewerActivity : AppCompatActivity() {
         grantResults: IntArray
     ) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
-        if (requestCode == PERMISSION_CODE &&
-            grantResults.isNotEmpty() &&
-            grantResults[0] == PackageManager.PERMISSION_GRANTED
-        ) {
+        if(Build.VERSION.SDK_INT < Build.VERSION_CODES.R) {
+            if (requestCode == PERMISSION_CODE &&
+                grantResults.isNotEmpty() &&
+                grantResults[0] == PackageManager.PERMISSION_GRANTED
+            ) {
+                permissionGranted = true
+                downloadPdf()
+            }
+        }
+        else {
             permissionGranted = true
             downloadPdf()
         }
