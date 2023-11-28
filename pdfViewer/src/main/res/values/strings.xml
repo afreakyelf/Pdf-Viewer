@@ -2,5 +2,16 @@
 <resources>
     <string name="pdfView_appName">Pdf View</string>
     <string name="content_des">PDF PAGE</string>
-    <string name="pdfView_page_no">%1$d/%2$d</string>
+    <string name="pdfView_page_no">%1$d of %2$d</string>
+    <string name="error_pdf_corrupted">Pdf has been corrupted or failed to load. Would you like to retry?</string>
+    <string name="error_no_internet_connection">No Internet Connection. Please Check your internet connection.</string>
+    <string name="file_saved_successfully">File saved successfully</string>
+    <string name="file_saved_to_downloads">File saved to Downloads</string>
+    <string name="file_not_downloaded_yet">File not downloaded yet</string>
+    <string name="permission_required">Storage permission is required to download the file. Would you like to grant permission?</string>
+    <string name="permission_required_title">Permission required</string>
+    <string name="pdf_viewer_error">Error</string>
+    <string name="pdf_viewer_retry">Retry</string>
+    <string name="pdf_viewer_grant">Grant</string>
+    <string name="pdf_viewer_cancel">Cancel</string>
 </resources>

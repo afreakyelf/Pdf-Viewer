@@ -1,31 +1,41 @@
 package com.rajat.pdfviewer
 
 import android.Manifest.permission
-import android.app.DownloadManager
-import android.content.BroadcastReceiver
+import android.app.Activity
+import android.app.AlertDialog
 import android.content.Context
+import android.content.DialogInterface
 import android.content.Intent
-import android.content.IntentFilter
 import android.content.pm.PackageManager
-import android.net.ConnectivityManager
-import android.net.NetworkCapabilities
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.os.Environment
 import android.text.TextUtils
 import android.util.Log
+import android.util.TypedValue
 import android.view.Menu
+import android.view.MenuInflater
 import android.view.MenuItem
 import android.view.View
 import android.view.View.GONE
-import android.webkit.CookieManager
+import android.view.View.VISIBLE
+import android.widget.TextView
 import android.widget.Toast
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.activity.viewModels
+import androidx.annotation.RequiresApi
 import androidx.appcompat.app.AppCompatActivity
-import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
-import kotlinx.android.synthetic.main.activity_pdf_viewer.*
-import kotlinx.android.synthetic.main.pdf_view_tool_bar.*
+import androidx.core.graphics.drawable.DrawableCompat
+import androidx.lifecycle.lifecycleScope
+import com.rajat.pdfviewer.databinding.ActivityPdfViewerBinding
+import com.rajat.pdfviewer.util.FileUtils.createPdfDocumentUri
+import com.rajat.pdfviewer.util.FileUtils.fileFromAsset
+import com.rajat.pdfviewer.util.FileUtils.uriToFile
+import com.rajat.pdfviewer.util.NetworkUtil.checkInternetConnection
+import com.rajat.pdfviewer.util.PdfEngine
+import com.rajat.pdfviewer.util.saveTo
 import java.io.File
 
 /**
@@ -34,36 +44,50 @@ import java.io.File
 
 class PdfViewerActivity : AppCompatActivity() {
 
-    private var permissionGranted: Boolean? = false
+    private lateinit var file_not_downloaded_yet: String
+    private lateinit var file_saved_to_downloads: String
+    private lateinit var file_saved_successfully: String
+    private lateinit var error_no_internet_connection: String
+    private lateinit var permission_required: String
+    private lateinit var permission_required_title: String
+    private lateinit var error_pdf_corrupted: String
+    private lateinit var pdf_viewer_retry: String
+    private lateinit var pdf_viewer_grant: String
+    private lateinit var pdf_viewer_cancel: String
+    private lateinit var pdf_viewer_error: String
     private var menuItem: MenuItem? = null
     private var fileUrl: String? = null
+    private lateinit var headers: HeaderData
+    private lateinit var binding: ActivityPdfViewerBinding
+    private val viewModel: PdfViewerViewModel by viewModels()
+    private var downloadedFilePath: String? = null
 
     companion object {
         const val FILE_URL = "pdf_file_url"
-        const val FILE_DIRECTORY = "pdf_file_directory"
         const val FILE_TITLE = "pdf_file_title"
         const val ENABLE_FILE_DOWNLOAD = "enable_download"
         const val FROM_ASSETS = "from_assests"
         var engine = PdfEngine.INTERNAL
-        var enableDownload = true
+        var enableDownload = false
         var isPDFFromPath = false
         var isFromAssets = false
-        var PERMISSION_CODE = 4040
-
+        var SAVE_TO_DOWNLOADS = true
 
         fun launchPdfFromUrl(
             context: Context?,
             pdfUrl: String?,
             pdfTitle: String?,
-            directoryName: String?,
-            enableDownload: Boolean = true
+            saveTo: saveTo,
+            enableDownload: Boolean = true,
+            headers: Map<String, String> = emptyMap()
         ): Intent {
             val intent = Intent(context, PdfViewerActivity::class.java)
             intent.putExtra(FILE_URL, pdfUrl)
             intent.putExtra(FILE_TITLE, pdfTitle)
-            intent.putExtra(FILE_DIRECTORY, directoryName)
             intent.putExtra(ENABLE_FILE_DOWNLOAD, enableDownload)
+            intent.putExtra("headers", HeaderData(headers))
             isPDFFromPath = false
+            SAVE_TO_DOWNLOADS = saveTo == com.rajat.pdfviewer.util.saveTo.DOWNLOADS
             return intent
         }
 
@@ -71,37 +95,113 @@ class PdfViewerActivity : AppCompatActivity() {
             context: Context?,
             path: String?,
             pdfTitle: String?,
-            directoryName: String?,
-            enableDownload: Boolean = true,
+            saveTo: saveTo,
             fromAssets: Boolean = false
         ): Intent {
             val intent = Intent(context, PdfViewerActivity::class.java)
             intent.putExtra(FILE_URL, path)
             intent.putExtra(FILE_TITLE, pdfTitle)
-            intent.putExtra(FILE_DIRECTORY, directoryName)
-            intent.putExtra(ENABLE_FILE_DOWNLOAD, enableDownload)
+            intent.putExtra(ENABLE_FILE_DOWNLOAD, false)
             intent.putExtra(FROM_ASSETS, fromAssets)
             isPDFFromPath = true
+            SAVE_TO_DOWNLOADS = saveTo == com.rajat.pdfviewer.util.saveTo.DOWNLOADS
             return intent
         }
+    }
 
+    private fun isActionBarPresent(): Boolean {
+        val typedValue = TypedValue()
+        theme.resolveAttribute(android.R.attr.windowActionBar, typedValue, true)
+        return typedValue.data != 0
+    }
+
+    private fun configureToolbar() {
+        val typedArray = theme.obtainStyledAttributes(R.styleable.PdfRendererView_toolbar)
+        try {
+            // Access each attribute and apply it to the respective view
+            val showToolbar = typedArray.getBoolean(
+                R.styleable.PdfRendererView_toolbar_pdfView_showToolbar,
+                true
+            )
+            val backIcon =
+                typedArray.getDrawable(R.styleable.PdfRendererView_toolbar_pdfView_backIcon)
+
+            val downloadIconTint = typedArray.getColor(
+                R.styleable.PdfRendererView_toolbar_pdfView_downloadIconTint,
+                -1
+            )
+            val actionBarTint = typedArray.getColor(
+                R.styleable.PdfRendererView_toolbar_pdfView_actionBarTint,
+                -1
+            )
+            val titleTextStyle = typedArray.getResourceId(
+                R.styleable.PdfRendererView_toolbar_pdfView_titleTextStyle,
+                -1
+            )
+            // Apply attributes
+            binding.myToolbar.visibility = if (showToolbar) VISIBLE else View.GONE
+            binding.myToolbar.navigationIcon = backIcon
+            // Apply text style to the title if defined
+            if (titleTextStyle != -1) {
+                (binding.myToolbar.findViewById(R.id.tvAppBarTitle) as TextView).setTextAppearance(
+                    this,
+                    titleTextStyle
+                )
+            }
+            // Apply color tint to the toolbar and download icon if defined
+            if (actionBarTint != -1) {
+                binding.myToolbar.setBackgroundColor(actionBarTint)
+            }
+
+        } finally {
+            typedArray.recycle()
+        }
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_pdf_viewer)
-
+        binding = ActivityPdfViewerBinding.inflate(layoutInflater)
+        setContentView(binding.root)
+        configureToolbar()
         setUpToolbar(
             intent.extras!!.getString(
                 FILE_TITLE,
-                "PDF"
+                "PDF",
             )
         )
 
+        // Configure progress bar and background
+        val typedArray1 = theme.obtainStyledAttributes(R.styleable.PdfRendererView)
+        try {
+            val backgroundColor = typedArray1.getColor(
+                R.styleable.PdfRendererView_pdfView_backgroundColor,
+                ContextCompat.getColor(applicationContext,android.R.color.white)
+            )
+            binding.parentLayout.setBackgroundColor(backgroundColor)
+
+            val progressBarStyleResId = typedArray1.getResourceId(
+                R.styleable.PdfRendererView_pdfView_progressBar, -1)
+            if (progressBarStyleResId != -1) {
+                val progressBarStyle = ContextCompat.getDrawable(this, progressBarStyleResId)
+                binding.progressBar.indeterminateDrawable = progressBarStyle
+            }
+        } finally {
+            typedArray1.recycle()
+        }
+
         enableDownload = intent.extras!!.getBoolean(
             ENABLE_FILE_DOWNLOAD,
-            true
+            false
         )
+
+        val headerData: HeaderData? = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            intent.getParcelableExtra("headers", HeaderData::class.java)
+        } else {
+            intent.getParcelableExtra("headers")
+        }
+        headerData?.let {
+            headers = it
+        }
 
         isFromAssets = intent.extras!!.getBoolean(
             FROM_ASSETS,
@@ -110,7 +210,43 @@ class PdfViewerActivity : AppCompatActivity() {
 
         engine = PdfEngine.INTERNAL
 
+        val typedArray = obtainStyledAttributes(R.styleable.PdfRendererView_Strings)
+        error_pdf_corrupted =
+            typedArray.getString(R.styleable.PdfRendererView_Strings_error_pdf_corrupted)
+                ?: getString(R.string.error_pdf_corrupted)
+        error_no_internet_connection =
+            typedArray.getString(R.styleable.PdfRendererView_Strings_error_no_internet_connection)
+                ?: getString(R.string.error_no_internet_connection)
+        file_saved_successfully =
+            typedArray.getString(R.styleable.PdfRendererView_Strings_file_saved_successfully)
+                ?: getString(R.string.file_saved_successfully)
+        file_saved_to_downloads =
+            typedArray.getString(R.styleable.PdfRendererView_Strings_file_saved_to_downloads)
+                ?: getString(R.string.file_saved_to_downloads)
+        file_not_downloaded_yet =
+            typedArray.getString(R.styleable.PdfRendererView_Strings_file_not_downloaded_yet)
+                ?: getString(R.string.file_not_downloaded_yet)
+        permission_required =
+            typedArray.getString(R.styleable.PdfRendererView_Strings_permission_required)
+                ?: getString(R.string.permission_required)
+        permission_required_title =
+            typedArray.getString(R.styleable.PdfRendererView_Strings_permission_required_title)
+                ?: getString(R.string.permission_required_title)
+        pdf_viewer_error =
+            typedArray.getString(R.styleable.PdfRendererView_Strings_pdf_viewer_error)
+                ?: getString(R.string.pdf_viewer_error)
+        pdf_viewer_retry =
+            typedArray.getString(R.styleable.PdfRendererView_Strings_pdf_viewer_retry)
+                ?: getString(R.string.pdf_viewer_retry)
+        pdf_viewer_cancel =
+            typedArray.getString(R.styleable.PdfRendererView_Strings_pdf_viewer_cancel)
+                ?: getString(R.string.pdf_viewer_cancel)
+        pdf_viewer_grant =
+            typedArray.getString(R.styleable.PdfRendererView_Strings_pdf_viewer_grant)
+                ?: getString(R.string.pdf_viewer_grant)
+
         init()
+
     }
 
     private fun init() {
@@ -124,145 +260,21 @@ class PdfViewerActivity : AppCompatActivity() {
                 } else {
                     Toast.makeText(
                         this,
-                        "No Internet Connection. Please Check your internet connection.",
+                        error_no_internet_connection,
                         Toast.LENGTH_SHORT
                     ).show()
                 }
             }
         }
-    }
 
-    private fun checkInternetConnection(context: Context): Boolean {
-        var result = 0 // Returns connection type. 0: none; 1: mobile data; 2: wifi
-        val cm = context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager?
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            cm?.run {
-                cm.getNetworkCapabilities(cm.activeNetwork)?.run {
-                    when {
-                        hasTransport(NetworkCapabilities.TRANSPORT_WIFI) -> {
-                            result = 2
-                        }
-                        hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR) -> {
-                            result = 1
-                        }
-                        hasTransport(NetworkCapabilities.TRANSPORT_VPN) -> {
-                            result = 3
-                        }
-                    }
+        binding.pdfView.statusListener = object : PdfRendererView.StatusCallBack {
+            override fun onPdfLoadStart() {
+                runOnUiThread {
+                    true.showProgressBar()
                 }
             }
-        } else {
-            cm?.run {
-                cm.activeNetworkInfo?.run {
-                    when (type) {
-                        ConnectivityManager.TYPE_WIFI -> {
-                            result = 2
-                        }
-                        ConnectivityManager.TYPE_MOBILE -> {
-                            result = 1
-                        }
-                        ConnectivityManager.TYPE_VPN -> {
-                            result = 3
-                        }
-                    }
-                }
-            }
-        }
-        return result != 0
-    }
 
-    private fun setUpToolbar(toolbarTitle: String) {
-        setSupportActionBar(toolbar)
-        supportActionBar?.apply {
-            setDisplayHomeAsUpEnabled(true)
-            setDisplayShowHomeEnabled(true)
-            if(tvAppBarTitle!=null) {
-                tvAppBarTitle?.text = toolbarTitle
-                setDisplayShowTitleEnabled(false)
-            }else{
-                setDisplayShowTitleEnabled(true)
-                title = toolbarTitle
-            }
-        }
-
-    }
-
-    override fun onCreateOptionsMenu(menu: Menu?): Boolean {
-        menuInflater.inflate(R.menu.menu, menu)
-        menuItem = menu?.findItem(R.id.download)
-        return true
-    }
-
-    override fun onPrepareOptionsMenu(menu: Menu?): Boolean {
-        menuItem?.isVisible = enableDownload
-        return true
-    }
-
-    override fun onOptionsItemSelected(item: MenuItem): Boolean {
-        if (item.itemId == R.id.download) checkPermission(PERMISSION_CODE)
-        if (item.itemId == android.R.id.home) {
-            finish() // close this activity and return to preview activity (if there is any)
-        }
-        return super.onOptionsItemSelected(item)
-    }
-
-    private fun loadFileFromNetwork(fileUrl: String?) {
-        initPdfViewer(
-            fileUrl,
-            engine
-        )
-    }
-
-    private fun initPdfViewer(fileUrl: String?, engine: PdfEngine) {
-        if (TextUtils.isEmpty(fileUrl)) onPdfError()
-
-        //Initiating PDf Viewer with URL
-        try {
-            pdfView.initWithUrl(
-                fileUrl!!,
-                PdfQuality.NORMAL,
-                engine
-            )
-        } catch (e: Exception) {
-            onPdfError()
-        }
-
-        enableDownload()
-
-    }
-
-    private fun initPdfViewerWithPath(filePath: String?) {
-        if (TextUtils.isEmpty(filePath)) onPdfError()
-
-        //Initiating PDf Viewer with URL
-        try {
-
-            val file = if (isFromAssets)
-                com.rajat.pdfviewer.util.FileUtils.fileFromAsset(this, filePath!!)
-            else File(filePath!!)
-
-            pdfView.initWithFile(
-                file,
-                PdfQuality.NORMAL
-            )
-
-        } catch (e: Exception) {
-            onPdfError()
-        }
-
-        enableDownload()
-    }
-
-    private fun enableDownload() {
-
-        checkPermissionOnInit()
-
-        pdfView.statusListener = object : PdfRendererView.StatusCallBack {
-            override fun onDownloadStart() {
-                true.showProgressBar()
-            }
-
-            override fun onDownloadProgress(
+            override fun onPdfLoadProgress(
                 progress: Int,
                 downloadedBytes: Long,
                 totalBytes: Long?
@@ -270,144 +282,234 @@ class PdfViewerActivity : AppCompatActivity() {
                 //Download is in progress
             }
 
-            override fun onDownloadSuccess() {
-                false.showProgressBar()
+            override fun onPdfLoadSuccess(absolutePath: String) {
+                runOnUiThread {
+                    false.showProgressBar()
+                    downloadedFilePath = absolutePath
+                }
             }
 
             override fun onError(error: Throwable) {
-                onPdfError()
+                runOnUiThread {
+                    false.showProgressBar()
+                    onPdfError(error.toString())
+                }
             }
 
             override fun onPageChanged(currentPage: Int, totalPage: Int) {
                 //Page change. Not require
             }
-
         }
     }
 
-    private fun checkPermissionOnInit() {
-        if (ContextCompat.checkSelfPermission(
-                this,
-                permission.WRITE_EXTERNAL_STORAGE
-            ) === PackageManager.PERMISSION_GRANTED
-        ) {
-            permissionGranted = true
+    private fun setUpToolbar(toolbarTitle: String) {
+        setSupportActionBar(binding.myToolbar)
+        supportActionBar?.apply {
+            setDisplayHomeAsUpEnabled(true)
+            setDisplayShowHomeEnabled(true)
+            (binding.myToolbar.findViewById(R.id.tvAppBarTitle) as TextView).text = toolbarTitle
+            setDisplayShowTitleEnabled(false)
         }
     }
 
-    private fun onPdfError() {
-        Toast.makeText(this, "Pdf has been corrupted", Toast.LENGTH_SHORT).show()
-        true.showProgressBar()
-        finish()
+    override fun onCreateOptionsMenu(menu: Menu): Boolean {
+        val inflater: MenuInflater = menuInflater
+        inflater.inflate(R.menu.menu, menu)
+        val downloadMenuItem = menu.findItem(R.id.download)
+        val typedArray = theme.obtainStyledAttributes(R.styleable.PdfRendererView_toolbar)
+        try {
+            val downloadIconTint = typedArray.getColor(
+                R.styleable.PdfRendererView_toolbar_pdfView_downloadIconTint,
+                ContextCompat.getColor(applicationContext, android.R.color.white) // Default tint
+            )
+            // Apply tint if it's specified and the icon exists
+            downloadMenuItem.icon?.let { icon ->
+                val wrappedIcon = DrawableCompat.wrap(icon).mutate()
+                DrawableCompat.setTint(wrappedIcon, downloadIconTint)
+                downloadMenuItem.icon = wrappedIcon
+            }
+        } finally {
+            typedArray.recycle()
+        }
+        downloadMenuItem.isVisible = enableDownload
+        return true
+    }
+
+    override fun onOptionsItemSelected(item: MenuItem): Boolean {
+        // Handle item selection.
+        return when (item.itemId) {
+            R.id.download -> {
+                checkAndStartDownload()
+                true
+            }
+
+            android.R.id.home -> {
+                finish()
+                true
+            }
+
+            else -> super.onOptionsItemSelected(item)
+        }
+    }
+
+    private fun loadFileFromNetwork(fileUrl: String?) {
+        initPdfViewer(
+            fileUrl
+        )
+    }
+
+    private fun initPdfViewer(fileUrl: String?) {
+        if (TextUtils.isEmpty(fileUrl)) onPdfError("")
+        //Initiating PDf Viewer with URL
+        try {
+            binding.pdfView.initWithUrl(
+                fileUrl!!,
+                headers,
+                lifecycleScope,
+                lifecycle = lifecycle
+            )
+        } catch (e: Exception) {
+            onPdfError(e.toString())
+        }
+    }
+
+    private fun initPdfViewerWithPath(filePath: String?) {
+        if (TextUtils.isEmpty(filePath)) {
+            onPdfError("")
+            return
+        }
+        try {
+            val file = if (filePath!!.startsWith("content://")) {
+                uriToFile(applicationContext, Uri.parse(filePath))
+            } else if (isFromAssets) {
+                fileFromAsset(this, filePath)
+            } else {
+                File(filePath)
+            }
+            binding.pdfView.initWithFile(file)
+        } catch (e: Exception) {
+            onPdfError(e.toString())
+        }
+    }
+
+    private fun onPdfError(e: String) {
+        Log.e("Pdf render error", e)
+        AlertDialog.Builder(this)
+            .setTitle(pdf_viewer_error)
+            .setMessage(error_pdf_corrupted)
+            .setPositiveButton(pdf_viewer_retry) { dialog, which ->
+                runOnUiThread {
+                    init()
+                }
+            }
+            .setNegativeButton(pdf_viewer_cancel, null)
+            .show()
     }
 
     private fun Boolean.showProgressBar() {
-        progressBar.visibility = if (this) View.VISIBLE else GONE
+        binding.progressBar.visibility = if (this) VISIBLE else GONE
     }
 
-    private var onComplete: BroadcastReceiver = object : BroadcastReceiver() {
-        override fun onReceive(context: Context?, intent: Intent?) {
-            Toast.makeText(
-                context,
-                "File is Downloaded Successfully",
-                Toast.LENGTH_SHORT
-            ).show()
-            context?.unregisterReceiver(this)
+    private val requestPermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { isGranted: Boolean ->
+        if (isGranted) {
+            startDownload()
+        } else {
+            // Show an AlertDialog here
+            AlertDialog.Builder(this)
+                .setTitle(permission_required_title)
+                .setMessage(permission_required)
+                .setPositiveButton(pdf_viewer_grant) { dialog: DialogInterface, which: Int ->
+                    // Request the permission again
+                    requestStoragePermission()
+                }
+                .setNegativeButton(pdf_viewer_cancel, null)
+                .show()
         }
     }
 
-    private fun downloadPdf() {
-        try {
-            if (permissionGranted!!) {
-                val directoryName = intent.getStringExtra(FILE_DIRECTORY)
-                val fileName = intent.getStringExtra(FILE_TITLE)
-                val fileUrl = intent.getStringExtra(FILE_URL)
-                val filePath =
-                    if (TextUtils.isEmpty(directoryName)) "/$fileName.pdf" else "/$directoryName/$fileName.pdf"
+    private fun requestStoragePermission() {
+        requestPermissionLauncher.launch(permission.WRITE_EXTERNAL_STORAGE)
+    }
 
-                try {
-                    if (isPDFFromPath) {
-                        com.rajat.pdfviewer.util.FileUtils.downloadFile(
-                            this,
-                            fileUrl!!,
-                            directoryName!!,
-                            fileName
-                        )
-                    } else {
-                        val downloadUrl = Uri.parse(fileUrl)
-                        val downloadManger =
-                            getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager?
-                        val cookie = CookieManager.getInstance().getCookie(fileUrl);
-                        val request = DownloadManager.Request(downloadUrl)
-                        request.setAllowedNetworkTypes(
-                            DownloadManager.Request.NETWORK_WIFI or
-                                    DownloadManager.Request.NETWORK_MOBILE
-                        )
-                        request.setAllowedOverRoaming(true)
-                        request.setTitle(fileName)
-                        request.setDescription("Downloading $fileName")
-                        request.setVisibleInDownloadsUi(true)
-                        request.setDestinationInExternalPublicDir(
-                            Environment.DIRECTORY_DOWNLOADS,
-                            filePath
-                        )
-                        request.setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
-                        if (!TextUtils.isEmpty(cookie))
-                            request.addRequestHeader("Cookie", cookie)
-                        registerReceiver(
-                            onComplete,
-                            IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE)
-                        )
-                        downloadManger!!.enqueue(request)
-                    }
-                } catch (e: Exception) {
-                    Toast.makeText(
-                        this,
-                        "Unable to download file",
-                        Toast.LENGTH_SHORT
-                    ).show()
+    private fun checkAndStartDownload() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
+            // For OS versions below Android 13, use the old method
+            if (ContextCompat.checkSelfPermission(
+                    this, permission.WRITE_EXTERNAL_STORAGE
+                ) == PackageManager.PERMISSION_GRANTED
+            ) {
+                startDownload()
+            } else {
+                // Request the permission
+                requestPermissionLauncher.launch(permission.WRITE_EXTERNAL_STORAGE)
+            }
+        } else {
+            // For Android 13 and above, use scoped storage or MediaStore APIs
+            startDownload()
+        }
+    }
+
+    private fun startDownload() {
+        val fileName = intent.getStringExtra(FILE_TITLE) ?: "downloaded_file.pdf"
+        downloadedFilePath?.let { filePath ->
+            if (SAVE_TO_DOWNLOADS) {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                    saveFileToPublicDirectoryScopedStorage(filePath, fileName)
+                } else {
+                    saveFileToPublicDirectoryLegacy(filePath, fileName)
                 }
             } else {
-                checkPermissionOnInit()
+                promptUserForLocation(fileName)
             }
-
-        } catch (e: Exception) {
-            Log.e("Error", e.toString())
-        }
+        } ?: Toast.makeText(this, file_not_downloaded_yet, Toast.LENGTH_SHORT).show()
     }
 
-    private fun checkPermission(requestCode: Int) {
-        if (ContextCompat.checkSelfPermission(this, permission.WRITE_EXTERNAL_STORAGE)
-            == PackageManager.PERMISSION_DENIED
-        ) {
-            ActivityCompat.requestPermissions(
-                this, arrayOf(permission.WRITE_EXTERNAL_STORAGE),
-                requestCode
-            )
-        } else {
-            permissionGranted = true
-            downloadPdf()
+    private fun promptUserForLocation(fileName: String) {
+        val intent = Intent(Intent.ACTION_CREATE_DOCUMENT).apply {
+            addCategory(Intent.CATEGORY_OPENABLE)
+            type = "application/pdf"
+            putExtra(Intent.EXTRA_TITLE, fileName)
         }
+        createFileLauncher.launch(intent)
     }
 
-    override fun onRequestPermissionsResult(
-        requestCode: Int,
-        permissions: Array<out String>,
-        grantResults: IntArray
-    ) {
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
-        if (requestCode == PERMISSION_CODE &&
-            grantResults.isNotEmpty() &&
-            grantResults[0] == PackageManager.PERMISSION_GRANTED
-        ) {
-            permissionGranted = true
-            downloadPdf()
+    private val createFileLauncher =
+        registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+            if (result.resultCode == Activity.RESULT_OK) {
+                result.data?.data?.let { uri ->
+                    contentResolver.openOutputStream(uri)?.use { outputStream ->
+                        downloadedFilePath?.let { filePath ->
+                            File(filePath).inputStream().copyTo(outputStream)
+                        }
+                    }
+                    Toast.makeText(this, file_saved_successfully, Toast.LENGTH_SHORT).show()
+                }
+            }
         }
+
+    private fun saveFileToPublicDirectoryScopedStorage(filePath: String, fileName: String) {
+        val contentResolver = applicationContext.contentResolver
+        val uri = createPdfDocumentUri(contentResolver, fileName)
+        contentResolver.openOutputStream(uri)?.use { outputStream ->
+            File(filePath).inputStream().copyTo(outputStream)
+        }
+        Toast.makeText(this, file_saved_to_downloads, Toast.LENGTH_SHORT).show()
+    }
+
+    private fun saveFileToPublicDirectoryLegacy(filePath: String, fileName: String) {
+        val destinationFile = File(
+            Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS),
+            fileName
+        )
+        File(filePath).copyTo(destinationFile, overwrite = true)
+        Toast.makeText(this, file_saved_to_downloads, Toast.LENGTH_SHORT).show()
     }
 
     override fun onDestroy() {
         super.onDestroy()
-        pdfView.closePdfRender()
+        binding.pdfView.closePdfRender()
     }
 
 }

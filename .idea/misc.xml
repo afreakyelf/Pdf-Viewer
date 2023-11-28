@@ -3,11 +3,19 @@
   <component name="DesignSurface">
     <option name="filePathToZoomLevelMap">
       <map>
-        <entry key="..\:/Users/Vishal/Documents/GitHub Projects/Pdf-Viewer/app/src/main/res/layout/activity_main.xml" value="0.18802083333333333" />
+        <entry key="../../../../layout/custom_preview.xml" value="0.165" />
+        <entry key="app/src/main/res/layout/activity_main.xml" value="0.525" />
+        <entry key="app/src/main/res/mipmap-anydpi-v26/ic_launcher_round.xml" value="0.153" />
+        <entry key="pdfViewer/src/main/res/drawable/ic_arrow_back.xml" value="0.153" />
+        <entry key="pdfViewer/src/main/res/drawable/ic_arrow_back_alt.xml" value="0.1915" />
+        <entry key="pdfViewer/src/main/res/layout/activity_pdf_viewer.xml" value="0.525" />
+        <entry key="pdfViewer/src/main/res/layout/list_item_pdf_page.xml" value="0.525" />
+        <entry key="pdfViewer/src/main/res/layout/pdf_rendererview.xml" value="0.5255208333333333" />
+        <entry key="pdfViewer/src/main/res/layout/pdf_view_page_loading_layout.xml" value="0.5255208333333333" />
       </map>
     </option>
   </component>
-  <component name="ProjectRootManager" version="2" languageLevel="JDK_11" project-jdk-name="1.8" project-jdk-type="JavaSDK">
+  <component name="ProjectRootManager" version="2" languageLevel="JDK_17" default="true" project-jdk-name="17" project-jdk-type="JavaSDK">
     <output url="file://$PROJECT_DIR$/build/classes" />
   </component>
   <component name="ProjectType">

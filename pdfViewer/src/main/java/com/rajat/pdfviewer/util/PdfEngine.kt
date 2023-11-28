@@ -1,4 +1,4 @@
-package com.rajat.pdfviewer
+package com.rajat.pdfviewer.util
 
 /**
  * Created by Rajat on 11,July,2020

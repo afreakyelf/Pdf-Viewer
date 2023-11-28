@@ -2,7 +2,8 @@
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@+id/container_view"
     android:layout_width="match_parent"
-    android:layout_height="480dp">
+    android:minHeight="200dp"
+    android:layout_height="wrap_content">
 
     <ImageView
         android:id="@+id/pageView"
@@ -14,6 +15,8 @@
         android:padding="0dp"
         android:scaleType="fitCenter" />
 
-    <include layout="@layout/pdf_view_page_loading_layout" />
+    <include layout="@layout/pdf_view_page_loading_layout"
+        android:id="@+id/pageLoadingLayout"
+        />
 
 </FrameLayout>

@@ -4,14 +4,48 @@
 A Simple PDF Viewer library which only occupies around <b>125kb</b> while most of the Pdf viewer occupies upto <b>16MB</b> space.
 <br>
 <br>
-<img src="https://raw.githubusercontent.com/afreakyelf/Pdf-Viewer/master/Screenshot_2020-07-11-23-59-31-606_com.rajat.pdfviewer.jpg" width="420" height="840" />
+
+https://github.com/afreakyelf/Pdf-Viewer/assets/38572147/391245ab-6537-4e51-a246-b7b1fec41a23
+
+https://github.com/afreakyelf/Pdf-Viewer/assets/38572147/3b1b0174-d7c1-4a7a-9fd9-f2848219877d
+
+https://github.com/afreakyelf/Pdf-Viewer/assets/38572147/e6595e86-4af5-4a46-8a86-28389f447c4e
+
+https://github.com/afreakyelf/Pdf-Viewer/assets/38572147/598616b1-cb11-402c-84a3-9f018dac074c
+
+https://github.com/afreakyelf/Pdf-Viewer/assets/38572147/937d1f4f-c4f3-42ef-ac3f-29b75bb6636f
+
+
 </p>
+
+
 
 [![](https://jitpack.io/v/afreakyelf/Pdf-Viewer.svg)](https://jitpack.io/#afreakyelf/Pdf-Viewer) [![License](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/Apache-2.0) ![](https://img.shields.io/github/forks/afreakyelf/Pdf-Viewer?label=Forks)
 ![](https://img.shields.io/github/stars/afreakyelf/Pdf-Viewer?label=Stars&color=9cf) ![](https://visitor-badge.glitch.me/badge?page_id=afreakyelf.Pdf-Viewer)[![](https://jitci.com/gh/afreakyelf/Pdf-Viewer/svg)](https://jitci.com/gh/afreakyelf/Pdf-Viewer)
 
-## Who's using Pdf-Viewer?
-**👉 [Check out who's using Pdf-Viewer](/usecases.md)**
+## ✨ Major Enhancements in Our PDF Viewer Library ✨
+Hello Developers! We're thrilled to share some significant enhancements we've made to our PDF viewer library. We've fine-tuned several aspects to enhance your experience and ensure top-notch performance and security. Here's what's new:
+
+- ### Jetpack Compose Ready 🚀
+  Step into the future with Jetpack Compose compatibility. Integrating our PDF viewer in Compose projects is now effortless, thanks to the PdfRendererViewCompose composable function.
+- ### Turbocharged Performance 🏎️
+  We've optimized performance to handle PDFs more efficiently, ensuring swift and smooth operations, even with large documents.
+- ### Local and on device files 📁
+  We have made it better and smooth with how local files are handled now, with latest permission policies. 
+- ### Seamless Orientation Adaptation 🔄
+    Our library now smartly preserves your page position during orientation changes, ensuring uninterrupted reading sessions. 
+- ### Enhanced File Path Security 🔐
+    Security just got stronger. We've revamped our file path handling to provide robust protection against directory traversal attacks, keeping your data safer than ever.
+- ### Streamlined Caching System 💾
+    Experience efficiency at its best! Our refined caching strategy smartly manages storage, retaining only the most recent PDF file to optimize performance and space usage.
+- ### Discreet Screenshot Prevention Feature 🚫📸
+    Privacy matters. Our new screenshot-blocking feature enhances data confidentiality in your app, keeping sensitive information secure from prying eyes.
+- ### Flexible UI Customization ✨
+    Your design, your rules. Enjoy complete freedom in customizing the PDF viewer's interface, ensuring a perfect match with your app's style and theme. Render the view directly in your screen now.
+- ### 'NoActionBar' Theme Compatibility 🎨
+    Seamless aesthetics, no matter the theme. Our library now gracefully integrates with 'NoActionBar' themes, ensuring a cohesive and appealing user interface.
+
+Stay tuned as we continue to innovate and improve. Happy coding, and let's keep creating amazing experiences together!
 
 ## How to integrate into your app?
 Integrating the project is simple, All you need to do is follow the below steps
@@ -40,45 +74,100 @@ implementation 'com.github.afreakyelf:Pdf-Viewer:v1.0.7'
 ```
 
 ## How to use the library?
-Now you have integrated the library in your project but **how do you use it**? Well its really easy just launch the intent with in following way:
+Now you have integrated the library in your project but **how do you use it**? Well its really easy just launch the intent with in following way: (Refer to [MainActivity.kt](https://github.com/afreakyelf/Pdf-Viewer/blob/master/app/src/main/java/com/rajat/sample/pdfviewer/MainActivity.kt) for more details.)
 
-### Kotlin
+### Prerequisites
+Ensure the library is included in your project's dependencies.
+
+### Launching PDF Viewer
+
+#### Open PDF from a URL
+To display a PDF from a URL, use the following code:
+
 ```kotlin
-open_pdf.setOnClickListener {
-            startActivity(
-            
-            // Use 'launchPdfFromPath' if you want to use assets file (enable "fromAssets" flag) / internal directory
-           
-                PdfViewerActivity.launchPdfFromUrl(           //PdfViewerActivity.Companion.launchPdfFromUrl(..   :: incase of JAVA       
-                    context,                                                                      
-                    "pdf_url",                                // PDF URL in String format
-                    "Pdf title/name ",                        // PDF Name/Title in String format
-                    "pdf directory to save",                  // If nothing specific, Put "" it will save to Downloads
-                    enableDownload = false                    // This param is true by defualt.
-                )
-            )
-        } 
+/* Parameters:
+- context: The context of your activity.
+- pdfUrl: URL of the PDF to be displayed.
+- pdfTitle: Title of the PDF document.
+- saveTo: Determines how to handle saving the PDF (e.g., ASK_EVERYTIME prompts the user each time).
+- enableDownload: Enables downloading of the PDF. */
+
+PdfViewerActivity.launchPdfFromUrl(
+    context = this,
+    pdfUrl = "your_pdf_url_here",
+    pdfTitle = "PDF Title",
+    saveTo = PdfViewerActivity.saveTo.ASK_EVERYTIME,
+    enableDownload = true
+)
 ```
 
-### Java
+#### Open PDF from Local Storage
+To open a PDF stored in local storage:
 
-```java
-        open_pdf.setOnClickListener(view -> {
-            startActivity(
-            
-            // Opening pdf from assets folder 
-            
-                    PdfViewerActivity.Companion.launchPdfFromPath(
-                            this,
-                            "file_name.pdf",
-                            "Pdf title/name",
-                            "assets",
-                            false,
-                            true
-                    )
-            );
-        });
+```kotlin
+/* Parameters:
+- path: File path or URI of the local PDF.
+- fromAssets: Set to false when loading from local storage. // FALSE by default
+*/
 
+PdfViewerActivity.launchPdfFromPath(
+    context = this,
+    path = "your_file_path_or_uri_here",
+    pdfTitle = "Title",
+    saveTo = PdfViewerActivity.saveTo.ASK_EVERYTIME,
+    fromAssets = false
+)
+```
+
+#### Open PDF from Assets
+To open a PDF from the app's assets folder:
+
+```kotlin
+/* Parameters:
+- path: File path or URI of the local PDF.
+- fromAssets: Set to true when loading from assets.
+*/
+
+PdfViewerActivity.launchPdfFromPath(
+  context = this,
+  path = "file_name_in_assets",
+  pdfTitle = "Title",
+  saveTo = PdfViewerActivity.saveTo.ASK_EVERYTIME,
+  fromAssets = true
+)
+```
+
+#### Loading PDF in a View
+Load a PDF directly into a view:
+
+Add PDF render view in your layout file
+
+```xml
+<com.rajat.pdfviewer.PdfRendererView
+    android:id="@+id/pdfView"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    app:pdfView_divider="@drawable/pdf_viewer_divider"
+    app:pdfView_showDivider="false" />
+```
+and in your kotlin file
+```kotlin
+binding.pdfView.initWithUrl(
+  url = "your_pdf_url_here",
+  lifecycleCoroutineScope = lifecycleScope,
+  lifecycle = lifecycle
+)
+
+```
+
+#### Using with Jetpack Compose
+For Jetpack Compose, utilize PdfRendererViewCompose:
+
+```kotlin
+PdfRendererViewCompose(
+    url = "your_pdf_url_here",
+    lifecycleOwner = LocalLifecycleOwner.current
+)
 ```
 
 That's pretty much it and you're all wrapped up.
@@ -90,6 +179,8 @@ Note: If parent is not one of the themes from this library, all of the pdfView a
 
     <style name="Theme.PdfView.SelectedTheme" parent="@style/Theme.PdfView.Light">
         <item name="pdfView_backIcon">@drawable/ic_arrow_back</item>
+        <item name="pdfView_showToolbar">true</item>
+        <item name="pdfView_disableScreenshots">true</item>
         ...
     </style>
 
@@ -138,6 +229,9 @@ Custom:
 |pdfView_actionBarTint|color|Actionbar background color|
 |pdfView_titleTextStyle|style|Actionbar title text appearance|
 |pdfView_progressBar|style|Progress bar style|
+
+## Who's using Pdf-Viewer?
+**👉 [Check out who's using Pdf-Viewer](/usecases.md)**
 
 ## Contributing
 
