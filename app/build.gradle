@@ -39,6 +39,10 @@ android {
         kotlinCompilerExtensionVersion = "1.5.4"
     }
 
+    composeOptions {
+        kotlinCompilerExtensionVersion = "1.5.4"
+    }
+
     buildTypes {
         release {
             minifyEnabled false
