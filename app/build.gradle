@@ -2,6 +2,7 @@ apply plugin: 'com.android.application'
 apply plugin: 'kotlin-android'
 apply plugin: 'kotlin-kapt'
 apply plugin: 'kotlin-parcelize'
+apply plugin: 'com.spotify.ruler'
 
 android {
     compileSdkVersion 34
@@ -33,6 +34,10 @@ android {
 
     kotlinOptions {
         jvmTarget = "17"
+    }
+
+    kotlin {
+        jvmToolchain(17)
     }
 
     composeOptions {
@@ -116,4 +121,11 @@ dependencies {
     // Optional - Integration with RxJava
     implementation("androidx.compose.runtime:runtime-rxjava2")
 
+}
+
+ruler {
+    abi.set("arm64-v8a")
+    locale.set("en")
+    screenDensity.set(480)
+    sdkVersion.set(27)
 }

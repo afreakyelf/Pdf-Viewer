@@ -1,6 +1,7 @@
 apply plugin: 'com.android.library'
 apply plugin: 'kotlin-android'
 apply plugin: 'kotlin-parcelize'
+apply plugin: 'maven-publish'
 
 android {
     compileSdkVersion 34
@@ -20,6 +21,10 @@ android {
 
     kotlinOptions {
         jvmTarget = "17"
+    }
+
+    kotlin {
+        jvmToolchain(17)
     }
 
     buildFeatures {
@@ -72,6 +77,14 @@ dependencies {
     debugImplementation("androidx.compose.ui:ui-test-manifest")
 
     implementation("androidx.activity:activity-compose:1.8.1")
+}
 
-
+afterEvaluate {
+    publishing {
+        publications {
+            release(MavenPublication){
+                from components.release
+            }
+        }
+    }
 }
