@@ -1,33 +1,21 @@
 <resources>
-    <!-- Base application theme. -->
-    <style name="AppTheme" parent="Theme.AppCompat.Light.DarkActionBar">
-        <!-- Customize your theme here. -->
-        <item name="colorPrimary">@color/colorPrimary</item>
-        <item name="colorPrimaryDark">@color/colorPrimaryDark</item>
-        <item name="colorAccent">@color/colorAccent</item>
-    </style>
 
 
     <style name="Theme.PdfView.SelectedTheme" parent="@style/Theme.PdfView.Light">
+        <item name="pdfView_showToolbar">true</item>
         <item name="pdfView_actionBarTint">@color/colorPrimary</item>
         <item name="pdfView_downloadIconTint">#ffffff</item>
+        <item name="pdfView_enableLoadingForPages">true</item>
         <item name="pdfView_titleTextStyle">@style/actionBarTitleAppearance</item>
-        <item name="pdfView_progressBar">@style/customProgressBar</item>
+        <item name="pdfView_progressBar">@drawable/progress_circle</item>
+        <item name="pdfView_page_marginBottom">8dp</item>
+        <item name="pdfView_disableScreenshots">true</item>
     </style>
 
     <style name="actionBarTitleAppearance" parent="TextAppearance.AppCompat.Title">
         <item name="android:gravity">center</item>
         <item name="android:layout_gravity">center</item>
         <item name="android:textColor">#ffffff</item>
-    </style>
-
-    <style name="customProgressBar" parent="Widget.AppCompat.ProgressBar">
-        <item name="android:layout_gravity">center</item>
-        <item name="android:layout_width">wrap_content</item>
-        <item name="android:layout_height">wrap_content</item>
-        <item name="android:indeterminateDrawable">@drawable/progress_circle</item>
-        <item name="android:interpolator">@android:interpolator/accelerate_decelerate</item>
-        <item name="android:visibility">gone</item>
     </style>
 
 </resources>

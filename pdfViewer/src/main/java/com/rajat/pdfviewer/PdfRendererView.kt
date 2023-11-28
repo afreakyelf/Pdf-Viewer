@@ -1,32 +1,31 @@
 package com.rajat.pdfviewer
 
-import android.annotation.SuppressLint
+import android.app.Activity
 import android.content.Context
 import android.content.res.TypedArray
 import android.graphics.Rect
 import android.graphics.drawable.Drawable
 import android.os.Build
+import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
+import android.os.Parcelable
 import android.util.AttributeSet
 import android.view.LayoutInflater
 import android.view.View
-import android.webkit.WebResourceError
-import android.webkit.WebResourceRequest
-import android.webkit.WebView
-import android.webkit.WebViewClient
+import android.view.WindowManager
 import android.widget.FrameLayout
 import android.widget.TextView
-import androidx.appcompat.app.AppCompatActivity
+import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleCoroutineScope
-import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.LifecycleObserver
 import androidx.recyclerview.widget.DefaultItemAnimator
 import androidx.recyclerview.widget.DividerItemDecoration
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import androidx.recyclerview.widget.RecyclerView.NO_POSITION
-import kotlinx.android.synthetic.main.pdf_rendererview.view.*
-import kotlinx.coroutines.CoroutineScope
+import com.rajat.pdfviewer.util.PdfEngine
 import java.io.File
-import java.net.URLEncoder
 
 /**
  * Created by Rajat on 11,July,2020
@@ -34,91 +33,103 @@ import java.net.URLEncoder
 
 class PdfRendererView @JvmOverloads constructor(
     context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0
-) : FrameLayout(context, attrs, defStyleAttr) {
-
-    private lateinit var recyclerView: RecyclerView
+) : FrameLayout(context, attrs, defStyleAttr), LifecycleObserver {
+    lateinit var recyclerView: RecyclerView
     private lateinit var pageNo: TextView
     private lateinit var pdfRendererCore: PdfRendererCore
     private lateinit var pdfViewAdapter: PdfViewAdapter
-    private var quality = PdfQuality.NORMAL
     private var engine = PdfEngine.INTERNAL
     private var showDivider = true
     private var divider: Drawable? = null
     private var runnable = Runnable {}
-    var enableLoadingForPages: Boolean = false
-
+    private var enableLoadingForPages: Boolean = false
     private var pdfRendererCoreInitialised = false
-    var pageMargin: Rect = Rect(0,0,0,0)
+    private var pageMargin: Rect = Rect(0,0,0,0)
     var statusListener: StatusCallBack? = null
+    private var positionToUseForState: Int = 0
+    private var restoredScrollPosition: Int = NO_POSITION
+    private var disableScreenshots: Boolean = false
 
     val totalPageCount: Int
         get() {
             return pdfRendererCore.getPageCount()
         }
 
+    init {
+        getAttrs(attrs, defStyleAttr)
+    }
+
+
     interface StatusCallBack {
-        fun onDownloadStart() {}
-        fun onDownloadProgress(progress: Int, downloadedBytes: Long, totalBytes: Long?) {}
-        fun onDownloadSuccess() {}
+        fun onPdfLoadStart() {}
+        fun onPdfLoadProgress(progress: Int, downloadedBytes: Long, totalBytes: Long?) {}
+        fun onPdfLoadSuccess(absolutePath: String) {}
         fun onError(error: Throwable) {}
         fun onPageChanged(currentPage: Int, totalPage: Int) {}
     }
 
     fun initWithUrl(
         url: String,
-        pdfQuality: PdfQuality = this.quality,
-        engine: PdfEngine = this.engine,
-        lifecycleScope: LifecycleCoroutineScope = (context as AppCompatActivity).lifecycleScope
+        headers: HeaderData = HeaderData(),
+        lifecycleCoroutineScope: LifecycleCoroutineScope,
+        lifecycle: Lifecycle
     ) {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.LOLLIPOP || engine == PdfEngine.GOOGLE) {
-            initUnderKitkat(url)
-            statusListener?.onDownloadStart()
-            return
-        }
-
-        PdfDownloader(url, object : PdfDownloader.StatusListener {
+        lifecycle.addObserver(this) // Register as LifecycleObserver
+        PdfDownloader(lifecycleCoroutineScope,headers,url, object : PdfDownloader.StatusListener {
             override fun getContext(): Context = context
             override fun onDownloadStart() {
-                statusListener?.onDownloadStart()
+                statusListener?.onPdfLoadStart()
             }
-
             override fun onDownloadProgress(currentBytes: Long, totalBytes: Long) {
                 var progress = (currentBytes.toFloat() / totalBytes.toFloat() * 100F).toInt()
                 if (progress >= 100)
                     progress = 100
-                statusListener?.onDownloadProgress(progress, currentBytes, totalBytes)
+                statusListener?.onPdfLoadProgress(progress, currentBytes, totalBytes)
             }
-
             override fun onDownloadSuccess(absolutePath: String) {
-                initWithPath(absolutePath, pdfQuality)
-                statusListener?.onDownloadSuccess()
+                initWithFile(File(absolutePath))
+                statusListener?.onPdfLoadSuccess(absolutePath)
             }
-
             override fun onError(error: Throwable) {
                 error.printStackTrace()
                 statusListener?.onError(error)
             }
-
-            override fun getCoroutineScope(): CoroutineScope = lifecycleScope
         })
     }
 
-    fun initWithPath(path: String, pdfQuality: PdfQuality = this.quality) {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.LOLLIPOP)
-            throw UnsupportedOperationException("should be over API 21")
-        initWithFile(File(path), pdfQuality)
+    fun initWithFile(file: File) {
+        init(file)
     }
 
-    fun initWithFile(file: File, pdfQuality: PdfQuality = this.quality) {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.LOLLIPOP)
-            throw UnsupportedOperationException("should be over API 21")
-        init(file, pdfQuality)
+    override fun onSaveInstanceState(): Parcelable? {
+        val superState = super.onSaveInstanceState()
+        val savedState = Bundle()
+        savedState.putParcelable("superState", superState)
+        if (this::recyclerView.isInitialized) {
+            savedState.putInt("scrollPosition", positionToUseForState)
+        }
+        return savedState
     }
 
-    private fun init(file: File, pdfQuality: PdfQuality) {
-        pdfRendererCore = PdfRendererCore(context, file, pdfQuality)
+    override fun onRestoreInstanceState(state: Parcelable?) {
+        var savedState = state
+        if (savedState is Bundle) {
+            val superState = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                savedState.getParcelable("superState",Parcelable::class.java)
+            } else {
+                savedState.getParcelable("superState")
+            }
+            super.onRestoreInstanceState(superState)
+            restoredScrollPosition = savedState.getInt("scrollPosition", positionToUseForState)
+        } else {
+            super.onRestoreInstanceState(savedState)
+        }
+    }
+
+    private fun init(file: File) {
+        pdfRendererCore = PdfRendererCore(context, file)
         pdfRendererCoreInitialised = true
-        pdfViewAdapter = PdfViewAdapter(pdfRendererCore, pageMargin, enableLoadingForPages)
+        pdfViewAdapter = PdfViewAdapter(context,pdfRendererCore, pageMargin, enableLoadingForPages)
         val v = LayoutInflater.from(context).inflate(R.layout.pdf_rendererview, this, false)
         addView(v)
         recyclerView = findViewById(R.id.recyclerView)
@@ -135,38 +146,54 @@ class PdfRendererView @JvmOverloads constructor(
             addOnScrollListener(scrollListener)
         }
 
+        Handler(Looper.getMainLooper()).postDelayed({
+            if (restoredScrollPosition != NO_POSITION) {
+                recyclerView.scrollToPosition(restoredScrollPosition)
+                restoredScrollPosition = NO_POSITION  // Reset after applying
+            }
+        }, 300) // Adjust delay as needed
+
         runnable = Runnable {
             pageNo.visibility = View.GONE
         }
-
     }
 
+
     private val scrollListener = object : RecyclerView.OnScrollListener() {
+        private var lastFirstVisiblePosition = NO_POSITION
+        private var lastCompletelyVisiblePosition = NO_POSITION
+
         override fun onScrolled(recyclerView: RecyclerView, dx: Int, dy: Int) {
             super.onScrolled(recyclerView, dx, dy)
-            (recyclerView.layoutManager as LinearLayoutManager).run {
-                var foundPosition : Int = findFirstCompletelyVisibleItemPosition()
+            val layoutManager = recyclerView.layoutManager as LinearLayoutManager
 
-                pageNo.run {
-                    if (foundPosition != NO_POSITION)
-                        text = context.getString(R.string.pdfView_page_no,foundPosition + 1,totalPageCount)
-                    pageNo.visibility = View.VISIBLE
+            val firstVisiblePosition = layoutManager.findFirstVisibleItemPosition()
+            val firstCompletelyVisiblePosition = layoutManager.findFirstCompletelyVisibleItemPosition()
+            val isPositionChanged = firstVisiblePosition != lastFirstVisiblePosition ||
+                    firstCompletelyVisiblePosition != lastCompletelyVisiblePosition
+            if (isPositionChanged) {
+                val positionToUse = if (firstCompletelyVisiblePosition != NO_POSITION) {
+                    firstCompletelyVisiblePosition
+                } else {
+                    firstVisiblePosition
                 }
+                positionToUseForState = positionToUse
+                updatePageNumberDisplay(positionToUse)
+                lastFirstVisiblePosition = firstVisiblePosition
+                lastCompletelyVisiblePosition = firstCompletelyVisiblePosition
+            }else{
+                positionToUseForState = firstVisiblePosition
+            }
+        }
 
-                if (foundPosition == 0)
-                    pageNo.postDelayed({
-                        pageNo.visibility = GONE
-                    }, 3000)
-
-                if (foundPosition != NO_POSITION) {
-                    statusListener?.onPageChanged(foundPosition, totalPageCount)
-                    return@run
+        private fun updatePageNumberDisplay(position: Int) {
+            if (position != NO_POSITION) {
+                pageNo.text = context.getString(R.string.pdfView_page_no, position + 1, totalPageCount)
+                pageNo.visibility = View.VISIBLE
+                if (position == 0) {
+                    pageNo.postDelayed({ pageNo.visibility = View.GONE }, 3000)
                 }
-                foundPosition = findFirstVisibleItemPosition()
-                if (foundPosition != NO_POSITION) {
-                    statusListener?.onPageChanged(foundPosition, totalPageCount)
-                    return@run
-                }
+                statusListener?.onPageChanged(position, totalPageCount)
             }
         }
 
@@ -178,55 +205,6 @@ class PdfRendererView @JvmOverloads constructor(
                 pageNo.removeCallbacks(runnable)
             }
         }
-
-    }
-
-    @SuppressLint("SetJavaScriptEnabled")
-    private fun initUnderKitkat(url: String) {
-        val v = LayoutInflater.from(context).inflate(R.layout.pdf_rendererview, this, false)
-        addView(v)
-        recyclerView = findViewById(R.id.recyclerView)
-        recyclerView.visibility = View.GONE
-        webView.visibility = View.VISIBLE
-        webView.settings.javaScriptEnabled = true
-        webView.webViewClient = PdfWebViewClient(statusListener)
-        webView.loadUrl(
-            "https://drive.google.com/viewer/viewer?hl=en&embedded=true&url=${URLEncoder.encode(
-                url,
-                "UTF-8"
-            )}"
-        )
-    }
-
-    internal class PdfWebViewClient(private val statusListener: StatusCallBack?) : WebViewClient() {
-        override fun onPageFinished(view: WebView?, url: String?) {
-            super.onPageFinished(view, url)
-            statusListener?.onDownloadSuccess()
-        }
-
-        override fun onReceivedError(
-            view: WebView?,
-            request: WebResourceRequest?,
-            error: WebResourceError?
-        ) {
-            super.onReceivedError(view, request, error)
-            statusListener?.onError(Throwable("Web resource error"))
-        }
-
-        @Deprecated("Deprecated in Java")
-        override fun onReceivedError(
-            view: WebView?,
-            errorCode: Int,
-            description: String?,
-            failingUrl: String?
-        ) {
-            super.onReceivedError(view, errorCode, description, failingUrl)
-            statusListener?.onError(Throwable("Web resource error"))
-        }
-    }
-
-    init {
-        getAttrs(attrs, defStyleAttr)
     }
 
     private fun getAttrs(attrs: AttributeSet?, defStyle: Int) {
@@ -236,31 +214,34 @@ class PdfRendererView @JvmOverloads constructor(
     }
 
     private fun setTypeArray(typedArray: TypedArray) {
-        val ratio =
-            typedArray.getInt(R.styleable.PdfRendererView_pdfView_quality, PdfQuality.NORMAL.ratio)
-        quality = PdfQuality.values().first { it.ratio == ratio }
         val engineValue =
             typedArray.getInt(R.styleable.PdfRendererView_pdfView_engine, PdfEngine.INTERNAL.value)
         engine = PdfEngine.values().first { it.value == engineValue }
         showDivider = typedArray.getBoolean(R.styleable.PdfRendererView_pdfView_showDivider, true)
         divider = typedArray.getDrawable(R.styleable.PdfRendererView_pdfView_divider)
         enableLoadingForPages = typedArray.getBoolean(R.styleable.PdfRendererView_pdfView_enableLoadingForPages, enableLoadingForPages)
-
         val marginDim = typedArray.getDimensionPixelSize(R.styleable.PdfRendererView_pdfView_page_margin, 0)
         pageMargin = Rect(marginDim, marginDim, marginDim, marginDim).apply {
             top = typedArray.getDimensionPixelSize(R.styleable.PdfRendererView_pdfView_page_marginTop, top)
             left = typedArray.getDimensionPixelSize(R.styleable.PdfRendererView_pdfView_page_marginLeft, left)
             right = typedArray.getDimensionPixelSize(R.styleable.PdfRendererView_pdfView_page_marginRight, right)
             bottom = typedArray.getDimensionPixelSize(R.styleable.PdfRendererView_pdfView_page_marginBottom, bottom)
-
         }
-
+        disableScreenshots = typedArray.getBoolean(R.styleable.PdfRendererView_pdfView_disableScreenshots, false)
+        applyScreenshotSecurity()
         typedArray.recycle()
     }
-
+    private fun applyScreenshotSecurity() {
+        if (disableScreenshots) {
+            // Disables taking screenshots and screen recording
+            (context as? Activity)?.window?.addFlags(WindowManager.LayoutParams.FLAG_SECURE)
+        }
+    }
     fun closePdfRender() {
-        if (pdfRendererCoreInitialised)
+        if (pdfRendererCoreInitialised) {
             pdfRendererCore.closePdfRender()
+            pdfRendererCoreInitialised = false
+        }
     }
 
 }

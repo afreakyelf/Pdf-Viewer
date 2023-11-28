@@ -3,12 +3,28 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
+    android:id="@+id/parentLayout"
     android:layout_height="match_parent"
     android:orientation="vertical"
-    android:background="?attr/pdfView_backgroundColor"
     tools:context=".PdfViewerActivity">
 
-    <include layout="@layout/pdf_view_tool_bar" />
+    <androidx.appcompat.widget.Toolbar
+        android:id="@+id/my_toolbar"
+        android:layout_width="match_parent"
+        android:layout_height="?attr/actionBarSize"
+        android:elevation="4dp"
+        app:titleTextColor="@color/design_default_color_on_primary">
+
+        <TextView
+            android:id="@+id/tvAppBarTitle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:clickable="false"
+            android:focusable="false"
+            android:longClickable="false"
+            android:text="@string/pdfView_appName" />
+
+    </androidx.appcompat.widget.Toolbar>
 
     <FrameLayout
         android:id="@+id/mainLayout"
@@ -19,13 +35,17 @@
             android:id="@+id/pdfView"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
-            app:pdfView_divider="@drawable/divider"
+            app:pdfView_divider="@drawable/pdf_viewer_divider"
             app:pdfView_engine="internal"
             app:pdfView_showDivider="false" />
 
         <ProgressBar
+            android:layout_height="wrap_content"
+            android:layout_width="wrap_content"
+            android:layout_gravity="center"
+            android:indeterminateDrawable="@drawable/pdf_viewer_progress_circle"
             android:id="@+id/progressBar"
-            style="?pdfView_progressBar"
+            android:interpolator="@android:anim/accelerate_decelerate_interpolator"
             android:visibility="gone" />
 
     </FrameLayout>
