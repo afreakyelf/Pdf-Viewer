@@ -16,7 +16,7 @@ A Simple PDF Viewer library which only occupies around <b>80kb</b> while most of
 
 
 [![](https://jitpack.io/v/afreakyelf/Pdf-Viewer.svg)](https://jitpack.io/#afreakyelf/Pdf-Viewer) [![License](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/Apache-2.0) ![](https://img.shields.io/github/forks/afreakyelf/Pdf-Viewer?label=Forks)
-![](https://img.shields.io/github/stars/afreakyelf/Pdf-Viewer?label=Stars&color=9cf) ![](https://visitor-badge.glitch.me/badge?page_id=afreakyelf.Pdf-Viewer)
+![](https://img.shields.io/github/stars/afreakyelf/Pdf-Viewer?label=Stars&color=9cf) ![](https://visitor-badge.glitch.me/badge?page_id=afreakyelf.Pdf-Viewer)[![CodeFactor](https://www.codefactor.io/repository/github/afreakyelf/pdf-viewer/badge)](https://www.codefactor.io/repository/github/afreakyelf/pdf-viewer)
 
 ## ✨ Major Enhancements in Our PDF Viewer Library ✨
 Hello Developers! We're thrilled to share some significant enhancements we've made to our PDF viewer library. We've fine-tuned several aspects to enhance your experience and ensure top-notch performance and security. Here's what's new:
