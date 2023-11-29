@@ -1,3 +1,0 @@
-include ':pdfViewer'
-include ':app'
-rootProject.name = "androidpdfviewer"
