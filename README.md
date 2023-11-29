@@ -1,27 +1,22 @@
 <h1 align="center">Pdf Viewer For Android</h1>
 
 <p align="center">
-A Simple PDF Viewer library which only occupies around <b>125kb</b> while most of the Pdf viewer occupies upto <b>16MB</b> space.
+A Simple PDF Viewer library which only occupies around <b>80kb</b> while most of the Pdf viewer occupies upto <b>16MB</b> space.
 <br>
 <br>
-
-https://github.com/afreakyelf/Pdf-Viewer/assets/38572147/391245ab-6537-4e51-a246-b7b1fec41a23
-
-https://github.com/afreakyelf/Pdf-Viewer/assets/38572147/3b1b0174-d7c1-4a7a-9fd9-f2848219877d
-
-https://github.com/afreakyelf/Pdf-Viewer/assets/38572147/e6595e86-4af5-4a46-8a86-28389f447c4e
-
-https://github.com/afreakyelf/Pdf-Viewer/assets/38572147/598616b1-cb11-402c-84a3-9f018dac074c
-
-https://github.com/afreakyelf/Pdf-Viewer/assets/38572147/937d1f4f-c4f3-42ef-ac3f-29b75bb6636f
-
+</p>
+<p float="left">
+  <img src="https://github.com/afreakyelf/Pdf-Viewer/assets/38572147/e310060c-bea2-42ee-b02a-3758f3122e05" width="199" />
+  <img src="https://github.com/afreakyelf/Pdf-Viewer/assets/38572147/13f64593-7627-48bc-b573-54cebb0651b2" width="199" />
+  <img src="https://github.com/afreakyelf/Pdf-Viewer/assets/38572147/fa6a0ff9-11dd-4087-bf7e-d4ba6795386c" width="199" />
+  <img src="https://github.com/afreakyelf/Pdf-Viewer/assets/38572147/babde964-5373-4d03-85ad-1b8c2cc0ab29" width="199" />
+  <img src="https://github.com/afreakyelf/Pdf-Viewer/assets/38572147/4344c962-88f7-4be4-8935-50370ad6752d" width="199" />
 
 </p>
 
 
-
 [![](https://jitpack.io/v/afreakyelf/Pdf-Viewer.svg)](https://jitpack.io/#afreakyelf/Pdf-Viewer) [![License](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/Apache-2.0) ![](https://img.shields.io/github/forks/afreakyelf/Pdf-Viewer?label=Forks)
-![](https://img.shields.io/github/stars/afreakyelf/Pdf-Viewer?label=Stars&color=9cf) ![](https://visitor-badge.glitch.me/badge?page_id=afreakyelf.Pdf-Viewer)[![](https://jitci.com/gh/afreakyelf/Pdf-Viewer/svg)](https://jitci.com/gh/afreakyelf/Pdf-Viewer)
+![](https://img.shields.io/github/stars/afreakyelf/Pdf-Viewer?label=Stars&color=9cf) ![](https://visitor-badge.glitch.me/badge?page_id=afreakyelf.Pdf-Viewer)
 
 ## ✨ Major Enhancements in Our PDF Viewer Library ✨
 Hello Developers! We're thrilled to share some significant enhancements we've made to our PDF viewer library. We've fine-tuned several aspects to enhance your experience and ensure top-notch performance and security. Here's what's new:
@@ -49,6 +44,30 @@ Stay tuned as we continue to innovate and improve. Happy coding, and let's keep 
 
 ## How to integrate into your app?
 Integrating the project is simple, All you need to do is follow the below steps
+> ⚠️ NOTE: Replace the Tag with current release version, i.e  [![](https://jitpack.io/v/afreakyelf/Pdf-Viewer.svg)](https://jitpack.io/#afreakyelf/Pdf-Viewer)
+
+### Kotlin DSL
+
+Step 1. Add the JitPack repository to your build file. Add it in your root `settings.gradle.kts` at the end of repositories:
+
+```kotlin
+dependencyResolutionManagement {
+    ....
+    repositories {
+        ...
+        maven { setUrl( "https://jitpack.io") }
+    }
+}
+```
+
+Step 2. Add the dependency
+```kotlin
+dependencies {
+    implementation ("com.github.afreakyelf:Pdf-Viewer:v{Tag}")
+}
+```
+
+### Groovy DSL
 
 Step 1. Add the JitPack repository to your build file. Add it in your root build.gradle at the end of repositories:
 
@@ -67,11 +86,8 @@ dependencies {
     implementation 'com.github.afreakyelf:Pdf-Viewer:v{Tag}'
 }
 ```
-NOTE: Replace the tag with current release version, e.g
 
-```java
-implementation 'com.github.afreakyelf:Pdf-Viewer:v1.0.7'
-```
+
 
 ## How to use the library?
 Now you have integrated the library in your project but **how do you use it**? Well its really easy just launch the intent with in following way: (Refer to [MainActivity.kt](https://github.com/afreakyelf/Pdf-Viewer/blob/master/app/src/main/java/com/rajat/sample/pdfviewer/MainActivity.kt) for more details.)
