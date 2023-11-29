@@ -1,38 +1,43 @@
 ---
-name: Bug report
-about: Create a report to help us improve
-title: ''
-labels: ''
+name: 🐞 Bug Report
+about: Report a bug or issue with the PDF Viewer library
+title: '[BUG] Brief Description of Issue'
+labels: 'bug'
 assignees: ''
 
 ---
 
-**Describe the bug**
-A clear and concise description of what the bug is.
+## 📝 Describe the Bug
+Provide a clear and concise description of what the bug is.
 
-**To Reproduce**
-Steps to reproduce the behavior:
-1. Go to '...'
-2. Click on '....'
-3. Scroll down to '....'
-4. See error
+## 📖 Library Version
+- **PDF Viewer Version:** [e.g., 2.0.0]
 
-**Expected behavior**
-A clear and concise description of what you expected to happen.
+## 🚶 Steps to Reproduce
+Please follow these steps to reproduce the issue:
+1. **Initial Setup/Library Method Used:** [e.g., `initWithUrl` method]
+2. **Actions Taken:** [e.g., Clicked on 'Load PDF']
+3. **Unexpected Behavior:** [e.g., PDF not loading]
+4. **Relevant Code/Stack Trace:** [Include code snippet or stack trace if applicable]
 
-**Screenshots**
-If applicable, add screenshots to help explain your problem.
+## 🤔 Expected Behavior
+What did you expect to happen?
 
-**Desktop (please complete the following information):**
- - OS: [e.g. iOS]
- - Browser [e.g. chrome, safari]
- - Version [e.g. 22]
+## 🖼️ Screenshots/Videos
+If applicable, add screenshots or videos to help explain your problem.
 
-**Smartphone (please complete the following information):**
- - Device: [e.g. iPhone6]
- - OS: [e.g. iOS8.1]
- - Browser [e.g. stock browser, safari]
- - Version [e.g. 22]
+## 📱 Smartphone Info:
+- **Device:** [e.g., Samsung Galaxy S10]
+- **OS:** [e.g., Android 11]
+- **Library Version:** [e.g., 2.0.0]
 
-**Additional context**
-Add any other context about the problem here.
+## 💻 Code Snippets
+Include relevant code snippets or links to code repositories.
+
+## 📜 Log Output/Stack Trace
+Include any error logs or stack trace for more context.
+
+## 💬 Additional Context
+Add any other context about the problem here. Mention if the issue is consistent, specific scenarios where the bug occurs, etc.
+
+---
