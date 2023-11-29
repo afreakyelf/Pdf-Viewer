@@ -1,13 +1,6 @@
-//apply plugin: 'com.android.application'
-//apply plugin: 'kotlin-android'
-//apply plugin: 'kotlin-kapt'
-//apply plugin: 'kotlin-parcelize'
-////apply plugin: 'com.spotify.ruler'
-
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
-    id("kotlin-android")
     id("kotlin-kapt")
     id("kotlin-parcelize")
 }
@@ -36,17 +29,18 @@ android {
     }
 
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_17
-        targetCompatibility = JavaVersion.VERSION_17
+        sourceCompatibility = JavaVersion.VERSION_1_8
+        targetCompatibility = JavaVersion.VERSION_1_8
     }
+
 
     kotlinOptions {
-        jvmTarget = "17"
+        jvmTarget = "1.8"
     }
 
-    kotlin {
-        jvmToolchain(17)
-    }
+//    kotlin {
+//        jvmToolchain(17)
+//    }
 
     composeOptions {
         kotlinCompilerExtensionVersion = "1.5.4"
@@ -61,6 +55,11 @@ android {
                     "proguard-rules.pro"
                 )
             }
+        }
+    }
+    packaging {
+        resources {
+            excludes += "/META-INF/{AL2.0,LGPL2.1}"
         }
     }
 }
@@ -106,7 +105,7 @@ dependencies {
 
     // Android Studio Preview support
     implementation("androidx.compose.ui:ui-tooling-preview")
-    androidTestImplementation(platform("androidx.compose:compose-bom:2023.03.00"))
+    androidTestImplementation(platform("androidx.compose:compose-bom:2023.10.01"))
     debugImplementation("androidx.compose.ui:ui-tooling")
 
     // UI Tests

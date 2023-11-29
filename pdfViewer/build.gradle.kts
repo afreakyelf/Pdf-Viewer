@@ -1,44 +1,20 @@
 plugins {
     id("com.android.library")
     id("org.jetbrains.kotlin.android")
-    id("kotlin-android")
-    id("maven-publish")
     id("kotlin-parcelize")
+    id("maven-publish")
 }
 
-
 android {
-    compileSdk = 34
     namespace = "com.rajat.pdfviewer"
+    compileSdk = 34
 
     defaultConfig {
         minSdk = 21
-        targetSdk = 34
         multiDexEnabled = true
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        consumerProguardFiles("consumer-rules.pro")
     }
-
-    compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_17
-        targetCompatibility = JavaVersion.VERSION_17
-    }
-
-    kotlinOptions {
-        jvmTarget = "17"
-    }
-
-    kotlin {
-        jvmToolchain(17)
-    }
-
-    buildFeatures {
-        viewBinding = true
-        compose = true
-    }
-    composeOptions {
-        kotlinCompilerExtensionVersion = "1.5.4"
-    }
-
     buildTypes {
         release {
             isMinifyEnabled = false
@@ -47,6 +23,21 @@ android {
                 "proguard-rules.pro"
             )
         }
+    }
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_1_8
+        targetCompatibility = JavaVersion.VERSION_1_8
+    }
+    kotlinOptions {
+        jvmTarget = "1.8"
+    }
+
+    buildFeatures {
+        viewBinding = true
+        compose = true
+    }
+    composeOptions {
+        kotlinCompilerExtensionVersion = "1.5.4"
     }
 
 }
@@ -84,10 +75,8 @@ dependencies {
 
 publishing {
     publications {
-        register<MavenPublication>("release") {
-            afterEvaluate {
-                from(components["release"])
-            }
+        create<MavenPublication>("maven") {
+            from(components.findByName("release"))
         }
     }
 }
