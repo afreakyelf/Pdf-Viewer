@@ -1,13 +1,13 @@
 // Top-level build file where you can add configuration options common to all sub-projects/modules.
-buildscript {
-    repositories {
-        google()
-        mavenCentral()
-    }
-    dependencies {
-        classpath("com.spotify.ruler:ruler-gradle-plugin:2.0.0-alpha-13")
-    }
-}
+//buildscript {
+//    repositories {
+//        google()
+//        mavenCentral()
+//    }
+//    dependencies {
+//        classpath("com.spotify.ruler:ruler-gradle-plugin:2.0.0-alpha-13")
+//    }
+//}
 
 
 plugins {
