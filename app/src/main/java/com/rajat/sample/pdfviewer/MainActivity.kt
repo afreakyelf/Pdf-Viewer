@@ -28,7 +28,7 @@ class MainActivity : AppCompatActivity() {
         setContentView(view)
 
         binding.onlinePdf.setOnClickListener {
-            launchPdfFromUrl(download_file_url3)
+            launchPdfFromUrl(download_file_url1)
         }
 
         binding.pickPdfButton.setOnClickListener {

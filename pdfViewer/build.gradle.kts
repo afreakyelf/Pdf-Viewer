@@ -28,8 +28,13 @@ android {
         sourceCompatibility = JavaVersion.VERSION_1_8
         targetCompatibility = JavaVersion.VERSION_1_8
     }
+
     kotlinOptions {
         jvmTarget = "1.8"
+    }
+
+    kotlin {
+        jvmToolchain(17)
     }
 
     buildFeatures {
@@ -43,7 +48,7 @@ android {
 }
 
 dependencies {
-    val kotlin_version = "1.9.20"
+    val kotlin_version = "1.9.21"
     implementation(fileTree(mapOf("dir" to "libs", "include" to listOf("*.jar"))))
     implementation("org.jetbrains.kotlin:kotlin-stdlib:$kotlin_version")
     implementation("androidx.core:core-ktx:1.12.0")
@@ -75,8 +80,13 @@ dependencies {
 
 publishing {
     publications {
-        create<MavenPublication>("maven") {
-            from(components.findByName("release"))
+        register<MavenPublication>("release") {
+            groupId = "com.rajat"
+            artifactId = "pdfviewer"
+            version = "2.0"
+            afterEvaluate {
+                from(components["release"])
+            }
         }
     }
 }
