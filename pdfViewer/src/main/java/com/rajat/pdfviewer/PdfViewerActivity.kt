@@ -1,5 +1,6 @@
 package com.rajat.pdfviewer
 
+import android.Manifest
 import android.Manifest.permission
 import android.app.Activity
 import android.app.AlertDialog
@@ -107,12 +108,6 @@ class PdfViewerActivity : AppCompatActivity() {
             SAVE_TO_DOWNLOADS = saveTo == com.rajat.pdfviewer.util.saveTo.DOWNLOADS
             return intent
         }
-    }
-
-    private fun isActionBarPresent(): Boolean {
-        val typedValue = TypedValue()
-        theme.resolveAttribute(android.R.attr.windowActionBar, typedValue, true)
-        return typedValue.data != 0
     }
 
     private fun configureToolbar() {
@@ -434,8 +429,8 @@ class PdfViewerActivity : AppCompatActivity() {
     }
 
     private fun checkAndStartDownload() {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
-            // For OS versions below Android 13, use the old method
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) {
+            // For OS versions below Android 11, use the old method
             if (ContextCompat.checkSelfPermission(
                     this, permission.WRITE_EXTERNAL_STORAGE
                 ) == PackageManager.PERMISSION_GRANTED
