@@ -33,7 +33,10 @@ class ComposeActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    MyPdfScreenFromUrl(download_file_url2)
+                    MyPdfScreenFromUrl(
+                        url = download_file_url2,
+                        modifier = Modifier.fillMaxSize()
+                    )
                 }
             }
         }
@@ -41,9 +44,10 @@ class ComposeActivity : ComponentActivity() {
 }
 
 @Composable
-fun MyPdfScreenFromUrl(url: String) {
+fun MyPdfScreenFromUrl(url: String, modifier: Modifier = Modifier) {
     val lifecycleOwner = LocalLifecycleOwner.current
     PdfRendererViewCompose(
+        modifier = modifier,
         url = url,
         lifecycleOwner = lifecycleOwner,
         statusCallBack = object : PdfRendererView.StatusCallBack {
