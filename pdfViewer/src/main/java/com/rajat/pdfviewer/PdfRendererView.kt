@@ -3,7 +3,9 @@ package com.rajat.pdfviewer
 import android.app.Activity
 import android.content.Context
 import android.content.res.TypedArray
+import android.graphics.Bitmap
 import android.graphics.Rect
+import android.graphics.drawable.BitmapDrawable
 import android.graphics.drawable.Drawable
 import android.os.Build
 import android.os.Bundle
@@ -15,6 +17,7 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.WindowManager
 import android.widget.FrameLayout
+import android.widget.ImageView
 import android.widget.TextView
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleCoroutineScope
@@ -244,4 +247,13 @@ class PdfRendererView @JvmOverloads constructor(
         }
     }
 
+    fun getBitmapByPage(page: Int): Bitmap? {
+        return pdfRendererCore.getBitmapFromCache(page)
+    }
+
+    fun getLoadedBitmaps(): List<Bitmap> {
+        return (0..<totalPageCount).mapNotNull { page ->
+            getBitmapByPage(page)
+        }
+    }
 }
