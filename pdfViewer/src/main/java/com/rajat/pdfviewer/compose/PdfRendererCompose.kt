@@ -1,6 +1,7 @@
 package com.rajat.pdfviewer.compose
 
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.LifecycleOwner
@@ -11,6 +12,7 @@ import java.io.File
 
 @Composable
 fun PdfRendererViewCompose(
+    modifier: Modifier = Modifier,
     url: String? = null,
     file: File? = null,
     headers: HeaderData = HeaderData(),
@@ -34,6 +36,7 @@ fun PdfRendererViewCompose(
         },
         update = { view ->
             // Update logic if needed
-        }
+        },
+        modifier = modifier
     )
 }
