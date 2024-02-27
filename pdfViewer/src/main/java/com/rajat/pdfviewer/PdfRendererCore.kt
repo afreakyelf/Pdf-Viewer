@@ -25,7 +25,6 @@
      * Created by Rajat on 11,July,2020
      */
 
-    @TargetApi(Build.VERSION_CODES.LOLLIPOP)
     internal class PdfRendererCore(
         private val context: Context,
         fileDescriptor: ParcelFileDescriptor

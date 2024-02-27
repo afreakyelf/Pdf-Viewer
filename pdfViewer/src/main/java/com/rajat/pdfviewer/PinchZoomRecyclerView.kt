@@ -126,26 +126,50 @@ class PinchZoomRecyclerView : RecyclerView {
     }
 
     private inner class ScaleListener : ScaleGestureDetector.SimpleOnScaleGestureListener() {
+//        override fun onScale(detector: ScaleGestureDetector): Boolean {
+//            val scaleFactor =
+//                1f.coerceAtLeast((mScaleFactor * detector.scaleFactor).coerceAtMost(MAX_SCALE))
+//            val focusX = detector.focusX
+//            val focusY = detector.focusY
+//
+//            if (scaleFactor != mScaleFactor) {
+//                val scaleDelta = scaleFactor / mScaleFactor
+//                mPosX -= (focusX - mPosX) * (1 - scaleDelta)
+//                mPosY -= (focusY - mPosY) * (1 - scaleDelta)
+//                mScaleFactor = scaleFactor
+//
+//                mPosX = (maxWidth - width * mScaleFactor).coerceAtLeast(mPosX.coerceAtMost(0f))
+//                mPosY = (maxHeight - height * mScaleFactor).coerceAtLeast(mPosY.coerceAtMost(0f))
+//
+//                invalidate()
+//            }
+//
+//            return true
+//        }
+
+
         override fun onScale(detector: ScaleGestureDetector): Boolean {
-            val scaleFactor =
-                1f.coerceAtLeast((mScaleFactor * detector.scaleFactor).coerceAtMost(MAX_SCALE))
+            val scaleFactor = 1f.coerceAtLeast((mScaleFactor * detector.scaleFactor).coerceAtMost(MAX_SCALE))
             val focusX = detector.focusX
             val focusY = detector.focusY
 
             if (scaleFactor != mScaleFactor) {
                 val scaleDelta = scaleFactor / mScaleFactor
-                mPosX -= (focusX - mPosX) * (1 - scaleDelta)
-                mPosY -= (focusY - mPosY) * (1 - scaleDelta)
+
+                // Adjust position so that it scales from the pinch zoom center
+                mPosX += (focusX - mPosX) * (1 - scaleDelta)
+                mPosY += (focusY - mPosY) * (1 - scaleDelta)
+
+                // Update the scale factor
                 mScaleFactor = scaleFactor
 
-                mPosX = (maxWidth - width * mScaleFactor).coerceAtLeast(mPosX.coerceAtMost(0f))
-                mPosY = (maxHeight - height * mScaleFactor).coerceAtLeast(mPosY.coerceAtMost(0f))
-
-                invalidate()
+                // Make sure the view is within bounds
+                clampPosition() // You may need to update this method as well if necessary
             }
 
             return true
         }
+
     }
     private fun resetZoom() {
         mScaleFactor = 1f
