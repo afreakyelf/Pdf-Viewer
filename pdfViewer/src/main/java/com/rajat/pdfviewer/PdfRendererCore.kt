@@ -28,10 +28,38 @@
     @TargetApi(Build.VERSION_CODES.LOLLIPOP)
     internal class PdfRendererCore(
         private val context: Context,
-        pdfFile: File
+        fileDescriptor: ParcelFileDescriptor
     ) {
+
+        constructor(context: Context, file: File): this(
+            context = context,
+            fileDescriptor = getFileDescriptor(file)
+        )
+
         companion object {
             private const val CACHE_PATH = "___pdf___cache___"
+
+            private fun sanitizeFilePath(filePath: String): String {
+                return try {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                        val path = Paths.get(filePath)
+                        if (Files.exists(path)) {
+                            filePath
+                        } else {
+                            "" // Return a default safe path or handle the error
+                        }
+                    }else{
+                        filePath
+                    }
+                } catch (e: Exception) {
+                    "" // Handle the exception and return a safe default path
+                }
+            }
+
+            internal fun getFileDescriptor(file: File): ParcelFileDescriptor {
+                val safeFile = File(sanitizeFilePath(file.path))
+                return ParcelFileDescriptor.open(safeFile, ParcelFileDescriptor.MODE_READ_ONLY)
+            }
         }
 
         private var pdfRenderer: PdfRenderer? = null
@@ -43,27 +71,9 @@
             memoryCache = object : LruCache<Int, Bitmap>(cacheSize) {
                 override fun sizeOf(key: Int, bitmap: Bitmap): Int = bitmap.byteCount / 1024 // size in KB
             }
-            val safeFile = File(sanitizeFilePath(pdfFile.path))
             // Proceed with safeFile
-            openPdfFile(safeFile)
+            openPdfFile(fileDescriptor)
             initCache()
-        }
-
-        private fun sanitizeFilePath(filePath: String): String {
-            return try {
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                    val path = Paths.get(filePath)
-                    if (Files.exists(path)) {
-                        filePath
-                    } else {
-                        "" // Return a default safe path or handle the error
-                    }
-                }else{
-                    filePath
-                }
-            } catch (e: Exception) {
-                "" // Handle the exception and return a safe default path
-            }
         }
 
         private fun initCache() {
@@ -127,8 +137,7 @@
                     }
                 }
         }
-        private fun openPdfFile(pdfFile: File) {
-            val fileDescriptor = ParcelFileDescriptor.open(pdfFile, ParcelFileDescriptor.MODE_READ_ONLY)
+        private fun openPdfFile(fileDescriptor: ParcelFileDescriptor) {
             pdfRenderer = PdfRenderer(fileDescriptor)
         }
 
