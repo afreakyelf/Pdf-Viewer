@@ -5,10 +5,12 @@ import android.content.Context
 import android.content.res.TypedArray
 import android.graphics.Rect
 import android.graphics.drawable.Drawable
+import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
+import android.os.ParcelFileDescriptor
 import android.os.Parcelable
 import android.util.AttributeSet
 import android.view.LayoutInflater
@@ -26,6 +28,7 @@ import androidx.recyclerview.widget.RecyclerView
 import androidx.recyclerview.widget.RecyclerView.NO_POSITION
 import com.rajat.pdfviewer.util.PdfEngine
 import java.io.File
+import java.io.FileNotFoundException
 
 /**
  * Created by Rajat on 11,July,2020
@@ -101,6 +104,12 @@ class PdfRendererView @JvmOverloads constructor(
         init(file)
     }
 
+    @Throws(FileNotFoundException::class)
+    fun initWithUri(uri: Uri) {
+        val fileDescriptor = context.contentResolver.openFileDescriptor(uri, "r") ?: return
+        init(fileDescriptor)
+    }
+
     override fun onSaveInstanceState(): Parcelable? {
         val superState = super.onSaveInstanceState()
         val savedState = Bundle()
@@ -127,7 +136,13 @@ class PdfRendererView @JvmOverloads constructor(
     }
 
     private fun init(file: File) {
-        pdfRendererCore = PdfRendererCore(context, file)
+        val fileDescriptor = PdfRendererCore.getFileDescriptor(file)
+        init(fileDescriptor)
+    }
+
+    private fun init(fileDescriptor: ParcelFileDescriptor) {
+        // Proceed with safeFile
+        pdfRendererCore = PdfRendererCore(context, fileDescriptor)
         pdfRendererCoreInitialised = true
         pdfViewAdapter = PdfViewAdapter(context,pdfRendererCore, pageMargin, enableLoadingForPages)
         val v = LayoutInflater.from(context).inflate(R.layout.pdf_rendererview, this, false)
