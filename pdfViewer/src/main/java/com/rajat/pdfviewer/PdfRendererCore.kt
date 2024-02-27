@@ -83,7 +83,7 @@
             }
             cacheDir.mkdirs()
         }
-        private fun getBitmapFromCache(pageNo: Int): Bitmap? {
+        internal fun getBitmapFromCache(pageNo: Int): Bitmap? {
             return memoryCache.get(pageNo) ?: decodeBitmapFromDiskCache(pageNo)
         }
         private fun decodeBitmapFromDiskCache(pageNo: Int): Bitmap? {
