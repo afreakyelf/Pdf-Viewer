@@ -16,7 +16,11 @@ A Simple PDF Viewer library which only occupies around <b>80kb</b> while most of
 
 
 [![](https://jitpack.io/v/afreakyelf/Pdf-Viewer.svg)](https://jitpack.io/#afreakyelf/Pdf-Viewer) [![License](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/Apache-2.0) ![](https://img.shields.io/github/forks/afreakyelf/Pdf-Viewer?label=Forks)
-![](https://img.shields.io/github/stars/afreakyelf/Pdf-Viewer?label=Stars&color=9cf) ![Visitors](https://api.visitorbadge.io/api/visitors?path=https%3A%2F%2Fgithub.com%2Fafreakyelf%2FPdf-Viewer&label=Visitors&countColor=%23263759&style=flat) [![CodeFactor](https://www.codefactor.io/repository/github/afreakyelf/pdf-viewer/badge)](https://www.codefactor.io/repository/github/afreakyelf/pdf-viewer)
+![](https://img.shields.io/github/stars/afreakyelf/Pdf-Viewer?label=Stars&color=9cf) ![Visitors](https://api.visitorbadge.io/api/visitors?path=https%3A%2F%2Fgithub.com%2Fafreakyelf%2FPdf-Viewer&label=Visitors&countColor=%23263759&style=flat) [![CodeFactor](https://www.codefactor.io/repository/github/afreakyelf/pdf-viewer/badge)](https://www.codefactor.io/repository/github/afreakyelf/pdf-viewer) ![Discord](https://img.shields.io/discord/1213235452908408943?style=flat&label=Join%20discord&link=https%3A%2F%2Fdiscord.gg%2FK3u4DscdWW)
+
+
+## [New] Join our Discord Community [here](https://discord.gg/342ZFHX9mK)!
+
 
 ## ✨ Major Enhancements in Our PDF Viewer Library ✨
 Hello Developers! We're thrilled to share some significant enhancements we've made to our PDF viewer library. We've fine-tuned several aspects to enhance your experience and ensure top-notch performance and security. Here's what's new:
