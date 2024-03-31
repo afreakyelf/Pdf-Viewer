@@ -1,8 +1,12 @@
+import com.vanniktech.maven.publish.AndroidSingleVariantLibrary
+import com.vanniktech.maven.publish.SonatypeHost
+
 plugins {
     id("com.android.library")
     id("org.jetbrains.kotlin.android")
     id("kotlin-parcelize")
-    id("maven-publish")
+    id("org.jetbrains.dokka") version "1.9.20"
+    id("com.vanniktech.maven.publish") version "0.28.0"
 }
 
 android {
@@ -10,7 +14,7 @@ android {
     compileSdk = 34
 
     defaultConfig {
-        minSdk = 21
+        minSdk = 24
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         consumerProguardFiles("consumer-rules.pro")
     }
@@ -56,7 +60,7 @@ dependencies {
     implementation("androidx.constraintlayout:constraintlayout:2.1.4")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.3")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3")
-    implementation("com.google.android.material:material:1.10.0")
+    implementation("com.google.android.material:material:1.11.0")
     testImplementation("junit:junit:4.13.2")
     androidTestImplementation("androidx.test.ext:junit:1.1.5")
     androidTestImplementation("androidx.test.espresso:espresso-core:3.5.1")
@@ -66,25 +70,53 @@ dependencies {
     // compose
     implementation(platform("androidx.compose:compose-bom:2023.10.01"))
     androidTestImplementation(platform("androidx.compose:compose-bom:2023.10.01"))
-    implementation("androidx.compose.ui:ui")
+    implementation("androidx.compose.ui:ui:1.6.4")
     // Android Studio Preview support
-    implementation("androidx.compose.ui:ui-tooling-preview")
-    debugImplementation("androidx.compose.ui:ui-tooling")
+    implementation("androidx.compose.ui:ui-tooling-preview:1.6.4")
+    debugImplementation("androidx.compose.ui:ui-tooling:1.6.4")
     // UI Tests
     androidTestImplementation("androidx.compose.ui:ui-test-junit4")
     debugImplementation("androidx.compose.ui:ui-test-manifest")
-    implementation("androidx.activity:activity-compose:1.8.1")
+    implementation("androidx.activity:activity-compose:1.8.2")
 }
 
-publishing {
-    publications {
-        register<MavenPublication>("release") {
-            groupId = "com.rajat"
-            artifactId = "pdfviewer"
-            version = "2.0"
-            afterEvaluate {
-                from(components["release"])
+mavenPublishing {
+    configure(
+        AndroidSingleVariantLibrary(
+            // the published variant
+            variant = "release",
+            // whether to publish a sources jar
+            sourcesJar = true,
+        )
+    )
+
+    publishToMavenCentral(SonatypeHost.CENTRAL_PORTAL)
+    signAllPublications()
+
+    coordinates("io.github.afreakyelf", "Pdf-Viewer", "2.1.0")
+
+    pom {
+        name.set("PDF Viewer")
+        description.set("A PDF viewing library for Android")
+        url.set("https://github.com/afreakyelf/pdfviewer")
+        licenses {
+            license {
+                name.set("MIT License")
+                url.set("https://opensource.org/licenses/MIT")
             }
         }
+        developers {
+            developer {
+                id.set("afreakyelf")
+                name.set("Rajat Mittal")
+                email.set("rjmittal07@gmail.com")
+            }
+        }
+        scm {
+            connection.set("scm:git:git://github.com/afreakyelf/pdfviewer.git")
+            developerConnection.set("scm:git:ssh://github.com/afreakyelf/pdfviewer.git")
+            url.set("https://github.com/afreakyelf/pdfviewer")
+        }
     }
+
 }

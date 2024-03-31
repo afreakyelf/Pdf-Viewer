@@ -5,7 +5,6 @@ import android.content.Context
 import android.content.res.TypedArray
 import android.graphics.Bitmap
 import android.graphics.Rect
-import android.graphics.drawable.BitmapDrawable
 import android.graphics.drawable.Drawable
 import android.net.Uri
 import android.os.Build
@@ -19,7 +18,6 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.WindowManager
 import android.widget.FrameLayout
-import android.widget.ImageView
 import android.widget.TextView
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleCoroutineScope
@@ -55,6 +53,7 @@ class PdfRendererView @JvmOverloads constructor(
     private var positionToUseForState: Int = 0
     private var restoredScrollPosition: Int = NO_POSITION
     private var disableScreenshots: Boolean = false
+    private var postInitializationAction: (() -> Unit)? = null
 
     val totalPageCount: Int
         get() {
@@ -169,11 +168,17 @@ class PdfRendererView @JvmOverloads constructor(
                 recyclerView.scrollToPosition(restoredScrollPosition)
                 restoredScrollPosition = NO_POSITION  // Reset after applying
             }
-        }, 300) // Adjust delay as needed
+        }, 500) // Adjust delay as needed
 
         runnable = Runnable {
             pageNo.visibility = View.GONE
         }
+
+        recyclerView.post {
+            postInitializationAction?.invoke()
+            postInitializationAction = null
+        }
+
     }
 
 
@@ -222,6 +227,21 @@ class PdfRendererView @JvmOverloads constructor(
             } else {
                 pageNo.removeCallbacks(runnable)
             }
+        }
+    }
+
+    fun jumpToPage(pageNumber: Int) {
+        val action = {
+            if (pageNumber in 0 until totalPageCount) {
+                recyclerView.post {
+                    recyclerView.scrollToPosition(pageNumber)
+                }
+            }
+        }
+        if (this::pdfRendererCore.isInitialized) {
+            action()
+        } else {
+            postInitializationAction = action
         }
     }
 

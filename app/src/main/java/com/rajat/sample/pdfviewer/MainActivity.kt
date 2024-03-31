@@ -17,9 +17,9 @@ class MainActivity : AppCompatActivity() {
     private lateinit var binding: ActivityMainBinding
 
     private var download_file_url = "https://css4.pub/2015/usenix/example.pdf"
+    private var large_pdf = "https://research.nhm.org/pdfs/10840/10840.pdf"
     private var download_file_url1 = "https://css4.pub/2017/newsletter/drylab.pdf"
     private var download_file_url2 = "https://css4.pub/2015/textbook/somatosensory.pdf"
-    private var download_file_url3 = "https://file-examples.com/storage/fe19e15eac6560f8c936c41/2017/10/file-example_PDF_1MB.pdf"
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -28,7 +28,39 @@ class MainActivity : AppCompatActivity() {
         setContentView(view)
 
         binding.onlinePdf.setOnClickListener {
-            launchPdfFromUrl(download_file_url)
+            binding.pdfView.statusListener = object : PdfRendererView.StatusCallBack {
+                override fun onPdfLoadStart() {
+                    Log.i("statusCallBack","onPdfLoadStart")
+                }
+                override fun onPdfLoadProgress(
+                    progress: Int,
+                    downloadedBytes: Long,
+                    totalBytes: Long?
+                ) {
+                    //Download is in progress
+                }
+
+                override fun onPdfLoadSuccess(absolutePath: String) {
+                    Log.i("statusCallBack","onPdfLoadSuccess")
+//                    binding.pdfView.recyclerView.scrollToPosition(1)
+                    binding.pdfView.post {
+                        binding.pdfView.recyclerView.scrollToPosition(
+                            1
+                        )
+                    }
+
+                }
+
+                override fun onError(error: Throwable) {
+                    Log.i("statusCallBack","onError")
+                }
+
+                override fun onPageChanged(currentPage: Int, totalPage: Int) {
+                    //Page change. Not require
+                }
+            }
+
+            launchPdfFromUrl(large_pdf)
         }
 
         binding.pickPdfButton.setOnClickListener {
@@ -69,6 +101,8 @@ class MainActivity : AppCompatActivity() {
                 lifecycleCoroutineScope = lifecycleScope,
                 lifecycle = lifecycle
             )
+            binding.pdfView.jumpToPage(3)
+
         }
 
         binding.openInCompose.setOnClickListener {

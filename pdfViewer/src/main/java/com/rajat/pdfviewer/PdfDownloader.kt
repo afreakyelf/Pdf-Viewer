@@ -1,12 +1,16 @@
 package com.rajat.pdfviewer
 
 import android.content.Context
+import android.util.Log
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.BufferedInputStream
 import java.io.File
+import java.io.FileOutputStream
+import java.io.IOException
 import java.net.URL
 
 class PdfDownloader(
@@ -28,6 +32,11 @@ class PdfDownloader(
 
     init {
         coroutineScope.launch { checkAndDownload(url) }
+    }
+
+    companion object {
+        private const val MAX_RETRIES = 3 // Maximum number of retries
+        private const val RETRY_DELAY = 2000L // Delay between retries in milliseconds
     }
 
     private fun getCachedFileName(url: String): String {
@@ -59,41 +68,59 @@ class PdfDownloader(
     }
 
     private suspend fun download(downloadUrl: String, cachedFileName: String) {
-        withContext(Dispatchers.IO) {
-            try {
-                listener.onDownloadStart()
-                val outputFile = File(listener.getContext().cacheDir, cachedFileName)
-                outputFile.delete()
-                val urlConnection = URL(downloadUrl).openConnection().apply {
-                    // Apply headers to the URL connection
-                    headers.headers.forEach { (key, value) ->
-                        setRequestProperty(key, value)
+        var retries = 0
+        while (retries < MAX_RETRIES) {
+            withContext(Dispatchers.IO) {
+                var tempFile: File? = null
+                try {
+                    listener.onDownloadStart()
+                    val cacheDir = listener.getContext().cacheDir
+                    tempFile = File.createTempFile("download_", ".tmp", cacheDir)
+                    val urlConnection = URL(downloadUrl).openConnection().apply {
+                        headers.headers.forEach { (key, value) -> setRequestProperty(key, value) }
                     }
-                }
-                val totalLength = urlConnection.contentLength
-                BufferedInputStream(urlConnection.getInputStream()).use { inputStream ->
-                    outputFile.outputStream().use { outputStream ->
-                        val data = ByteArray(8192)
-                        var totalBytesRead = 0L
-                        var bytesRead: Int
-
-                        while (inputStream.read(data).also { bytesRead = it } != -1) {
-                            outputStream.write(data, 0, bytesRead)
-                            totalBytesRead += bytesRead
-                            withContext(Dispatchers.Main) {
-                                listener.onDownloadProgress(totalBytesRead, totalLength.toLong())
+                    val totalLength = urlConnection.contentLengthLong
+                    BufferedInputStream(urlConnection.getInputStream()).use { inputStream ->
+                        FileOutputStream(tempFile).use { outputStream ->
+                            val data = ByteArray(8192)
+                            var totalBytesRead = 0L
+                            var bytesRead: Int
+                            while (inputStream.read(data).also { bytesRead = it } != -1) {
+                                outputStream.write(data, 0, bytesRead)
+                                totalBytesRead += bytesRead
+                                withContext(Dispatchers.Main) {
+                                    listener.onDownloadProgress(totalBytesRead, totalLength)
+                                }
                             }
+                            outputStream.flush() // Ensure all data is written to the file
+                        }
+                    }
+                    if (tempFile.length() == totalLength) {
+                        val outputFile = File(cacheDir, cachedFileName)
+                        tempFile.renameTo(outputFile)
+                        withContext(Dispatchers.Main) { listener.onDownloadSuccess(outputFile.absolutePath) }
+                        retries = MAX_RETRIES
+                        return@withContext
+                    } else {
+                        throw IOException("Incomplete download")
+                    }
+                } catch (e: IOException) {
+                    tempFile?.delete()
+                    Log.e("PdfDownloader", "Download incomplete or failed: $downloadUrl", e)
+                    withContext(Dispatchers.Main) { listener.onError(e) }
+                    retries++
+                    if (retries < MAX_RETRIES) {
+                        Log.d("PdfDownloader", "Retrying download: $downloadUrl. Attempt $retries")
+                        delay(RETRY_DELAY) // Backoff before retrying
+                    } else {
+                        withContext(Dispatchers.Main) {
+                            listener.onError(IOException("Failed to download after $MAX_RETRIES attempts: $downloadUrl", e))
                         }
                     }
                 }
-                withContext(Dispatchers.Main) {
-                    listener.onDownloadSuccess(outputFile.absolutePath)
-                }
-            } catch (e: Exception) {
-                withContext(Dispatchers.Main) {
-                    listener.onError(e)
-                }
+
             }
         }
     }
+
 }

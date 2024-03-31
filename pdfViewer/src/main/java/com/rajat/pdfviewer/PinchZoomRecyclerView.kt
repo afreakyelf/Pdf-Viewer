@@ -92,7 +92,20 @@ class PinchZoomRecyclerView : RecyclerView {
                 mLastTouchY = y
                 invalidate()
             }
-            MotionEvent.ACTION_UP,
+            MotionEvent.ACTION_POINTER_UP -> {
+                // Extract the index of the pointer that left the touch sensor
+                val pointerIndex = (ev.action and MotionEvent.ACTION_POINTER_INDEX_MASK) shr MotionEvent.ACTION_POINTER_INDEX_SHIFT
+                val pointerId = ev.getPointerId(pointerIndex)
+
+                if (pointerId == mActivePointerId) {
+                    // This was our active pointer going up. Choose a new active pointer and adjust accordingly.
+                    val newPointerIndex = if (pointerIndex == 0) 1 else 0
+
+                    mLastTouchX = ev.getX(newPointerIndex)
+                    mLastTouchY = ev.getY(newPointerIndex)
+                    mActivePointerId = ev.getPointerId(newPointerIndex)
+                }
+            }
             MotionEvent.ACTION_CANCEL -> mActivePointerId = INVALID_POINTER_ID
             MotionEvent.ACTION_POINTER_UP -> {
                 val pointerIndex = ev.actionIndex
@@ -103,6 +116,12 @@ class PinchZoomRecyclerView : RecyclerView {
                     mLastTouchY = ev.getY(newPointerIndex)
                     mActivePointerId = ev.getPointerId(newPointerIndex)
                 }
+            }
+            MotionEvent.ACTION_SCROLL -> {
+                val dy = ev.getAxisValue(MotionEvent.AXIS_VSCROLL) * mScaleFactor
+                mPosY += dy
+                clampPosition()
+                invalidate()
             }
         }
 
@@ -125,77 +144,91 @@ class PinchZoomRecyclerView : RecyclerView {
         canvas.restore()
     }
 
+    override fun computeVerticalScrollRange(): Int {
+        val contentHeight = (height * mScaleFactor).toInt()
+        return contentHeight + paddingTop + paddingBottom
+    }
+
+    override fun computeVerticalScrollOffset(): Int {
+        return (mPosY * mScaleFactor).toInt()
+    }
+
     private inner class ScaleListener : ScaleGestureDetector.SimpleOnScaleGestureListener() {
-//        override fun onScale(detector: ScaleGestureDetector): Boolean {
-//            val scaleFactor =
-//                1f.coerceAtLeast((mScaleFactor * detector.scaleFactor).coerceAtMost(MAX_SCALE))
-//            val focusX = detector.focusX
-//            val focusY = detector.focusY
-//
-//            if (scaleFactor != mScaleFactor) {
-//                val scaleDelta = scaleFactor / mScaleFactor
-//                mPosX -= (focusX - mPosX) * (1 - scaleDelta)
-//                mPosY -= (focusY - mPosY) * (1 - scaleDelta)
-//                mScaleFactor = scaleFactor
-//
-//                mPosX = (maxWidth - width * mScaleFactor).coerceAtLeast(mPosX.coerceAtMost(0f))
-//                mPosY = (maxHeight - height * mScaleFactor).coerceAtLeast(mPosY.coerceAtMost(0f))
-//
-//                invalidate()
-//            }
-//
-//            return true
-//        }
-
-
         override fun onScale(detector: ScaleGestureDetector): Boolean {
-            val scaleFactor = 1f.coerceAtLeast((mScaleFactor * detector.scaleFactor).coerceAtMost(MAX_SCALE))
-            val focusX = detector.focusX
-            val focusY = detector.focusY
+            val scaleFactor = Math.max(1f, Math.min(mScaleFactor * detector.scaleFactor, mMaxZoom))
 
+            // Calculate adjustments needed to keep the zoom focal point stationary
             if (scaleFactor != mScaleFactor) {
-                val scaleDelta = scaleFactor / mScaleFactor
+                val scaleChange = scaleFactor / mScaleFactor
 
-                // Adjust position so that it scales from the pinch zoom center
-                mPosX += (focusX - mPosX) * (1 - scaleDelta)
-                mPosY += (focusY - mPosY) * (1 - scaleDelta)
+                // Determine the focal point of the pinch gesture relative to the view
+                val focusXRelativeToView = detector.focusX - mPosX
+                val focusYRelativeToView = detector.focusY - mPosY
 
-                // Update the scale factor
+                // Adjust the position so the focal point remains under the fingers
+                mPosX -= focusXRelativeToView * (scaleChange - 1)
+                mPosY -= focusYRelativeToView * (scaleChange - 1)
+
                 mScaleFactor = scaleFactor
 
-                // Make sure the view is within bounds
-                clampPosition() // You may need to update this method as well if necessary
+                clampPosition()
+                invalidate()
             }
 
             return true
         }
-
     }
+
+
+
+
+
     private fun resetZoom() {
         mScaleFactor = 1f
         mPosX = 0f
         mPosY = 0f
+        invalidate()
     }
 
     private fun clampPosition() {
-        val maxPosX = maxWidth - (width * mScaleFactor)
-        val maxPosY = maxHeight - (height * mScaleFactor)
-        mPosX = maxPosX.coerceAtLeast(mPosX.coerceAtMost(0f))
-        mPosY = maxPosY.coerceAtLeast(mPosY.coerceAtMost(0f))
+        // Calculate the boundaries considering the scaled size of the RecyclerView
+        val contentWidth = width * mScaleFactor
+        val contentHeight = height * mScaleFactor
+
+        // Calculate the maximum allowed translation
+        val maxPosX = if (contentWidth > width) (contentWidth - width) / 2 else 0f
+        val maxPosY = if (contentHeight > height) (contentHeight - height) / 2 else 0f
+
+        // Clamp the translations to ensure content does not move too far
+        mPosX = Math.min(maxPosX, Math.max(-maxPosX, mPosX))
+        mPosY = Math.min(maxPosY, Math.max(-maxPosY, mPosY))
+
+        invalidate()
     }
+
+
+
     private inner class GestureListener : GestureDetector.SimpleOnGestureListener() {
         override fun onDoubleTap(e: MotionEvent): Boolean {
-            if (mIsZoomEnabled) {
-                if (mScaleFactor > 1f) {
-                    resetZoom()
-                } else {
-                    mScaleFactor = mMaxZoom
-                    mPosX = -(e.x * (mMaxZoom - 1f))
-                    mPosY = -(e.y * (mMaxZoom - 1f))
-                    clampPosition()
-                }
-                invalidate()
+            if (!mIsZoomEnabled) return false
+
+            if (mScaleFactor > 1f) {
+                resetZoom()
+            } else {
+                // Zoom towards the double-tap location
+                val targetScale = mMaxZoom
+                val scaleDelta = targetScale / mScaleFactor
+
+                mScaleFactor = targetScale
+
+                // Adjust position so that it scales towards the double-tap location
+                mPosX -= (e.x - mPosX) * (1 - scaleDelta)
+                mPosY -= (e.y - mPosY) * (1 - scaleDelta)
+
+                clampPosition()
             }
+
+            invalidate()
             return true
         }
     }
