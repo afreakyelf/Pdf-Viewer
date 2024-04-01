@@ -14,7 +14,7 @@ android {
     compileSdk = 34
 
     defaultConfig {
-        minSdk = 24
+        minSdk = 21
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         consumerProguardFiles("consumer-rules.pro")
     }
@@ -93,7 +93,7 @@ mavenPublishing {
     publishToMavenCentral(SonatypeHost.CENTRAL_PORTAL)
     signAllPublications()
 
-    coordinates("io.github.afreakyelf", "Pdf-Viewer", "v2.1.0")
+    coordinates("io.github.afreakyelf", "Pdf-Viewer", "2.1.1")
 
     pom {
         name.set("PDF Viewer")
