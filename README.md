@@ -15,7 +15,7 @@ A Simple PDF Viewer library which only occupies around <b>80kb</b> while most of
 </p>
 
 
-[![](https://jitpack.io/v/afreakyelf/Pdf-Viewer.svg)](https://jitpack.io/#afreakyelf/Pdf-Viewer) [![License](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/Apache-2.0) ![](https://img.shields.io/github/forks/afreakyelf/Pdf-Viewer?label=Forks)
+[![License](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/Apache-2.0) ![](https://img.shields.io/github/forks/afreakyelf/Pdf-Viewer?label=Forks)
 ![](https://img.shields.io/github/stars/afreakyelf/Pdf-Viewer?label=Stars&color=9cf) ![Visitors](https://api.visitorbadge.io/api/visitors?path=https%3A%2F%2Fgithub.com%2Fafreakyelf%2FPdf-Viewer&label=Visitors&countColor=%23263759&style=flat) [![CodeFactor](https://www.codefactor.io/repository/github/afreakyelf/pdf-viewer/badge)](https://www.codefactor.io/repository/github/afreakyelf/pdf-viewer) ![Discord](https://img.shields.io/discord/1213235452908408943?style=flat&label=Join%20discord&link=https%3A%2F%2Fdiscord.gg%2FK3u4DscdWW)
 
 
@@ -46,52 +46,22 @@ Hello Developers! We're thrilled to share some significant enhancements we've ma
 
 Stay tuned as we continue to innovate and improve. Happy coding, and let's keep creating amazing experiences together!
 
-## How to integrate into your app?
-Integrating the project is simple, All you need to do is follow the below steps
-> ⚠️ NOTE: Replace the Tag with current release version, i.e  [![](https://jitpack.io/v/afreakyelf/Pdf-Viewer.svg)](https://jitpack.io/#afreakyelf/Pdf-Viewer)
+## How to integrate into your app? ⚙️
 
-### Kotlin DSL
-
-Step 1. Add the JitPack repository to your build file. Add it in your root `settings.gradle.kts` at the end of repositories:
-
-```kotlin
-dependencyResolutionManagement {
-    ....
-    repositories {
-        ...
-        maven { setUrl( "https://jitpack.io") }
-    }
-}
-```
-
-Step 2. Add the dependency
-```kotlin
-dependencies {
-    implementation ("com.github.afreakyelf:Pdf-Viewer:v{Tag}")
-}
-```
+We have migrated our library to Maven Central for easier integration and better reliability. To use the Pdf Viewer library in your project, add the following dependency to your `build.gradle` file:
 
 ### Groovy DSL
-
-Step 1. Add the JitPack repository to your build file. Add it in your root build.gradle at the end of repositories:
-
-```java
-allprojects {
-  repositories {
-    ...
-    maven { url "https://jitpack.io" }
-  }
-}
-```
-
-Step 2. Add the dependency
-```java
+```gradle
 dependencies {
-    implementation 'com.github.afreakyelf:Pdf-Viewer:v{Tag}'
+    implementation 'io.github.afreakyelf:Pdf-Viewer:v2.1.0'
 }
 ```
-
-
+### Kotlin DSL
+```gradle
+dependencies {
+    implementation("io.github.afreakyelf:Pdf-Viewer:v2.1.0")
+}
+```
 
 ## How to use the library?
 Now you have integrated the library in your project but **how do you use it**? Well its really easy just launch the intent with in following way: (Refer to [MainActivity.kt](https://github.com/afreakyelf/Pdf-Viewer/blob/master/app/src/main/java/com/rajat/sample/pdfviewer/MainActivity.kt) for more details.)
