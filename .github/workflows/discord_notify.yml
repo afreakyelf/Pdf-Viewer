@@ -7,7 +7,11 @@ on:
 jobs:
   notify_discord:
     runs-on: ubuntu-latest
+      
     steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
       - name: Send Discord Notification
         env:
           DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
