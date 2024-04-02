@@ -16,7 +16,7 @@ jobs:
       run: |
         # Using jq to safely encode JSON strings
         JSON_PAYLOAD=$(jq -n \
-          --arg content "**Release:** $RELEASE_NAME\n$RELEASE_BODY" \
+          --arg content "**Release:** $RELEASE_NAME \n $RELEASE_BODY" \
           '{username: "GitHub Release Bot", content: $content}')
         
         # Sending the message to Discord
