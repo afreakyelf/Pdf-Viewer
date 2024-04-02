@@ -11,19 +11,16 @@ jobs:
       - name: Send Release Notification to Discord
         env:
           DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
-          # Environment variables for release details
-          RELEASE_NAME: ${{ github.event.release.name }}
-          RELEASE_BODY: ${{ github.event.release.body }}
         run: |
-          # Prepare the message content, preserving newlines
-          MESSAGE_CONTENT=$(echo -e "Release: $RELEASE_NAME\n$RELEASE_BODY")
-          
-          # Using jq to create the JSON payload with actual newlines
-          JSON_PAYLOAD=$(jq --null-input \
-                            --arg content "$MESSAGE_CONTENT" \
-                            '{username: "GitHub Release Bot", content: $content}')
+          # Construct payload with explicit newlines
+          read -r -d '' PAYLOAD << EOM || true
+          {
+            "username": "GitHub Release Bot",
+            "content": "Release: ${{ github.event.release.name }}\n${{ github.event.release.body }}"
+          }
+          EOM
           
           # Sending the message to Discord
           curl -H "Content-Type: application/json" \
-               -d "$JSON_PAYLOAD" \
+               -d "$PAYLOAD" \
                $DISCORD_WEBHOOK
