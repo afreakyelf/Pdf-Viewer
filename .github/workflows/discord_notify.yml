@@ -1,26 +1,18 @@
-name: Discord Notification on Release
+name: Discord Release Notification
 
 on:
   release:
-    types: [created]
+    types: [published]
 
 jobs:
   notify_discord:
     runs-on: ubuntu-latest
     steps:
-      - name: Send Release Notification to Discord
+      - name: Send Discord Notification
         env:
           DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
         run: |
-          # Construct payload with explicit newlines
-          read -r -d '' PAYLOAD << EOM || true
-          {
-            "username": "GitHub Release Bot",
-            "content": "Release: ${{ github.event.release.name }}\n${{ github.event.release.body }}"
-          }
-          EOM
-          
-          # Sending the message to Discord
           curl -H "Content-Type: application/json" \
-               -d "$PAYLOAD" \
+               -X POST \
+               -d '{"content": "Hey everyone! 🎉\n\n**New Release 🚀 Version: ${{ github.event.release.tag_name }}**\n\n**What\'s Changed:**\n* ${CHANGE_DETAILS}\n\n**Full Changelog:** [View Changes](${{ github.event.release.html_url }})"}' \
                $DISCORD_WEBHOOK
