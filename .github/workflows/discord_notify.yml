@@ -5,17 +5,21 @@ on:
     types: [created]
 
 jobs:
-  discord_notification:
+  notify_discord:
     runs-on: ubuntu-latest
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v2
-
-    - name: Send message to Discord
+    - name: Send Release Notification to Discord
       env:
-        DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }} # Ensure you add your webhook URL to the repository's secrets
+        DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
+        RELEASE_NAME: ${{ github.event.release.name }}
+        RELEASE_BODY: ${{ github.event.release.body }}
       run: |
+        # Using jq to safely encode JSON strings
+        JSON_PAYLOAD=$(jq -n \
+          --arg content "**Release:** $RELEASE_NAME\n$RELEASE_BODY" \
+          '{username: "GitHub Release Bot", content: $content}')
+        
+        # Sending the message to Discord
         curl -H "Content-Type: application/json" \
-             -X POST \
-             -d '{"username": "Release Bot", "content": "🚀 New Release: **${{ github.event.release.name }}**\n>${{ github.event.release.body }}"}' \
+             -d "$JSON_PAYLOAD" \
              $DISCORD_WEBHOOK
