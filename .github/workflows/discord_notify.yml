@@ -1,33 +1,18 @@
-name: Notify Discord on Release
+name: Discord Release Notification
 
 on:
   release:
-    types: [created]
+    types: [published]
 
 jobs:
-  discord_notification:
+  notify_discord:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v2
-        
-      - name: Send notification to Discord
+      - name: Send Discord Notification
         env:
           DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
         run: |
-          RELEASE_TAG="${{ github.event.release.tag_name }}"
-          RELEASE_URL="https://github.com/${GITHUB_REPOSITORY}/releases/tag/${RELEASE_TAG}"
-          # Use jq to escape the release body text for JSON
-          RELEASE_BODY="${{ github.event.release.body }}"
-          JSON_BODY=$(jq -aRs . <<< "$RELEASE_BODY")
-
-          # Construct the JSON payload using jq
-          PAYLOAD=$(jq -n \
-            --arg content "**New Release: ${RELEASE_TAG}**\n\n$JSON_BODY\n\n[View Release]($RELEASE_URL)" \
-            '{content: $content}')
-
-          # Send the payload to Discord
           curl -H "Content-Type: application/json" \
                -X POST \
-               -d "$PAYLOAD" \
+               -d '{"content": "Hey everyone! 🎉\n\n**New Release 🚀 Version: ${{ github.event.release.tag_name }}**\n\n**What\'s Changed:**\n* ${{github.event.release.body}}\n\n**Full Changelog:** [View Changes](${{ github.event.release.html_url }})"}' \
                $DISCORD_WEBHOOK
