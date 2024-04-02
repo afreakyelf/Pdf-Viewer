@@ -5,18 +5,17 @@ on:
     types: [created]
 
 jobs:
-  notify_discord:
+  discord_notification:
     runs-on: ubuntu-latest
-      
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v2
+    - name: Checkout code
+      uses: actions/checkout@v2
 
-      - name: Send Discord Notification
-        env:
-          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
-        run: |
-          curl -H "Content-Type: application/json" \
-               -X POST \
-               -d '{"content": "Hey everyone! 🎉\n\n**New Release 🚀 Version: ${{ github.event.release.tag_name }}**\n\n**What\'s Changed:**\n* ${{github.event.release.body}}\n\n**Full Changelog:** [View Changes](${{ github.event.release.html_url }})"}' \
-               $DISCORD_WEBHOOK
+    - name: Send message to Discord
+      env:
+        DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
+      run: |
+        curl -H "Content-Type: application/json" \
+             -X POST \
+             -d '{"content": "Hey everyone! 🎉\n\n**New Release 🚀 Version: ${{ github.event.release.tag_name }}**\n\n**What\'s Changed:**\n* ${{github.event.release.body}}\n\n**Full Changelog:** [View Changes](${{ github.event.release.html_url }})"}' \
+             $DISCORD_WEBHOOK
