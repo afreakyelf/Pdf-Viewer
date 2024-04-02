@@ -50,7 +50,7 @@ Stay tuned as we continue to innovate and improve. Happy coding, and let's keep 
 
 We have migrated our library to Maven Central for easier integration and better reliability. To use the Pdf Viewer library in your project, add the following dependency to your `build.gradle` file:
 
-#### Latest version: ![](https://img.shields.io/maven-central/v/io.github.afreakyelf/Pdf-Viewer.svg)
+#### Latest version: ![](https://img.shields.io/maven-central/v/io.github.afreakyelf/Pdf-Viewer.svg) without 'v'
 
 ### Groovy DSL
 ```gradle
