@@ -1,6 +1,7 @@
 package com.rajat.pdfviewer
 
 import android.content.Context
+import android.os.Build
 import android.util.Log
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -79,7 +80,15 @@ class PdfDownloader(
                     val urlConnection = URL(downloadUrl).openConnection().apply {
                         headers.headers.forEach { (key, value) -> setRequestProperty(key, value) }
                     }
-                    val totalLength = urlConnection.contentLengthLong
+                    val totalLength: Long = try {
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+                            urlConnection.contentLengthLong
+                        } else {
+                            urlConnection.contentLength.toLong()
+                        }
+                    } catch (e: NoSuchMethodError) {
+                        urlConnection.contentLength.toLong()
+                    }
                     BufferedInputStream(urlConnection.getInputStream()).use { inputStream ->
                         FileOutputStream(tempFile).use { outputStream ->
                             val data = ByteArray(8192)
