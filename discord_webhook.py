@@ -11,7 +11,7 @@ def main():
     release_url = os.getenv('RELEASE_URL')
 
     # Construct the message content with Markdown
-    content = f"Hello everyone, \n**🚀New Release: {release_tag}🚀** \n{release_body} \n[View Release]({release_url})"
+    content = f"Hello everyone, new release **{release_tag}** is out 🚀 \n{release_body} \n[View Release]({release_url})"
     
     # Prepare the webhook payload
     payload = {
