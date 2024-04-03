@@ -2,7 +2,7 @@ name: Notify Discord on Release
 
 on:
   release:
-    types: [created]
+    types: [edited]
 
 jobs:
   discord_notification:
