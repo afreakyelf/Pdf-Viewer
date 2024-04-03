@@ -1,4 +1,4 @@
-name: Discord Release Notification
+name: Notify Discord on Release
 
 on:
   release:
@@ -8,14 +8,23 @@ jobs:
   discord_notification:
     runs-on: ubuntu-latest
     steps:
-    - name: Checkout code
+    - name: Checkout repository
       uses: actions/checkout@v2
+      
+    - name: Set up Python
+      uses: actions/setup-python@v2
+      with:
+        python-version: '3.x'
 
-    - name: Send message to Discord
-      env:
-        DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
+    - name: Install dependencies
       run: |
-        curl -H "Content-Type: application/json" \
-             -X POST \
-             -d '{"content": "Hey everyone! 🎉\n\n**New Release 🚀 Version: ${{ github.event.release.tag_name }}**\n\n**What\'s Changed:**\n* ${{github.event.release.body}}\n\n**Full Changelog:** [View Changes](${{ github.event.release.html_url }})"}' \
-             $DISCORD_WEBHOOK
+        python -m pip install --upgrade pip
+        pip install requests
+
+    - name: Send notification to Discord
+      env:
+        DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+        RELEASE_TAG: ${{ github.event.release.tag_name }}
+        RELEASE_BODY: ${{ github.event.release.body }}
+        RELEASE_URL: ${{ github.event.release.html_url }}
+      run: python discord_webhook.py
