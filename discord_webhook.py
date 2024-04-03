@@ -7,11 +7,11 @@ import requests
 def main():
     webhook_url = os.getenv('DISCORD_WEBHOOK_URL')
     release_tag = os.getenv('RELEASE_TAG')
-    release_body = os.getenv('RELEASE_BODY').replace('\n', '\\n')  # Preserving newlines
+    release_body = os.getenv('RELEASE_BODY')
     release_url = os.getenv('RELEASE_URL')
 
     # Construct the message content with Markdown
-    content = f"**New Release: {release_tag}**\\n\\n{release_body}\\n\\n[View Release]({release_url})"
+    content = f"**New Release: {release_tag}** \n {release_body} \n [View Release]({release_url})"
     
     # Prepare the webhook payload
     payload = {
