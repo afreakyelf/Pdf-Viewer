@@ -68,14 +68,14 @@ dependencies {
 ```
 
 ## How to use the library?
-Now you have integrated the library in your project but **how do you use it**? Well its really easy just launch the intent with in following way: (Refer to [MainActivity.kt](https://github.com/afreakyelf/Pdf-Viewer/blob/master/app/src/main/java/com/rajat/sample/pdfviewer/MainActivity.kt) for more details.)
+Now you have integrated the library in your project but **how do you use it**? Well it's really easy. Just launch the intent with in following way: (Refer to [MainActivity.kt](https://github.com/afreakyelf/Pdf-Viewer/blob/master/app/src/main/java/com/rajat/sample/pdfviewer/MainActivity.kt) for more details.)
 
 ### Prerequisites
 Ensure the library is included in your project's dependencies.
 
 ### Launching PDF Viewer
 
-#### Open PDF from a URL
+#### Opening PDF from a URL
 To display a PDF from a URL, use the following code:
 
 ```kotlin
@@ -95,7 +95,7 @@ PdfViewerActivity.launchPdfFromUrl(
 )
 ```
 
-#### Open PDF from Local Storage
+#### Opening PDF from Local Storage
 To open a PDF stored in local storage:
 
 ```kotlin
@@ -113,7 +113,7 @@ PdfViewerActivity.launchPdfFromPath(
 )
 ```
 
-#### Open PDF from Assets
+#### Opening PDF from Assets
 To open a PDF from the app's assets folder:
 
 ```kotlin
@@ -238,7 +238,7 @@ Any contributions you make are **greatly appreciated**.
 5. Open a Pull Request
 
 ## Donations
-If this project help you reduce time to develop, you can give me a cup of coffee :)
+If this library helps you save time during development, you can buy me a cup of coffee :)
 
 [![paypal](https://www.paypalobjects.com/en_US/i/btn/btn_donateCC_LG.gif)](https://www.paypal.com/paypalme/afreakyelf)
 
