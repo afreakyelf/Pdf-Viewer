@@ -1,5 +1,6 @@
 package com.rajat.pdfviewer.compose
 
+import android.content.Context
 import android.net.Uri
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
@@ -13,34 +14,64 @@ import java.io.File
 
 @Composable
 fun PdfRendererViewCompose(
+    url: String,
     modifier: Modifier = Modifier,
-    url: String? = null,
-    file: File? = null,
-    uri: Uri? = null,
     headers: HeaderData = HeaderData(),
     lifecycleOwner: LifecycleOwner = LocalLifecycleOwner.current,
-    statusCallBack: PdfRendererView.StatusCallBack? = null
+    statusCallBack: PdfRendererView.StatusCallBack? = null,
 ) {
-    val lifecycleScope = lifecycleOwner.lifecycleScope
-
     AndroidView(
-        factory = { context ->
-            PdfRendererView(context).apply {
-                if (statusCallBack != null) {
-                    statusListener = statusCallBack
-                }
-                if (file != null) {
-                    initWithFile(file)
-                } else if (url != null) {
-                    initWithUrl(url, headers, lifecycleScope, lifecycleOwner.lifecycle)
-                } else if (uri != null) {
-                    initWithUri(uri)
-                }
+        factory = { context: Context -> PdfRendererView(context) },
+        update = { pdfRendererView: PdfRendererView ->
+            if (statusCallBack != null) {
+                pdfRendererView.statusListener = statusCallBack
             }
+
+            pdfRendererView.initWithUrl(
+                url = url,
+                headers = headers,
+                lifecycleCoroutineScope = lifecycleOwner.lifecycleScope,
+                lifecycle = lifecycleOwner.lifecycle,
+            )
         },
-        update = { view ->
-            // Update logic if needed
+        modifier = modifier,
+    )
+}
+
+@Composable
+fun PdfRendererViewCompose(
+    file: File,
+    modifier: Modifier = Modifier,
+    statusCallBack: PdfRendererView.StatusCallBack? = null,
+) {
+    AndroidView(
+        factory = { context -> PdfRendererView(context) },
+        update = { pdfRendererView: PdfRendererView ->
+            if (statusCallBack != null) {
+                pdfRendererView.statusListener = statusCallBack
+            }
+
+            pdfRendererView.initWithFile(file = file)
         },
         modifier = modifier
+    )
+}
+
+@Composable
+fun PdfRendererViewCompose(
+    uri: Uri,
+    modifier: Modifier = Modifier,
+    statusCallBack: PdfRendererView.StatusCallBack? = null,
+) {
+    AndroidView(
+        factory = { context -> PdfRendererView(context) },
+        update = { pdfRendererView: PdfRendererView ->
+            if (statusCallBack != null) {
+                pdfRendererView.statusListener = statusCallBack
+            }
+
+            pdfRendererView.initWithUri(uri = uri)
+        },
+        modifier = modifier,
     )
 }
