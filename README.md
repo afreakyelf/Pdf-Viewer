@@ -90,7 +90,7 @@ PdfViewerActivity.launchPdfFromUrl(
     context = this,
     pdfUrl = "your_pdf_url_here",
     pdfTitle = "PDF Title",
-    saveTo = PdfViewerActivity.saveTo.ASK_EVERYTIME,
+    saveTo = saveTo.ASK_EVERYTIME,
     enableDownload = true
 )
 ```
@@ -108,7 +108,7 @@ PdfViewerActivity.launchPdfFromPath(
     context = this,
     path = "your_file_path_or_uri_here",
     pdfTitle = "Title",
-    saveTo = PdfViewerActivity.saveTo.ASK_EVERYTIME,
+    saveTo = saveTo.ASK_EVERYTIME,
     fromAssets = false
 )
 ```
@@ -126,7 +126,7 @@ PdfViewerActivity.launchPdfFromPath(
   context = this,
   path = "file_name_in_assets",
   pdfTitle = "Title",
-  saveTo = PdfViewerActivity.saveTo.ASK_EVERYTIME,
+  saveTo = saveTo.ASK_EVERYTIME,
   fromAssets = true
 )
 ```
@@ -155,16 +155,48 @@ binding.pdfView.initWithUrl(
 ```
 
 #### Using with Jetpack Compose
-For Jetpack Compose, utilize PdfRendererViewCompose:
+
+For Jetpack Compose, utilize `PdfRendererViewCompose` to render PDF files.
+
+To render a PDF from a URL:
 
 ```kotlin
 PdfRendererViewCompose(
     url = "your_pdf_url_here",
-    lifecycleOwner = LocalLifecycleOwner.current
 )
 ```
 
-That's pretty much it and you're all wrapped up.
+To render a PDF from a local file:
+
+```kotlin
+PdfRendererViewCompose(
+    file = yourFile,
+)
+```
+
+To render a PDF from a URI:
+
+```kotlin
+PdfRendererViewCompose(
+    uri = yourUri,
+)
+```
+
+You can also provide arguments for additional parameters such as `modifier`, `headers`, `lifecycleOwner`, and `statusCallBack`:
+
+```kotlin
+PdfRendererViewCompose(
+    url = "your_pdf_url_here",
+    modifier = Modifier,
+    headers = HeaderData(mapOf("Authorization" to "123456789")),
+    lifecycleOwner = LocalLifecycleOwner.current,
+    statusCallBack = object : PdfRendererView.StatusCallBack {
+        // Override functions here
+    },
+)
+```
+
+That's all you need to integrate PDF rendering in your Compose application.
 
 ### Ui Customizations
 You need to add the custom theme to styles.xml/themes.xml file and override the required attribute values.
