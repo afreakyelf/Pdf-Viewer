@@ -90,7 +90,7 @@ PdfViewerActivity.launchPdfFromUrl(
     context = this,
     pdfUrl = "your_pdf_url_here",
     pdfTitle = "PDF Title",
-    saveTo = PdfViewerActivity.saveTo.ASK_EVERYTIME,
+    saveTo = saveTo.ASK_EVERYTIME,
     enableDownload = true
 )
 ```
@@ -108,7 +108,7 @@ PdfViewerActivity.launchPdfFromPath(
     context = this,
     path = "your_file_path_or_uri_here",
     pdfTitle = "Title",
-    saveTo = PdfViewerActivity.saveTo.ASK_EVERYTIME,
+    saveTo = saveTo.ASK_EVERYTIME,
     fromAssets = false
 )
 ```
@@ -126,7 +126,7 @@ PdfViewerActivity.launchPdfFromPath(
   context = this,
   path = "file_name_in_assets",
   pdfTitle = "Title",
-  saveTo = PdfViewerActivity.saveTo.ASK_EVERYTIME,
+  saveTo = saveTo.ASK_EVERYTIME,
   fromAssets = true
 )
 ```
