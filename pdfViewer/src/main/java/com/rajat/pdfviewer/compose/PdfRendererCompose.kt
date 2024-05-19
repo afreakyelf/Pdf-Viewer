@@ -1,7 +1,5 @@
 package com.rajat.pdfviewer.compose
 
-import android.content.Context
-import android.net.Uri
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalLifecycleOwner
@@ -10,68 +8,40 @@ import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.lifecycleScope
 import com.rajat.pdfviewer.HeaderData
 import com.rajat.pdfviewer.PdfRendererView
-import java.io.File
+import com.rajat.pdfviewer.PdfSource
 
 @Composable
 fun PdfRendererViewCompose(
-    url: String,
+    source: PdfSource,
     modifier: Modifier = Modifier,
     headers: HeaderData = HeaderData(),
     lifecycleOwner: LifecycleOwner = LocalLifecycleOwner.current,
-    statusCallBack: PdfRendererView.StatusCallBack? = null,
+    statusCallBack: PdfRendererView.StatusCallBack? = null
 ) {
-    AndroidView(
-        factory = { context: Context -> PdfRendererView(context) },
-        update = { pdfRendererView: PdfRendererView ->
-            if (statusCallBack != null) {
-                pdfRendererView.statusListener = statusCallBack
-            }
+    val lifecycleScope = lifecycleOwner.lifecycleScope
 
-            pdfRendererView.initWithUrl(
-                url = url,
-                headers = headers,
-                lifecycleCoroutineScope = lifecycleOwner.lifecycleScope,
-                lifecycle = lifecycleOwner.lifecycle,
-            )
+    AndroidView(
+        factory = { context ->
+            PdfRendererView(context).apply {
+                if (statusCallBack != null) {
+                    statusListener = statusCallBack
+                }
+
+                when (source) {
+                    is PdfSource.LocalFile -> initWithFile(source.file)
+                    is PdfSource.LocalUri -> initWithUri(source.uri)
+                    is PdfSource.Remote -> initWithUrl(
+                        source.url,
+                        headers,
+                        lifecycleScope,
+                        lifecycleOwner.lifecycle
+                    )
+                }
+            }
         },
-        modifier = modifier,
-    )
-}
-
-@Composable
-fun PdfRendererViewCompose(
-    file: File,
-    modifier: Modifier = Modifier,
-    statusCallBack: PdfRendererView.StatusCallBack? = null,
-) {
-    AndroidView(
-        factory = { context -> PdfRendererView(context) },
-        update = { pdfRendererView: PdfRendererView ->
-            if (statusCallBack != null) {
-                pdfRendererView.statusListener = statusCallBack
-            }
-
-            pdfRendererView.initWithFile(file = file)
+        update = { view ->
+            // Update logic if needed
         },
         modifier = modifier
-    )
-}
-
-@Composable
-fun PdfRendererViewCompose(
-    uri: Uri,
-    modifier: Modifier = Modifier,
-    statusCallBack: PdfRendererView.StatusCallBack? = null,
-) {
-    AndroidView(
-        factory = { context -> PdfRendererView(context) },
-        update = { pdfRendererView: PdfRendererView ->
-            if (statusCallBack != null) {
-                pdfRendererView.statusListener = statusCallBack
-            }
-
-            pdfRendererView.initWithUri(uri = uri)
-        },
-        modifier = modifier,
     )
 }
