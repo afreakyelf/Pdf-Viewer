@@ -155,44 +155,12 @@ binding.pdfView.initWithUrl(
 ```
 
 #### Using with Jetpack Compose
-
-For Jetpack Compose, utilize `PdfRendererViewCompose` to render PDF files.
-
-To render a PDF from a URL:
+For Jetpack Compose, utilize PdfRendererViewCompose:
 
 ```kotlin
 PdfRendererViewCompose(
-    url = "your_pdf_url_here",
-)
-```
-
-To render a PDF from a local file:
-
-```kotlin
-PdfRendererViewCompose(
-    file = yourFile,
-)
-```
-
-To render a PDF from a URI:
-
-```kotlin
-PdfRendererViewCompose(
-    uri = yourUri,
-)
-```
-
-You can also provide arguments for additional parameters such as `modifier`, `headers`, `lifecycleOwner`, and `statusCallBack`:
-
-```kotlin
-PdfRendererViewCompose(
-    url = "your_pdf_url_here",
-    modifier = Modifier,
-    headers = HeaderData(mapOf("Authorization" to "123456789")),
-    lifecycleOwner = LocalLifecycleOwner.current,
-    statusCallBack = object : PdfRendererView.StatusCallBack {
-        // Override functions here
-    },
+    source = PdfSource.Remote("your_pdf_url_here"),
+    lifecycleOwner = LocalLifecycleOwner.current
 )
 ```
 
