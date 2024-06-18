@@ -6,10 +6,6 @@
             <enum name="normal" value="2" />
             <enum name="enhanced" value="3" />
         </attr>
-        <attr name="pdfView_engine" format="enum">
-            <enum name="internal" value="100" />
-            <enum name="google" value="200" />
-        </attr>
         <attr name="pdfView_showDivider" format="boolean" />
         <attr name="pdfView_divider" format="reference" />
         <attr name="pdfView_enableLoadingForPages" format="reference|boolean" />
