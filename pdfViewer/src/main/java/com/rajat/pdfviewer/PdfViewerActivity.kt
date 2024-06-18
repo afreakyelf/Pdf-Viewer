@@ -35,7 +35,6 @@ import com.rajat.pdfviewer.util.FileUtils.createPdfDocumentUri
 import com.rajat.pdfviewer.util.FileUtils.fileFromAsset
 import com.rajat.pdfviewer.util.FileUtils.uriToFile
 import com.rajat.pdfviewer.util.NetworkUtil.checkInternetConnection
-import com.rajat.pdfviewer.util.PdfEngine
 import com.rajat.pdfviewer.util.saveTo
 import java.io.File
 
@@ -68,7 +67,6 @@ class PdfViewerActivity : AppCompatActivity() {
         const val FILE_TITLE = "pdf_file_title"
         const val ENABLE_FILE_DOWNLOAD = "enable_download"
         const val FROM_ASSETS = "from_assests"
-        var engine = PdfEngine.INTERNAL
         var enableDownload = false
         var isPDFFromPath = false
         var isFromAssets = false
@@ -202,8 +200,6 @@ class PdfViewerActivity : AppCompatActivity() {
             FROM_ASSETS,
             false
         )
-
-        engine = PdfEngine.INTERNAL
 
         val typedArray = obtainStyledAttributes(R.styleable.PdfRendererView_Strings)
         error_pdf_corrupted =
