@@ -22,20 +22,19 @@ object FileUtils {
     }
 
     @Throws(IOException::class)
-    fun copy(inputStream: InputStream?, output: File?) {
-        var outputStream: OutputStream? = null
+    fun copy(inputStream: InputStream, output: File?) {
+        val outputStream = FileOutputStream(output)
         try {
-                outputStream = FileOutputStream(output)
             var read = 0
             val bytes = ByteArray(1024)
-            while (inputStream!!.read(bytes).also { read = it } != -1) {
+            while (inputStream.read(bytes).also { read = it } != -1) {
                 outputStream.write(bytes, 0, read)
             }
         } finally {
             try {
-                inputStream?.close()
+                inputStream.close()
             } finally {
-                outputStream?.close()
+                outputStream.close()
             }
         }
     }
