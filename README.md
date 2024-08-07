@@ -159,7 +159,7 @@ For Jetpack Compose, utilize PdfRendererViewCompose:
 
 ```kotlin
 PdfRendererViewCompose(
-    url = "your_pdf_url_here",
+    source = PdfSource.Remote("your_pdf_url_here"),
     lifecycleOwner = LocalLifecycleOwner.current
 )
 ```

@@ -1,6 +1,5 @@
 package com.rajat.pdfviewer.compose
 
-import android.net.Uri
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalLifecycleOwner
@@ -9,14 +8,12 @@ import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.lifecycleScope
 import com.rajat.pdfviewer.HeaderData
 import com.rajat.pdfviewer.PdfRendererView
-import java.io.File
+import com.rajat.pdfviewer.PdfSource
 
 @Composable
 fun PdfRendererViewCompose(
+    source: PdfSource,
     modifier: Modifier = Modifier,
-    url: String? = null,
-    file: File? = null,
-    uri: Uri? = null,
     headers: HeaderData = HeaderData(),
     lifecycleOwner: LifecycleOwner = LocalLifecycleOwner.current,
     statusCallBack: PdfRendererView.StatusCallBack? = null
@@ -29,12 +26,16 @@ fun PdfRendererViewCompose(
                 if (statusCallBack != null) {
                     statusListener = statusCallBack
                 }
-                if (file != null) {
-                    initWithFile(file)
-                } else if (url != null) {
-                    initWithUrl(url, headers, lifecycleScope, lifecycleOwner.lifecycle)
-                } else if (uri != null) {
-                    initWithUri(uri)
+
+                when (source) {
+                    is PdfSource.LocalFile -> initWithFile(source.file)
+                    is PdfSource.LocalUri -> initWithUri(source.uri)
+                    is PdfSource.Remote -> initWithUrl(
+                        source.url,
+                        headers,
+                        lifecycleScope,
+                        lifecycleOwner.lifecycle
+                    )
                 }
             }
         },

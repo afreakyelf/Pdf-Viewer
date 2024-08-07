@@ -26,6 +26,7 @@ import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.rajat.pdfviewer.PdfRendererView
+import com.rajat.pdfviewer.PdfSource
 import com.rajat.pdfviewer.compose.PdfRendererViewCompose
 import com.rajat.sample.pdfviewer.ui.theme.AndroidpdfviewerTheme
 import java.io.File
@@ -102,8 +103,8 @@ fun MyPdfScreenFromUri(modifier: Modifier = Modifier) {
 fun MyPdfScreenFromUri(uri: Uri, modifier: Modifier = Modifier) {
     val lifecycleOwner = LocalLifecycleOwner.current
     PdfRendererViewCompose(
+        source = PdfSource.LocalUri(uri),
         modifier = modifier,
-        uri = uri,
         lifecycleOwner = lifecycleOwner,
         statusCallBack = object : PdfRendererView.StatusCallBack {
             override fun onPdfLoadStart() {
@@ -137,8 +138,8 @@ fun MyPdfScreenFromUri(uri: Uri, modifier: Modifier = Modifier) {
 fun MyPdfScreenFromUrl(url: String, modifier: Modifier = Modifier) {
     val lifecycleOwner = LocalLifecycleOwner.current
     PdfRendererViewCompose(
+        source = PdfSource.Remote(url),
         modifier = modifier,
-        url = url,
         lifecycleOwner = lifecycleOwner,
         statusCallBack = object : PdfRendererView.StatusCallBack {
             override fun onPdfLoadStart() {
@@ -174,7 +175,7 @@ fun MyPdfScreenFromFile() {
     val lifecycleOwner = LocalLifecycleOwner.current
     val pdfFile = File("path/to/your/file.pdf")  // Replace with your file path
     PdfRendererViewCompose(
-        file = pdfFile,
+        source = PdfSource.LocalFile(pdfFile),
         lifecycleOwner = lifecycleOwner
     )
 }
