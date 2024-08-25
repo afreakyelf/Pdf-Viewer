@@ -19,7 +19,8 @@ fun PdfRendererViewCompose(
     uri: Uri? = null,
     headers: HeaderData = HeaderData(),
     lifecycleOwner: LifecycleOwner = LocalLifecycleOwner.current,
-    statusCallBack: PdfRendererView.StatusCallBack? = null
+    statusCallBack: PdfRendererView.StatusCallBack? = null,
+    jumpToPage: Int? = null,
 ) {
     val lifecycleScope = lifecycleOwner.lifecycleScope
 
@@ -36,6 +37,8 @@ fun PdfRendererViewCompose(
                 } else if (uri != null) {
                     initWithUri(uri)
                 }
+
+                jumpToPage?.let { jumpToPage(it) }
             }
         },
         update = { view ->
