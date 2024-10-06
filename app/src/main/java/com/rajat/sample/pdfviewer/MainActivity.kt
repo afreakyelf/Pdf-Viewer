@@ -3,6 +3,8 @@ package com.rajat.sample.pdfviewer
 import android.content.Intent
 import android.os.Bundle
 import android.util.Log
+import android.view.View
+import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
@@ -102,7 +104,24 @@ class MainActivity : AppCompatActivity() {
                 lifecycle = lifecycle
             )
             binding.pdfView.jumpToPage(3)
-
+            //second version of initWithUrl version, using functional programming
+            binding.pdfView.proWithUrl(url = download_file_url2,
+                lifecycleCoroutineScope = lifecycleScope,
+                lifecycle = lifecycle,
+                onDownloadProgress = {_,_,_->
+                    //doing any thing
+                },
+                onDownloadPdfSuccess = {_->
+                    //doing any thing
+                },
+                onDownloadPdfFailed = {e->
+                    //doing any thing
+                },
+                onDownloadStarted = {
+                    //doing any thing
+                },
+                onPageChanged = {_,_->}
+                )
         }
 
         binding.openInCompose.setOnClickListener {
@@ -159,6 +178,5 @@ class MainActivity : AppCompatActivity() {
                 pdfTitle = "Title", saveTo = saveTo.ASK_EVERYTIME,  fromAssets = true)
         )
     }
-
 
 }

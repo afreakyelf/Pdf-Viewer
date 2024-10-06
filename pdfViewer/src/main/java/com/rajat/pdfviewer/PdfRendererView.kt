@@ -14,6 +14,7 @@ import android.os.Looper
 import android.os.ParcelFileDescriptor
 import android.os.Parcelable
 import android.util.AttributeSet
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.WindowManager
@@ -101,6 +102,46 @@ class PdfRendererView @JvmOverloads constructor(
             }
         })
     }
+
+    fun proWithUrl(
+        url: String,
+        lifecycleCoroutineScope: LifecycleCoroutineScope,
+        lifecycle: Lifecycle,
+        onDownloadStarted: () -> Unit,
+        onDownloadProgress: (progress: Int, downloadedBytes: Long, totalBytes: Long?) -> Unit,
+        onDownloadPdfSuccess: (absolutePath: String) -> Unit,
+        onDownloadPdfFailed: (e: Throwable) -> Unit,
+        onPageChanged: (currentPage: Int, totalPage: Int) -> Unit
+    ){
+        this.initWithUrl(
+            url = url,
+            lifecycleCoroutineScope = lifecycleCoroutineScope,
+            lifecycle = lifecycle
+        )
+
+        this.statusListener = object :StatusCallBack {
+            override fun onPdfLoadStart() {
+                onDownloadStarted()
+            }
+
+            override fun onPdfLoadProgress(progress: Int, downloadedBytes: Long, totalBytes: Long?) {
+                onDownloadProgress(progress, downloadedBytes, totalBytes)
+            }
+
+            override fun onPdfLoadSuccess(absolutePath: String) {
+                onDownloadPdfSuccess(absolutePath)
+            }
+
+            override fun onError(error: Throwable) {
+                onDownloadPdfFailed(error)
+            }
+
+            override fun onPageChanged(currentPage: Int, totalPage: Int) {
+                onPageChanged(currentPage, totalPage)
+            }
+        }
+    }
+
 
     fun initWithFile(file: File) {
         init(file)
