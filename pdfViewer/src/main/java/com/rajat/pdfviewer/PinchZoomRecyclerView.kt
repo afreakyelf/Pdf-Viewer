@@ -197,8 +197,8 @@ class PinchZoomRecyclerView : RecyclerView {
         val contentHeight = height * mScaleFactor
 
         // Calculate the maximum allowed translation
-        val maxPosX = if (contentWidth > width) (contentWidth - width) else 0f
-        val maxPosY = if (contentHeight > height) (contentHeight - height) else 0f
+        val maxPosX = if (contentWidth > width) contentWidth - width else 0f
+        val maxPosY = if (contentHeight > height) contentHeight - height else 0f
 
         // Clamp the translations to ensure content does not move too far
         mPosX = Math.min(maxPosX, Math.max(-maxPosX, mPosX))
