@@ -110,16 +110,6 @@ class PinchZoomRecyclerView : RecyclerView {
                 }
             }
             MotionEvent.ACTION_CANCEL -> mActivePointerId = INVALID_POINTER_ID
-            MotionEvent.ACTION_POINTER_UP -> {
-                val pointerIndex = ev.actionIndex
-                val pointerId = ev.getPointerId(pointerIndex)
-                if (pointerId == mActivePointerId) {
-                    val newPointerIndex = if (pointerIndex == 0) 1 else 0
-                    mLastTouchX = ev.getX(newPointerIndex)
-                    mLastTouchY = ev.getY(newPointerIndex)
-                    mActivePointerId = ev.getPointerId(newPointerIndex)
-                }
-            }
             MotionEvent.ACTION_SCROLL -> {
                 val dy = ev.getAxisValue(MotionEvent.AXIS_VSCROLL) * mScaleFactor
                 mPosY += dy
@@ -180,15 +170,6 @@ class PinchZoomRecyclerView : RecyclerView {
 
             return true
         }
-    }
-
-
-
-    private fun resetZoom() {
-        mScaleFactor = 1f
-        mPosX = 0f
-        mPosY = 0f
-        invalidate()
     }
 
     private fun clampPosition() {
@@ -273,7 +254,6 @@ class PinchZoomRecyclerView : RecyclerView {
 
     companion object {
         private const val INVALID_POINTER_ID = -1
-        private const val MAX_SCALE = 3.0f
         private const val MAX_ZOOM = 3.0f
         private const val ZOOM_DURATION = 300L
     }
