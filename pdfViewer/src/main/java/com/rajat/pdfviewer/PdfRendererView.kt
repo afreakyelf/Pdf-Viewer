@@ -76,7 +76,9 @@ class PdfRendererView @JvmOverloads constructor(
     // endregion
 
     var zoomListener: ZoomListener? = null
+    var scrollListener: ScrollListener? = null
     var statusListener: StatusCallBack? = null
+    var renderQuality: RenderQuality = RenderQuality.NORMAL
 
     //region Public APIs
     fun isZoomedIn(): Boolean = this::recyclerView.isInitialized && recyclerView.isZoomedIn()
@@ -217,7 +219,8 @@ class PdfRendererView @JvmOverloads constructor(
             pdfRendererCore,
             this,
             pageMargin,
-            enableLoadingForPages
+            enableLoadingForPages,
+            renderQuality,
         )
 
         recyclerView.apply {
@@ -230,6 +233,7 @@ class PdfRendererView @JvmOverloads constructor(
                 }.let { addItemDecoration(it) }
             }
             setZoomEnabled(isZoomEnabled)
+            setRenderQuality(renderQuality)
         }
 
         recyclerView.addOnScrollListener(
@@ -252,6 +256,9 @@ class PdfRendererView @JvmOverloads constructor(
 
         recyclerView.setOnZoomChangeListener { isZoomedIn, scale ->
             zoomListener?.onZoomChanged(isZoomedIn, scale)
+        }
+        recyclerView.setScrollListener { isScrolledToTop ->
+            scrollListener?.onScroll(isScrolledToTop)
         }
 
         recyclerView.post {
@@ -477,5 +484,9 @@ class PdfRendererView @JvmOverloads constructor(
 
     interface ZoomListener {
         fun onZoomChanged(isZoomedIn: Boolean, scale: Float)
+    }
+
+    interface ScrollListener {
+        fun onScroll(isScrolledToTop: Boolean)
     }
 }
