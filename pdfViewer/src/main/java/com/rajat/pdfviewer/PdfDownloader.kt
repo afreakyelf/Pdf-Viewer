@@ -74,7 +74,9 @@ class PdfDownloader(
             withContext(Dispatchers.IO) {
                 var tempFile: File? = null
                 try {
-                    listener.onDownloadStart()
+                    withContext(Dispatchers.Main) {
+                        listener.onDownloadStart()
+                    }
                     val cacheDir = listener.getContext().cacheDir
                     tempFile = File.createTempFile("download_", ".tmp", cacheDir)
                     val urlConnection = URL(downloadUrl).openConnection().apply {
