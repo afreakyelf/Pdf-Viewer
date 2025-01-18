@@ -222,10 +222,8 @@ class PinchZoomRecyclerView : RecyclerView {
                 mScaleFactor = targetScale
 
                 // Adjust position so that it scales towards the double-tap location
-                mPosX -= (e.x - mPosX) * (1 - scaleDelta)
-                mPosY -= (e.y - mPosY) * (1 - scaleDelta)
-
-                clampPosition()
+                mPosX -= (e.x - mPosX) * (scaleDelta - 1)
+                mPosY -= (e.y - mPosY) * (scaleDelta - 1)
             }
 
             invalidate()
