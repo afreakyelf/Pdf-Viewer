@@ -39,7 +39,7 @@
         )
 
         private val openPages = ConcurrentHashMap<Int, PdfRenderer.Page>()
-        private var pdfRenderer: PdfRenderer? = null
+        private var pdfRenderer: PdfRenderer = PdfRenderer(fileDescriptor).also { isRendererOpen = true }
         private val cacheManager = CacheManager(context)
 
         companion object {
@@ -69,7 +69,6 @@
 
 
         init {
-            pdfRenderer = PdfRenderer(fileDescriptor).also { isRendererOpen = true }
             cacheManager.initCache()
         }
 
@@ -96,9 +95,9 @@
             cacheManager.pageExistsInCache(pageNo)
 
         fun prefetchPages(currentPage: Int, width: Int, height: Int) {
-            val dynamicPrefetchCount = calculateDynamicPrefetchCount(context, pdfRenderer!!)
+            val dynamicPrefetchCount = calculateDynamicPrefetchCount(context, pdfRenderer)
             (currentPage - dynamicPrefetchCount..currentPage + dynamicPrefetchCount)
-                .filter { it in 0 until pdfRenderer!!.pageCount && !pageExistInCache(it) }
+                .filter { it in 0 until pdfRenderer.pageCount && !pageExistInCache(it) }
                 .forEach { pageNo ->
                     CoroutineScope(Dispatchers.IO).launch {
                         val bitmap = CommonUtils.Companion.BitmapPool.getBitmap(width, height)
@@ -109,14 +108,11 @@
                     }
                 }
         }
-        private fun openPdfFile(fileDescriptor: ParcelFileDescriptor) {
-            pdfRenderer = PdfRenderer(fileDescriptor)
-        }
 
         fun getPageCount(): Int {
             synchronized(this) {
                 if (!isRendererOpen) return 0
-                return pdfRenderer?.pageCount ?: 0
+                return pdfRenderer.pageCount
             }
         }
 
@@ -183,7 +179,7 @@
             synchronized(this) {
                 if (!isRendererOpen) return null
                 closeAllOpenPages()
-                return pdfRenderer?.openPage(pageNo)?.also { page ->
+                return pdfRenderer.openPage(pageNo)?.also { page ->
                     openPages[pageNo] = page
                 }
             }
