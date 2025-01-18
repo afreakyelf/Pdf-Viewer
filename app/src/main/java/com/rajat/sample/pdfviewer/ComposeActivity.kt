@@ -19,7 +19,6 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalLifecycleOwner
@@ -100,11 +99,9 @@ fun MyPdfScreenFromUri(modifier: Modifier = Modifier) {
 
 @Composable
 fun MyPdfScreenFromUri(uri: Uri, modifier: Modifier = Modifier) {
-    val lifecycleOwner = LocalLifecycleOwner.current
     PdfRendererViewCompose(
         modifier = modifier,
         uri = uri,
-        lifecycleOwner = lifecycleOwner,
         statusCallBack = object : PdfRendererView.StatusCallBack {
             override fun onPdfLoadStart() {
                 Log.i("statusCallBack", "onPdfLoadStart")
@@ -171,11 +168,9 @@ fun MyPdfScreenFromUrl(url: String, modifier: Modifier = Modifier) {
 
 @Composable
 fun MyPdfScreenFromFile() {
-    val lifecycleOwner = LocalLifecycleOwner.current
     val pdfFile = File("path/to/your/file.pdf")  // Replace with your file path
     PdfRendererViewCompose(
         file = pdfFile,
-        lifecycleOwner = lifecycleOwner
     )
 }
 
