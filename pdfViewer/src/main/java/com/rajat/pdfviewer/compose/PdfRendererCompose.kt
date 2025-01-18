@@ -18,11 +18,10 @@ fun PdfRendererViewCompose(
     lifecycleOwner: LifecycleOwner = LocalLifecycleOwner.current,
     statusCallBack: PdfRendererView.StatusCallBack? = null
 ) {
-    val lifecycleScope = lifecycleOwner.lifecycleScope
-
     AndroidView(
-        factory = { context ->
-            PdfRendererView(context).apply {
+        factory = { context -> PdfRendererView(context) },
+        update = { view ->
+            with(view) {
                 if (statusCallBack != null) {
                     statusListener = statusCallBack
                 }
@@ -33,14 +32,11 @@ fun PdfRendererViewCompose(
                     is PdfSource.Remote -> initWithUrl(
                         source.url,
                         headers,
-                        lifecycleScope,
+                        lifecycleOwner.lifecycleScope,
                         lifecycleOwner.lifecycle
                     )
                 }
             }
-        },
-        update = { view ->
-            // Update logic if needed
         },
         modifier = modifier
     )
