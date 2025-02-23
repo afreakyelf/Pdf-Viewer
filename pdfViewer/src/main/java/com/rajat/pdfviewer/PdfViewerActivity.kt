@@ -58,6 +58,7 @@ class PdfViewerActivity : AppCompatActivity() {
     private lateinit var binding: ActivityPdfViewerBinding
     private val viewModel: PdfViewerViewModel by viewModels()
     private var downloadedFilePath: String? = null
+    private var isDownloadButtonEnabled = false
 
     companion object {
         const val FILE_URL = "pdf_file_url"
@@ -230,6 +231,7 @@ class PdfViewerActivity : AppCompatActivity() {
             override fun onPdfLoadStart() {
                 runOnUiThread {
                     true.showProgressBar()
+                    updateDownloadButtonState(false)
                 }
             }
 
@@ -245,6 +247,11 @@ class PdfViewerActivity : AppCompatActivity() {
                 runOnUiThread {
                     false.showProgressBar()
                     downloadedFilePath = absolutePath
+                    if (menuItem == null) {
+                        isDownloadButtonEnabled = true // ✅ Store state so it applies later
+                    } else {
+                        updateDownloadButtonState(true)
+                    }
                 }
             }
             override fun onError(error: Throwable) {
@@ -329,23 +336,27 @@ class PdfViewerActivity : AppCompatActivity() {
     override fun onCreateOptionsMenu(menu: Menu): Boolean {
         val inflater: MenuInflater = menuInflater
         inflater.inflate(R.menu.menu, menu)
-        val downloadMenuItem = menu.findItem(R.id.download)
+        menuItem = menu.findItem(R.id.download)
+
         val typedArray = theme.obtainStyledAttributes(R.styleable.PdfRendererView_toolbar)
         try {
             val downloadIconTint = typedArray.getColor(
                 R.styleable.PdfRendererView_toolbar_pdfView_downloadIconTint,
-                ContextCompat.getColor(applicationContext, android.R.color.white) // Default tint
+                ContextCompat.getColor(applicationContext, android.R.color.white)
             )
             // Apply tint if it's specified and the icon exists
-            downloadMenuItem.icon?.let { icon ->
+            menuItem?.icon?.let { icon ->
                 val wrappedIcon = DrawableCompat.wrap(icon).mutate()
                 DrawableCompat.setTint(wrappedIcon, downloadIconTint)
-                downloadMenuItem.icon = wrappedIcon
+                menuItem?.icon = wrappedIcon
             }
         } finally {
             typedArray.recycle()
         }
-        downloadMenuItem.isVisible = enableDownload
+
+        updateDownloadButtonState(isDownloadButtonEnabled)
+
+        menuItem?.isVisible = enableDownload
         return true
     }
 
@@ -524,6 +535,15 @@ class PdfViewerActivity : AppCompatActivity() {
     override fun onDestroy() {
         super.onDestroy()
         binding.pdfView.closePdfRender()
+    }
+
+    private fun updateDownloadButtonState(isEnabled: Boolean) {
+        isDownloadButtonEnabled = isEnabled
+
+        menuItem?.let { item ->
+            item.isEnabled = isEnabled
+            item.icon?.alpha = if (isEnabled) 255 else 100 // Adjust opacity for disabled state
+        }
     }
 
 }

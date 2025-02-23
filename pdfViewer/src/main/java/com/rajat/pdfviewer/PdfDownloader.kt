@@ -53,8 +53,10 @@ class PdfDownloader(
 
         val cachedFile = File(listener.getContext().cacheDir, cachedFileName)
 
-        if (cachedFile.exists()) {
-            listener.onDownloadSuccess(cachedFile.absolutePath)
+        if (cachedFile.exists() && isValidPdf(cachedFile)) {
+            withContext(Dispatchers.Main) {
+                listener.onDownloadSuccess(cachedFile.absolutePath)
+            }
         } else {
             retryDownload(downloadUrl, cachedFileName)
         }
@@ -101,7 +103,12 @@ class PdfDownloader(
             val cacheDir = listener.getContext().cacheDir
             val tempFile =
                 File.createTempFile("download_", ".tmp", cacheDir)
+            val outputFile = File(cacheDir, cachedFileName)
 
+            if (outputFile.exists() && !isValidPdf(outputFile)) {
+                Log.d("PdfDownloader", "Deleting invalid cached PDF: ${outputFile.absolutePath}")
+                outputFile.delete()
+            }
 
             val response = makeNetworkRequest(downloadUrl)
 
@@ -116,7 +123,6 @@ class PdfDownloader(
                 }
             }
 
-            val outputFile = File(cacheDir, cachedFileName)
             tempFile.renameTo(outputFile)
 
             if (!isValidPdf(outputFile)) {
