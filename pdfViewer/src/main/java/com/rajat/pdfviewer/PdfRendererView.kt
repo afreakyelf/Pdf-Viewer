@@ -277,7 +277,7 @@ class PdfRendererView @JvmOverloads constructor(
         }
     }
 
-    fun getBitmapByPage(page: Int): Bitmap? {
+    private fun getBitmapByPage(page: Int): Bitmap? {
         return pdfRendererCore.getBitmapFromCache(page)
     }
 

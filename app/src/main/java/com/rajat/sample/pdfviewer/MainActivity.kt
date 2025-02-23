@@ -17,7 +17,8 @@ class MainActivity : AppCompatActivity() {
     private lateinit var binding: ActivityMainBinding
 
     private var download_file_url = "https://css4.pub/2015/usenix/example.pdf"
-    private var large_pdf = "https://research.nhm.org/pdfs/10840/10840.pdf"
+//    private var large_pdf = "https://research.nhm.org/pdfs/10840/10840.pdf"
+    private var large_pdf = "https://tinyurl.com/mpn6vude"
     private var download_file_url1 = "https://css4.pub/2017/newsletter/drylab.pdf"
     private var download_file_url2 = "https://css4.pub/2015/textbook/somatosensory.pdf"
 

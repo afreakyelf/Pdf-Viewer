@@ -3,8 +3,8 @@ package com.rajat.pdfviewer.util
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.util.Log
 import android.util.LruCache
-import com.rajat.pdfviewer.PdfRendererCore
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -22,15 +22,14 @@ class CacheManager(private val context: Context) {
     }
 
     private fun createMemoryCache(): LruCache<Int, Bitmap> {
-        val maxMemory = (Runtime.getRuntime().maxMemory() / 1024).toInt() // Use 1/8th of available memory for cache
-        val cacheSize = maxMemory / 8
+        val maxMemory = (Runtime.getRuntime().maxMemory() / 1024).toInt()
+        val cacheSize = maxMemory / 6  // Increased cache size
         return object : LruCache<Int, Bitmap>(cacheSize) {
             override fun sizeOf(key: Int, value: Bitmap): Int = value.byteCount / 1024
         }
     }
 
     fun initCache() {
-        val cacheDir = File(context.cacheDir, Companion.CACHE_PATH)
         if (cacheDir.exists()) {
             cacheDir.deleteRecursively()
         }
@@ -47,10 +46,31 @@ class CacheManager(private val context: Context) {
 
     fun addBitmapToCache(pageNo: Int, bitmap: Bitmap) {
         memoryCache.put(pageNo, bitmap)
+        writeBitmapToCache(pageNo, bitmap)
+    }
+
+    fun writeBitmapToCache(pageNo: Int, bitmap: Bitmap) {
         CoroutineScope(Dispatchers.IO).launch {
-            val file = File(cacheDir, pageNo.toString())
-            FileOutputStream(file).use { fos ->
-                bitmap.compress(Bitmap.CompressFormat.JPEG, 75, fos)
+            try {
+                // Ensure cache directory exists
+                if (!cacheDir.exists()) {
+                    cacheDir.mkdirs()
+                }
+
+                val savePath = File(cacheDir, pageNo.toString())
+
+                // Ensure parent directory exists
+                savePath.parentFile?.let {
+                    if (!it.exists()) {
+                        it.mkdirs()
+                    }
+                }
+
+                FileOutputStream(savePath).use { fos ->
+                    bitmap.compress(Bitmap.CompressFormat.JPEG, 75, fos)
+                }
+            } catch (e: Exception) {
+                Log.e("CacheManager", "Error writing bitmap to cache", e)
             }
         }
     }
@@ -61,6 +81,11 @@ class CacheManager(private val context: Context) {
     fun clearCache() {
         memoryCache.evictAll()
         cacheDir.deleteRecursively()
+
+        // Ensure cache directory is re-created after clearing
+        if (!cacheDir.exists()) {
+            cacheDir.mkdirs()
+        }
     }
 
     companion object {

@@ -78,19 +78,10 @@
         private fun addBitmapToMemoryCache(pageNo: Int, bitmap: Bitmap) =
             cacheManager.addBitmapToCache(pageNo, bitmap)
 
-        private fun writeBitmapToCache(pageNo: Int, bitmap: Bitmap, shouldCache: Boolean = true) {
-            if (!shouldCache) return
-            CoroutineScope(Dispatchers.IO).launch {
-                try {
-                    val savePath = File(File(context.cacheDir, CACHE_PATH), pageNo.toString())
-                    FileOutputStream(savePath).use { fos ->
-                        bitmap.compress(CompressFormat.JPEG, 75, fos) // Compress as JPEG
-                    }
-                } catch (e: Exception) {
-                    Log.e("PdfRendererCore", "Error writing bitmap to cache: ${e.message}")
-                }
-            }
+        private fun writeBitmapToCache(pageNo: Int, bitmap: Bitmap) {
+            cacheManager.writeBitmapToCache(pageNo, bitmap)
         }
+
         fun pageExistInCache(pageNo: Int): Boolean =
             cacheManager.pageExistsInCache(pageNo)
 
@@ -121,33 +112,52 @@
                 onBitmapReady?.invoke(false, pageNo, null)
                 return
             }
+
             val cachedBitmap = getBitmapFromCache(pageNo)
             if (cachedBitmap != null) {
                 CoroutineScope(Dispatchers.Main).launch { onBitmapReady?.invoke(true, pageNo, cachedBitmap) }
                 return
             }
+
             CoroutineScope(Dispatchers.IO).launch {
+                var success = false
+                var renderedBitmap: Bitmap? = null
+
                 synchronized(this@PdfRendererCore) {
                     if (!isRendererOpen) return@launch
+
                     openPageSafely(pageNo)?.use { pdfPage ->
                         try {
-                            bitmap.eraseColor(Color.WHITE) // Clear the bitmap with white color
-                            pdfPage.render(bitmap, null, null, PdfRenderer.Page.RENDER_MODE_FOR_DISPLAY)
+                            bitmap.eraseColor(Color.WHITE) // Clear bitmap
+
+                            // Render PDF page
+                            pdfPage.render(bitmap, null, null, PdfRenderer.Page.RENDER_MODE_FOR_PRINT)
+
+                            // Cache the rendered bitmap
                             addBitmapToMemoryCache(pageNo, bitmap)
-                            CoroutineScope(Dispatchers.IO).launch { writeBitmapToCache(pageNo, bitmap) }
-                            CoroutineScope(Dispatchers.Main).launch { onBitmapReady?.invoke(true, pageNo, bitmap) }
+
+                            // Prepare results outside the synchronized block
+                            success = true
+                            renderedBitmap = bitmap
                         } catch (e: Exception) {
-                            CoroutineScope(Dispatchers.Main).launch { onBitmapReady?.invoke(false, pageNo, null) }
+                            Log.e("PdfRendererCore", "Error rendering page: ${e.message}", e)
                         }
                     }
+                }
+
+                // Switch to Main thread **after** synchronized block releases the lock
+                withContext(Dispatchers.Main) {
+                    onBitmapReady?.invoke(success, pageNo, renderedBitmap)
                 }
             }
         }
 
+
+
         private suspend fun <T> withPdfPage(pageNo: Int, block: (PdfRenderer.Page) -> T): T? =
             withContext(Dispatchers.IO) {
                 synchronized(this@PdfRendererCore) {
-                    pdfRenderer?.openPage(pageNo)?.use { page ->
+                    pdfRenderer.openPage(pageNo)?.use { page ->
                         return@withContext block(page)
                     }
                 }

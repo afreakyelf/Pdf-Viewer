@@ -7,7 +7,9 @@ import android.net.Uri
 import android.os.Build
 import android.os.Environment
 import android.provider.MediaStore
-import android.text.TextUtils
+import android.util.Log
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import java.io.*
 
 object FileUtils {
@@ -39,26 +41,13 @@ object FileUtils {
         }
     }
 
-     fun uriToFile(context: Context,uri: Uri): File {
+    fun uriToFile(context: Context, uri: Uri): File {
         val inputStream = context.contentResolver.openInputStream(uri)
         val tempFile = File.createTempFile("pdf_temp", ".pdf", context.cacheDir)
         tempFile.outputStream().use { fileOut ->
             inputStream?.copyTo(fileOut)
         }
         return tempFile
-    }
-
-    @Throws(IOException::class)
-    fun downloadFile(context: Context, assetName: String, filePath: String, fileName: String?){
-
-       val dirPath = "${Environment.getExternalStorageDirectory()}/${filePath}"
-        val outFile = File(dirPath)
-        //Create New File if not present
-        if (!outFile.exists()) {
-            outFile.mkdirs()
-        }
-        val outFile1 = File(dirPath, "/$fileName.pdf")
-        copy(context.assets.open(assetName), outFile1)
     }
 
     fun createPdfDocumentUri(contentResolver: ContentResolver, fileName: String): Uri {
@@ -71,5 +60,44 @@ object FileUtils {
         }
         return contentResolver.insert(MediaStore.Files.getContentUri("external"), contentValues)
             ?: throw IOException("Failed to create new MediaStore record.")
+    }
+
+    fun getCachedFileName(url: String): String {
+        return url.hashCode().toString() + ".pdf"
+    }
+
+    fun clearPdfCache(context: Context, exceptFileName: String? = null) {
+        val cacheDir = context.cacheDir
+        cacheDir.listFiles { _, name -> name.endsWith(".pdf") && name != exceptFileName }
+            ?.forEach { it.delete() }
+    }
+
+    fun writeFile(inputStream: InputStream, file: File, totalLength: Long, onProgress: (Long) -> Unit) {
+        FileOutputStream(file).use { outputStream ->
+            val data = ByteArray(8192)
+            var totalBytesRead = 0L
+            var bytesRead: Int
+            while (inputStream.read(data).also { bytesRead = it } != -1) {
+                outputStream.write(data, 0, bytesRead)
+                totalBytesRead += bytesRead
+                onProgress(totalBytesRead)
+            }
+            outputStream.flush()
+        }
+    }
+
+
+    fun isValidPdf(file: File): Boolean {
+        return try {
+            FileInputStream(file).use { inputStream ->
+                val signature = ByteArray(4)
+                if (inputStream.read(signature) != 4) return false
+                val pdfHeader = String(signature, Charsets.US_ASCII)
+                pdfHeader.startsWith("%PDF")
+            }
+        } catch (e: Exception) {
+            Log.e("FileUtils", "Error checking PDF validity: ${e.message}")
+            false
+        }
     }
 }

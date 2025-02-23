@@ -1,103 +1,105 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
-    xmlns:app="http://schemas.android.com/apk/res-auto"
-    android:orientation="vertical"
-    android:gravity="center"
     android:layout_height="match_parent"
+    android:gravity="center"
+    android:orientation="vertical"
     tools:context=".MainActivity">
 
     <androidx.constraintlayout.widget.ConstraintLayout
         android:layout_width="match_parent"
-        android:orientation="horizontal"
-        android:gravity="center"
         android:layout_height="wrap_content"
+        android:layout_marginTop="?actionBarSize"
+        android:gravity="center"
+        android:orientation="horizontal"
         tools:context=".MainActivity">
 
-    <Button
-        android:layout_marginTop="20dp"
-        app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        android:layout_marginStart="30dp"
-        android:layout_marginEnd="30dp"
-        android:id="@+id/onlinePdf"
-        android:backgroundTint="@color/colorPrimary"
-        android:textColor="#ffffff"
-        android:layout_width="0dp"
-        android:layout_height="wrap_content"
-        android:text="Sample Online PDF"/>
+        <Button
+            android:id="@+id/onlinePdf"
+            android:layout_marginTop="?actionBarSize"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="30dp"
+            android:layout_marginEnd="30dp"
+            android:backgroundTint="@color/colorPrimary"
+            android:text="Sample Online PDF"
+            android:textColor="#ffffff"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent" />
 
         <Button
             android:id="@+id/pickPdfButton"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
+            android:layout_marginStart="30dp"
+            android:layout_marginEnd="30dp"
             android:backgroundTint="@color/colorPrimary"
             android:text="Pick PDF"
             android:textColor="#ffffff"
-            app:layout_constraintTop_toBottomOf="@id/onlinePdf"
-            app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintEnd_toEndOf="parent"
-            android:layout_marginStart="30dp"
-            android:layout_marginEnd="30dp"/>
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/onlinePdf" />
 
         <Button
             android:id="@+id/fromAssets"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
+            android:layout_marginStart="30dp"
+            android:layout_marginEnd="30dp"
             android:backgroundTint="@color/colorPrimary"
             android:text="Sample from assets"
             android:textColor="#ffffff"
-            app:layout_constraintTop_toBottomOf="@id/pickPdfButton"
-            app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintEnd_toEndOf="parent"
-            android:layout_marginStart="30dp"
-            android:layout_marginEnd="30dp" />
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/pickPdfButton" />
 
         <Button
             android:id="@+id/openInCompose"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
+            android:layout_marginStart="30dp"
+            android:layout_marginEnd="30dp"
             android:backgroundTint="@color/colorPrimary"
             android:text="Compose view"
             android:textColor="#ffffff"
-            app:layout_constraintTop_toBottomOf="@id/fromAssets"
-            app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintEnd_toEndOf="parent"
-            android:layout_marginStart="30dp"
-            android:layout_marginEnd="30dp"/>
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/fromAssets" />
 
 
         <Button
             android:id="@+id/showInView"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
+            android:layout_marginStart="30dp"
+            android:layout_marginEnd="30dp"
             android:backgroundTint="@color/colorPrimary"
             android:text="Show pdf in a View"
             android:textColor="#ffffff"
-            app:layout_constraintTop_toBottomOf="@id/openInCompose"
-            app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintEnd_toEndOf="parent"
-            android:layout_marginStart="30dp"
-            android:layout_marginEnd="30dp"/>
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/openInCompose" />
 
 
     </androidx.constraintlayout.widget.ConstraintLayout>
 
 
-    <LinearLayout android:layout_width="match_parent"
-        android:orientation="horizontal"
-        android:gravity="center"
-        android:layout_marginTop="40dp"
-        android:layout_height="match_parent"
-        tools:context=".MainActivity">
-
-    <com.rajat.pdfviewer.PdfRendererView
-        android:id="@+id/pdfView"
+    <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        app:pdfView_divider="@drawable/pdf_viewer_divider"
-        app:pdfView_showDivider="false" />
+        android:layout_marginTop="40dp"
+        android:gravity="center"
+        android:orientation="horizontal"
+        tools:context=".MainActivity">
+
+        <com.rajat.pdfviewer.PdfRendererView
+            android:id="@+id/pdfView"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            app:pdfView_divider="@drawable/pdf_viewer_divider"
+            app:pdfView_showDivider="false" />
     </LinearLayout>
 </LinearLayout>
