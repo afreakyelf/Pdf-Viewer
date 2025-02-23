@@ -4,11 +4,11 @@ import android.animation.ValueAnimator
 import android.content.Context
 import android.graphics.Canvas
 import android.util.AttributeSet
-import android.util.Log
 import android.view.GestureDetector
 import android.view.MotionEvent
 import android.view.ScaleGestureDetector
 import android.view.animation.AccelerateDecelerateInterpolator
+import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 
 class PinchZoomRecyclerView @JvmOverloads constructor(
@@ -121,6 +121,15 @@ class PinchZoomRecyclerView @JvmOverloads constructor(
         canvas.scale(scaleFactor, scaleFactor)
         super.dispatchDraw(canvas)
         canvas.restore()
+    }
+
+    override fun canScrollVertically(direction: Int): Boolean {
+        val layoutManager = layoutManager as? LinearLayoutManager ?: return false
+        return when (direction) {
+            1 -> layoutManager.findLastVisibleItemPosition() < (adapter?.itemCount ?: 0) - 1 // Check if last item is visible
+            -1 -> layoutManager.findFirstVisibleItemPosition() > 0 // Check if first item is visible
+            else -> false
+        }
     }
 
     override fun computeVerticalScrollRange(): Int {

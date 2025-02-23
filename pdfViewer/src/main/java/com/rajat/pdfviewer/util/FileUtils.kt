@@ -86,7 +86,6 @@ object FileUtils {
         }
     }
 
-
     fun isValidPdf(file: File): Boolean {
         return try {
             FileInputStream(file).use { inputStream ->
