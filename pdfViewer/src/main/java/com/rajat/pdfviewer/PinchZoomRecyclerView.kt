@@ -133,13 +133,33 @@ class PinchZoomRecyclerView @JvmOverloads constructor(
     }
 
     override fun computeVerticalScrollRange(): Int {
-        val contentHeight = (height * scaleFactor).toInt()
-        return contentHeight + paddingTop + paddingBottom
+        val layoutManager = layoutManager as? LinearLayoutManager ?: return height
+        val itemCount = adapter?.itemCount ?: 0
+
+        // Get the last visible item position
+        val lastVisibleItem = layoutManager.findLastVisibleItemPosition()
+        val lastVisibleView = layoutManager.findViewByPosition(lastVisibleItem)
+
+        return if (lastVisibleView != null) {
+            val lastItemBottom = lastVisibleView.bottom
+            val totalHeight = lastItemBottom + (height * (itemCount - lastVisibleItem - 1))
+
+            (totalHeight * scaleFactor).toInt()
+        } else {
+            (height * itemCount * scaleFactor).toInt()
+        }
     }
 
     override fun computeVerticalScrollOffset(): Int {
-        return ((posY / viewHeight) * computeVerticalScrollRange()).toInt()
+        val layoutManager = layoutManager as? LinearLayoutManager ?: return 0
+        val firstVisibleItem = layoutManager.findFirstVisibleItemPosition()
+        val firstVisibleView = layoutManager.findViewByPosition(firstVisibleItem) ?: return 0
+        val offset = -firstVisibleView.top  // Distance scrolled from the top of the first item
+
+        // Consider zooming effect
+        return (offset * scaleFactor).toInt()
     }
+
 
     /**
      * ScaleListener ensures that the zoom is centered around the gesture’s focal point.
