@@ -65,6 +65,7 @@ android {
 
 dependencies {
 
+    implementation("com.google.android.material:material:1.12.0")
     val kotlin_version = "1.9.21"
     implementation(kotlin("stdlib"))
     implementation(fileTree(mapOf("dir" to "libs", "include" to listOf("*.jar"))))

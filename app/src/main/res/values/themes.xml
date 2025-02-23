@@ -1,9 +1,23 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <style name="Theme.MyApp" parent="Theme.Material3.DayNight">
-        <item name="colorPrimary">#616062</item>
+    <!-- Main Light Theme -->
+    <style name="Theme.MyApp" parent="Theme.Material3.Light">
+        <!-- Primary Colors -->
+        <item name="colorPrimary">#6200EE</item> <!-- Material3 Default Indigo -->
         <item name="colorOnPrimary">#FFFFFF</item>
-        <item name="colorSurface">#121212</item>
-        <item name="colorOnSurface">#EAEAEA</item>
+
+        <item name="colorSurface">#FFFFFF</item> <!-- White -->
+        <item name="colorOnSurface">#000000</item> <!-- Black for contrast -->
+
+        <!-- Status Bar & Navigation Bar -->
+        <item name="android:statusBarColor">?attr/colorPrimary</item>
+        <item name="android:windowLightStatusBar">true</item> <!-- Dark icons on light status bar -->
+        <item name="android:navigationBarColor">@color/colorBackground</item>
+    </style>
+
+    <!-- Basic Button Styling -->
+    <style name="Widget.MyApp.Button" parent="Widget.Material3.Button">
+        <item name="android:backgroundTint">?attr/colorPrimary</item>
+        <item name="android:textColor">?attr/colorOnPrimary</item>
     </style>
 </resources>

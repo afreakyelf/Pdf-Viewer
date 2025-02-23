@@ -1,7 +1,6 @@
     package com.rajat.pdfviewer
     import android.content.Context
     import android.graphics.Bitmap
-    import android.graphics.Bitmap.CompressFormat
     import android.graphics.Color
     import android.graphics.pdf.PdfRenderer
     import android.os.Build
@@ -9,7 +8,6 @@
     import android.util.Log
     import android.util.Size
     import com.rajat.pdfviewer.util.CacheManager
-    import com.rajat.pdfviewer.util.CacheManager.Companion.CACHE_PATH
     import com.rajat.pdfviewer.util.CommonUtils
     import com.rajat.pdfviewer.util.CommonUtils.Companion.calculateDynamicPrefetchCount
     import kotlinx.coroutines.CoroutineScope
@@ -17,7 +15,6 @@
     import kotlinx.coroutines.launch
     import kotlinx.coroutines.withContext
     import java.io.File
-    import java.io.FileOutputStream
     import java.nio.file.Files
     import java.nio.file.Paths
     import java.util.concurrent.ConcurrentHashMap

@@ -264,12 +264,14 @@ class PdfRendererView @JvmOverloads constructor(
         applyScreenshotSecurity()
         typedArray.recycle()
     }
+
     private fun applyScreenshotSecurity() {
         if (disableScreenshots) {
             // Disables taking screenshots and screen recording
             (context as? Activity)?.window?.addFlags(WindowManager.LayoutParams.FLAG_SECURE)
         }
     }
+
     fun closePdfRender() {
         if (pdfRendererCoreInitialised) {
             pdfRendererCore.closePdfRender()

@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
 
-    <!-- Selected Theme (Uses Light or Dark mode based on system settings) -->
+    <!-- Selected Theme (Auto Light/Dark mode based on system settings) -->
     <style name="Theme.PdfView.SelectedTheme" parent="Theme.Material3.DayNight.NoActionBar">
         <item name="colorPrimary">?attr/colorPrimary</item>
         <item name="colorOnPrimary">?attr/colorOnPrimary</item>
@@ -9,9 +9,12 @@
         <item name="colorOnSurface">?attr/colorOnSurface</item>
         <item name="pdfView_backgroundColor">?attr/colorSurface</item>
         <item name="pdfView_actionBarTint">?attr/colorPrimary</item>
+        <item name="android:statusBarColor">?attr/colorPrimary</item>
+        <item name="android:windowLightStatusBar">?attr/isLightTheme</item>
+        <item name="android:navigationBarColor">?attr/colorSurface</item>
     </style>
 
-    <!-- Light Mode for PDF Viewer -->
+    <!-- Light Mode Theme -->
     <style name="Theme.PdfView.Light" parent="Theme.Material3.Light.NoActionBar">
         <item name="pdfView_backIcon">@drawable/pdf_viewer_ic_arrow_back</item>
         <item name="pdfView_downloadIcon">@android:drawable/stat_sys_download</item>
@@ -21,7 +24,7 @@
         <item name="pdfView_backgroundColor">?attr/colorSurface</item>
     </style>
 
-    <!-- Dark Mode for PDF Viewer -->
+    <!-- Dark Mode Theme -->
     <style name="Theme.PdfView.Dark" parent="Theme.Material3.Dark.NoActionBar">
         <item name="pdfView_backIcon">@drawable/pdf_viewer_ic_arrow_back_alt</item>
         <item name="pdfView_downloadIcon">@android:drawable/stat_sys_download</item>
@@ -29,6 +32,14 @@
         <item name="pdfView_actionBarTint">?attr/colorPrimary</item>
         <item name="pdfView_titleTextStyle">@style/pdfView_titleTextAppearanceDark</item>
         <item name="pdfView_backgroundColor">?attr/colorSurface</item>
+    </style>
+
+    <!-- Toolbar Styling -->
+    <style name="ThemeOverlay.PdfView.Toolbar" parent="ThemeOverlay.Material3">
+        <item name="colorSurface">?attr/colorPrimary</item>
+        <item name="colorOnSurface">?attr/colorOnPrimary</item>
+        <item name="android:textColorPrimary">?attr/colorOnPrimary</item>
+        <item name="android:elevation">4dp</item>
     </style>
 
     <!-- Title Text Appearance Styles -->

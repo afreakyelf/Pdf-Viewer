@@ -1,36 +1,35 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<androidx.constraintlayout.widget.ConstraintLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:id="@+id/parentLayout"
     android:layout_height="match_parent"
-    android:orientation="vertical"
+    android:fitsSystemWindows="true"
     tools:context=".PdfViewerActivity">
 
-    <androidx.appcompat.widget.Toolbar
+    <!-- Material 3 Toolbar -->
+    <com.google.android.material.appbar.MaterialToolbar
         android:id="@+id/my_toolbar"
         android:layout_width="match_parent"
         android:layout_height="?attr/actionBarSize"
-        android:elevation="4dp"
-        app:titleTextColor="@color/design_default_color_on_primary">
+        android:background="?attr/colorPrimary"
+        android:theme="@style/ThemeOverlay.PdfView.Toolbar"
+        app:navigationIcon="@drawable/pdf_viewer_ic_arrow_back"
+        app:titleTextColor="?attr/colorOnPrimary"
+        app:title="@string/pdfView_appName"
+        app:layout_constraintTop_toTopOf="parent"/>
 
-        <TextView
-            android:id="@+id/tvAppBarTitle"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:clickable="false"
-            android:focusable="false"
-            android:longClickable="false"
-            android:text="@string/pdfView_appName" />
-
-    </androidx.appcompat.widget.Toolbar>
-
+    <!-- Main Layout for PDF Viewer -->
     <FrameLayout
         android:id="@+id/mainLayout"
         android:layout_width="match_parent"
-        android:layout_height="match_parent">
+        android:layout_height="match_parent"
+        app:layout_constraintTop_toBottomOf="@id/my_toolbar"
+        app:layout_constraintBottom_toBottomOf="parent">
 
+        <!-- PDF Viewer -->
         <com.rajat.pdfviewer.PdfRendererView
             android:id="@+id/pdfView"
             android:layout_width="match_parent"
@@ -38,14 +37,16 @@
             app:pdfView_divider="@drawable/pdf_viewer_divider"
             app:pdfView_showDivider="false" />
 
+        <!-- Centered ProgressBar -->
         <ProgressBar
-            android:layout_height="wrap_content"
+            android:id="@+id/progressBar"
             android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:visibility="gone"
             android:layout_gravity="center"
             android:indeterminateDrawable="@drawable/pdf_viewer_progress_circle"
-            android:id="@+id/progressBar"
-            android:interpolator="@android:anim/accelerate_decelerate_interpolator"
-            android:visibility="gone" />
+            android:interpolator="@android:anim/accelerate_decelerate_interpolator"/>
 
     </FrameLayout>
-</LinearLayout>
+
+</androidx.constraintlayout.widget.ConstraintLayout>

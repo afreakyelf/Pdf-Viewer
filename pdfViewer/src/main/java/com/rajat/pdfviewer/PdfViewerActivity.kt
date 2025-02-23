@@ -19,13 +19,19 @@ import android.view.MenuItem
 import android.view.View
 import android.view.View.GONE
 import android.view.View.VISIBLE
-import android.widget.TextView
 import android.widget.Toast
+import androidx.activity.SystemBarStyle
+import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import androidx.core.graphics.drawable.DrawableCompat
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.WindowInsetsControllerCompat
+import androidx.core.view.updatePadding
 import androidx.lifecycle.lifecycleScope
 import com.rajat.pdfviewer.databinding.ActivityPdfViewerBinding
 import com.rajat.pdfviewer.util.FileUtils.createPdfDocumentUri
@@ -114,19 +120,21 @@ class PdfViewerActivity : AppCompatActivity() {
             val backIcon = typedArray.getDrawable(R.styleable.PdfRendererView_toolbar_pdfView_backIcon)
             val titleTextStyle = typedArray.getResourceId(R.styleable.PdfRendererView_toolbar_pdfView_titleTextStyle, -1)
 
-            // Safely check if actionBarTint is defined before applying
+            // Retrieve action bar tint safely
             val actionBarTint = if (typedArray.hasValue(R.styleable.PdfRendererView_toolbar_pdfView_actionBarTint)) {
                 typedArray.getColor(R.styleable.PdfRendererView_toolbar_pdfView_actionBarTint, 0)
             } else null
 
             // Apply toolbar visibility
-            binding.myToolbar.visibility = if (showToolbar) VISIBLE else View.GONE
+            binding.myToolbar.visibility = if (showToolbar) View.VISIBLE else View.GONE
 
             // Set back icon if available
             backIcon?.let { binding.myToolbar.navigationIcon = it }
 
-            // Apply title text style safely
-            binding.myToolbar.findViewById<TextView>(R.id.tvAppBarTitle)?.setTextAppearance(titleTextStyle)
+            // Apply title text appearance if defined
+            if (titleTextStyle != -1) {
+                binding.myToolbar.setTitleTextAppearance(this, titleTextStyle)
+            }
 
             // Apply action bar tint only if defined
             actionBarTint?.let { binding.myToolbar.setBackgroundColor(it) }
@@ -136,95 +144,124 @@ class PdfViewerActivity : AppCompatActivity() {
         }
     }
 
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        // Inflate layout once (previously done twice)
         binding = ActivityPdfViewerBinding.inflate(layoutInflater)
         setContentView(binding.root)
+
+        // Enable Edge-to-Edge support
+        enableEdgeToEdgeMode()
+
+        // Setup Toolbar
         configureToolbar()
-        setUpToolbar(
-            intent.extras!!.getString(
-                FILE_TITLE,
-                "PDF",
+        setUpToolbar(intent.getStringExtra(FILE_TITLE) ?: "PDF")
+
+        // Apply theme attributes (background & progress bar styles)
+        applyThemeAttributes()
+
+        // Retrieve intent extras
+        extractIntentExtras()
+
+        // Initialize the PDF viewer
+        init()
+    }
+
+    private fun enableEdgeToEdgeMode() {
+        // Retrieve primary color and background from the current theme
+        val typedArray = theme.obtainStyledAttributes(intArrayOf(
+            android.R.attr.colorPrimary,
+            android.R.attr.colorBackground
+        ))
+
+        val primaryColor = typedArray.getColor(0, 0xFF6200EE.toInt())  // Default fallback: Indigo
+        val backgroundColor = typedArray.getColor(1, 0xFFFFFFFF.toInt()) // Default: White
+        typedArray.recycle()
+
+        // Enable edge-to-edge layout
+        WindowCompat.setDecorFitsSystemWindows(window, false)
+        WindowInsetsControllerCompat(window, binding.root).isAppearanceLightStatusBars = true
+
+        // Apply scrim colors dynamically
+        enableEdgeToEdge(
+            statusBarStyle = SystemBarStyle.auto(
+                lightScrim = backgroundColor, // Use theme's background color
+                darkScrim = primaryColor      // Use theme's primary color
+            ),
+            navigationBarStyle = SystemBarStyle.auto(
+                lightScrim = backgroundColor,
+                darkScrim = primaryColor
             )
         )
 
-        // Configure progress bar and background
-        val typedArray1 = theme.obtainStyledAttributes(R.styleable.PdfRendererView)
+        // Handle system insets to avoid content overlap
+        ViewCompat.setOnApplyWindowInsetsListener(binding.root) { view, insets ->
+            val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
+            view.updatePadding(top = systemBars.top, bottom = systemBars.bottom)
+            insets
+        }
+    }
+
+
+    private fun applyThemeAttributes() {
+        val typedArray = theme.obtainStyledAttributes(R.styleable.PdfRendererView)
         try {
-            val backgroundColor = typedArray1.getColor(
+            // Set background color
+            val backgroundColor = typedArray.getColor(
                 R.styleable.PdfRendererView_pdfView_backgroundColor,
-                ContextCompat.getColor(applicationContext,android.R.color.white)
+                ContextCompat.getColor(applicationContext, android.R.color.white)
             )
             binding.parentLayout.setBackgroundColor(backgroundColor)
 
-            val progressBarStyleResId = typedArray1.getResourceId(
-                R.styleable.PdfRendererView_pdfView_progressBar, -1)
+            // Set progress bar style
+            val progressBarStyleResId = typedArray.getResourceId(R.styleable.PdfRendererView_pdfView_progressBar, -1)
             if (progressBarStyleResId != -1) {
-                val progressBarStyle = ContextCompat.getDrawable(this, progressBarStyleResId)
-                binding.progressBar.indeterminateDrawable = progressBarStyle
+                binding.progressBar.indeterminateDrawable = ContextCompat.getDrawable(this, progressBarStyleResId)
             }
         } finally {
-            typedArray1.recycle()
+            typedArray.recycle()
         }
+    }
 
-        enableDownload = intent.extras!!.getBoolean(
-            ENABLE_FILE_DOWNLOAD,
-            false
-        )
+    private fun extractIntentExtras() {
+        enableDownload = intent.getBooleanExtra(ENABLE_FILE_DOWNLOAD, false)
+        isFromAssets = intent.getBooleanExtra(FROM_ASSETS, false)
 
-        val headerData: HeaderData? = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+        headers = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             intent.getParcelableExtra("headers", HeaderData::class.java)
         } else {
             intent.getParcelableExtra("headers")
-        }
-        headerData?.let {
-            headers = it
-        }
+        } ?: HeaderData(emptyMap())
 
-        isFromAssets = intent.extras!!.getBoolean(
-            FROM_ASSETS,
-            false
-        )
-
+        // Load string resources from XML attributes
         val typedArray = obtainStyledAttributes(R.styleable.PdfRendererView_Strings)
-        error_pdf_corrupted =
-            typedArray.getString(R.styleable.PdfRendererView_Strings_error_pdf_corrupted)
-                ?: getString(R.string.error_pdf_corrupted)
-        error_no_internet_connection =
-            typedArray.getString(R.styleable.PdfRendererView_Strings_error_no_internet_connection)
-                ?: getString(R.string.error_no_internet_connection)
-        file_saved_successfully =
-            typedArray.getString(R.styleable.PdfRendererView_Strings_file_saved_successfully)
-                ?: getString(R.string.file_saved_successfully)
-        file_saved_to_downloads =
-            typedArray.getString(R.styleable.PdfRendererView_Strings_file_saved_to_downloads)
-                ?: getString(R.string.file_saved_to_downloads)
-        file_not_downloaded_yet =
-            typedArray.getString(R.styleable.PdfRendererView_Strings_file_not_downloaded_yet)
-                ?: getString(R.string.file_not_downloaded_yet)
-        permission_required =
-            typedArray.getString(R.styleable.PdfRendererView_Strings_permission_required)
-                ?: getString(R.string.permission_required)
-        permission_required_title =
-            typedArray.getString(R.styleable.PdfRendererView_Strings_permission_required_title)
-                ?: getString(R.string.permission_required_title)
-        pdf_viewer_error =
-            typedArray.getString(R.styleable.PdfRendererView_Strings_pdf_viewer_error)
-                ?: getString(R.string.pdf_viewer_error)
-        pdf_viewer_retry =
-            typedArray.getString(R.styleable.PdfRendererView_Strings_pdf_viewer_retry)
-                ?: getString(R.string.pdf_viewer_retry)
-        pdf_viewer_cancel =
-            typedArray.getString(R.styleable.PdfRendererView_Strings_pdf_viewer_cancel)
-                ?: getString(R.string.pdf_viewer_cancel)
-        pdf_viewer_grant =
-            typedArray.getString(R.styleable.PdfRendererView_Strings_pdf_viewer_grant)
-                ?: getString(R.string.pdf_viewer_grant)
+        error_pdf_corrupted = typedArray.getString(R.styleable.PdfRendererView_Strings_error_pdf_corrupted)
+            ?: getString(R.string.error_pdf_corrupted)
+        error_no_internet_connection = typedArray.getString(R.styleable.PdfRendererView_Strings_error_no_internet_connection)
+            ?: getString(R.string.error_no_internet_connection)
+        file_saved_successfully = typedArray.getString(R.styleable.PdfRendererView_Strings_file_saved_successfully)
+            ?: getString(R.string.file_saved_successfully)
+        file_saved_to_downloads = typedArray.getString(R.styleable.PdfRendererView_Strings_file_saved_to_downloads)
+            ?: getString(R.string.file_saved_to_downloads)
+        file_not_downloaded_yet = typedArray.getString(R.styleable.PdfRendererView_Strings_file_not_downloaded_yet)
+            ?: getString(R.string.file_not_downloaded_yet)
+        permission_required = typedArray.getString(R.styleable.PdfRendererView_Strings_permission_required)
+            ?: getString(R.string.permission_required)
+        permission_required_title = typedArray.getString(R.styleable.PdfRendererView_Strings_permission_required_title)
+            ?: getString(R.string.permission_required_title)
+        pdf_viewer_error = typedArray.getString(R.styleable.PdfRendererView_Strings_pdf_viewer_error)
+            ?: getString(R.string.pdf_viewer_error)
+        pdf_viewer_retry = typedArray.getString(R.styleable.PdfRendererView_Strings_pdf_viewer_retry)
+            ?: getString(R.string.pdf_viewer_retry)
+        pdf_viewer_cancel = typedArray.getString(R.styleable.PdfRendererView_Strings_pdf_viewer_cancel)
+            ?: getString(R.string.pdf_viewer_cancel)
+        pdf_viewer_grant = typedArray.getString(R.styleable.PdfRendererView_Strings_pdf_viewer_grant)
+            ?: getString(R.string.pdf_viewer_grant)
 
-        init()
-
+        typedArray.recycle()
     }
+
 
     private fun init() {
         binding.pdfView.statusListener = object : PdfRendererView.StatusCallBack {
@@ -324,14 +361,18 @@ class PdfViewerActivity : AppCompatActivity() {
     }
 
     private fun setUpToolbar(toolbarTitle: String) {
+        // Set the title on the MaterialToolbar itself
+        binding.myToolbar.title = toolbarTitle
+
+        // Set as the ActionBar
         setSupportActionBar(binding.myToolbar)
+
         supportActionBar?.apply {
             setDisplayHomeAsUpEnabled(true)
             setDisplayShowHomeEnabled(true)
-            (binding.myToolbar.findViewById(R.id.tvAppBarTitle) as TextView).text = toolbarTitle
-            setDisplayShowTitleEnabled(false)
         }
     }
+
 
     override fun onCreateOptionsMenu(menu: Menu): Boolean {
         val inflater: MenuInflater = menuInflater
