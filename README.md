@@ -252,7 +252,7 @@ Custom:
 |pdfView_backIcon|drawable|Navigation icon|
 |pdfView_downloadIcon|drawable|Download icon|
 |pdfView_downloadIconTint|color|Download icon tint|
-|pdfView_actionBarTint|color|Actionbar background color|
+|pdfView_toolbarColor|color|Actionbar background color|
 |pdfView_titleTextStyle|style|Actionbar title text appearance|
 |pdfView_progressBar|style|Progress bar style|
 

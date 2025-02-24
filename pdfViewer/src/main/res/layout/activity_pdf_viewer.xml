@@ -4,9 +4,7 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
-    android:id="@+id/parentLayout"
     android:layout_height="match_parent"
-    android:fitsSystemWindows="true"
     tools:context=".PdfViewerActivity">
 
     <!-- Material 3 Toolbar -->
@@ -14,18 +12,18 @@
         android:id="@+id/my_toolbar"
         android:layout_width="match_parent"
         android:layout_height="?attr/actionBarSize"
-        android:background="?attr/colorPrimary"
         android:theme="@style/ThemeOverlay.PdfView.Toolbar"
+        android:background="?attr/colorPrimary"
         app:navigationIcon="@drawable/pdf_viewer_ic_arrow_back"
-        app:titleTextColor="?attr/colorOnPrimary"
         app:title="@string/pdfView_appName"
+        app:titleTextColor="?attr/colorOnPrimary"
         app:layout_constraintTop_toTopOf="parent"/>
 
     <!-- Main Layout for PDF Viewer -->
     <FrameLayout
         android:id="@+id/mainLayout"
         android:layout_width="match_parent"
-        android:layout_height="match_parent"
+        android:layout_height="0dp"
         app:layout_constraintTop_toBottomOf="@id/my_toolbar"
         app:layout_constraintBottom_toBottomOf="parent">
 
@@ -35,7 +33,7 @@
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             app:pdfView_divider="@drawable/pdf_viewer_divider"
-            app:pdfView_showDivider="false" />
+            app:pdfView_showDivider="false"/>
 
         <!-- Centered ProgressBar -->
         <ProgressBar

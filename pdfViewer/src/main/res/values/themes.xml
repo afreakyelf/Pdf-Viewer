@@ -8,7 +8,7 @@
         <item name="colorSurface">?attr/colorSurface</item>
         <item name="colorOnSurface">?attr/colorOnSurface</item>
         <item name="pdfView_backgroundColor">?attr/colorSurface</item>
-        <item name="pdfView_actionBarTint">?attr/colorPrimary</item>
+        <item name="pdfView_toolbarColor">?attr/colorPrimary</item>
         <item name="android:statusBarColor">?attr/colorPrimary</item>
         <item name="android:windowLightStatusBar">?attr/isLightTheme</item>
         <item name="android:navigationBarColor">?attr/colorSurface</item>
@@ -19,7 +19,7 @@
         <item name="pdfView_backIcon">@drawable/pdf_viewer_ic_arrow_back</item>
         <item name="pdfView_downloadIcon">@android:drawable/stat_sys_download</item>
         <item name="pdfView_downloadIconTint">?attr/colorOnSurfaceVariant</item>
-        <item name="pdfView_actionBarTint">?attr/colorPrimary</item>
+        <item name="pdfView_toolbarColor">?attr/colorPrimary</item>
         <item name="pdfView_titleTextStyle">@style/pdfView_titleTextAppearance</item>
         <item name="pdfView_backgroundColor">?attr/colorSurface</item>
     </style>
@@ -29,7 +29,7 @@
         <item name="pdfView_backIcon">@drawable/pdf_viewer_ic_arrow_back_alt</item>
         <item name="pdfView_downloadIcon">@android:drawable/stat_sys_download</item>
         <item name="pdfView_downloadIconTint">?attr/colorOnSurfaceVariant</item>
-        <item name="pdfView_actionBarTint">?attr/colorPrimary</item>
+        <item name="pdfView_toolbarColor">?attr/colorPrimary</item>
         <item name="pdfView_titleTextStyle">@style/pdfView_titleTextAppearanceDark</item>
         <item name="pdfView_backgroundColor">?attr/colorSurface</item>
     </style>

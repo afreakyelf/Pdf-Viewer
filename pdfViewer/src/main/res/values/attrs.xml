@@ -38,7 +38,7 @@
         <attr name="pdfView_backIcon" format="reference" />
         <attr name="pdfView_downloadIcon" format="reference" />
         <attr name="pdfView_downloadIconTint" format="reference|color" />
-        <attr name="pdfView_actionBarTint" format="reference|color" />
+        <attr name="pdfView_toolbarColor" format="reference|color" />
         <attr name="pdfView_titleTextStyle" format="reference" />
         <attr name="pdfView_showToolbar" format="boolean" />
     </declare-styleable>
