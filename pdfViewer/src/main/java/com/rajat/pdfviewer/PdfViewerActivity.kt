@@ -43,6 +43,7 @@ import com.rajat.pdfviewer.util.FileUtils.createPdfDocumentUri
 import com.rajat.pdfviewer.util.FileUtils.fileFromAsset
 import com.rajat.pdfviewer.util.FileUtils.uriToFile
 import com.rajat.pdfviewer.util.NetworkUtil.checkInternetConnection
+import com.rajat.pdfviewer.util.ToolbarTitleBehavior
 import com.rajat.pdfviewer.util.saveTo
 import java.io.File
 import java.io.FileNotFoundException
@@ -79,6 +80,7 @@ class PdfViewerActivity : AppCompatActivity() {
         const val FILE_TITLE = "pdf_file_title"
         const val ENABLE_FILE_DOWNLOAD = "enable_download"
         const val FROM_ASSETS = "from_assests"
+        const val TITLE_BEHAVIOR = "title_behavior"
         var enableDownload = false
         var isPDFFromPath = false
         var isFromAssets = false
@@ -90,13 +92,17 @@ class PdfViewerActivity : AppCompatActivity() {
             pdfTitle: String?,
             saveTo: saveTo,
             enableDownload: Boolean = true,
-            headers: Map<String, String> = emptyMap()
+            headers: Map<String, String> = emptyMap(),
+            toolbarTitleBehavior: ToolbarTitleBehavior? = null,
         ): Intent {
             val intent = Intent(context, PdfViewerActivity::class.java)
             intent.putExtra(FILE_URL, pdfUrl)
             intent.putExtra(FILE_TITLE, pdfTitle)
             intent.putExtra(ENABLE_FILE_DOWNLOAD, enableDownload)
             intent.putExtra("headers", HeaderData(headers))
+            toolbarTitleBehavior?.let {
+                intent.putExtra(TITLE_BEHAVIOR, it.ordinal)
+            }
             isPDFFromPath = false
             SAVE_TO_DOWNLOADS = saveTo == com.rajat.pdfviewer.util.saveTo.DOWNLOADS
             return intent
@@ -107,13 +113,17 @@ class PdfViewerActivity : AppCompatActivity() {
             path: String?,
             pdfTitle: String?,
             saveTo: saveTo,
-            fromAssets: Boolean = false
-        ): Intent {
+            fromAssets: Boolean = false,
+            toolbarTitleBehavior: ToolbarTitleBehavior? = null,
+            ): Intent {
             val intent = Intent(context, PdfViewerActivity::class.java)
             intent.putExtra(FILE_URL, path)
             intent.putExtra(FILE_TITLE, pdfTitle)
             intent.putExtra(ENABLE_FILE_DOWNLOAD, false)
             intent.putExtra(FROM_ASSETS, fromAssets)
+            toolbarTitleBehavior?.let {
+                intent.putExtra(TITLE_BEHAVIOR, it.ordinal)
+            }
             isPDFFromPath = true
             SAVE_TO_DOWNLOADS = saveTo == com.rajat.pdfviewer.util.saveTo.DOWNLOADS
             return intent
@@ -123,7 +133,6 @@ class PdfViewerActivity : AppCompatActivity() {
     private fun configureToolbar() {
         val typedArray = theme.obtainStyledAttributes(R.styleable.PdfRendererView_toolbar)
         try {
-            // Retrieve attributes safely
             val showToolbar =
                 typedArray.getBoolean(R.styleable.PdfRendererView_toolbar_pdfView_showToolbar, true)
             val backIcon =
@@ -158,16 +167,35 @@ class PdfViewerActivity : AppCompatActivity() {
 
             binding.myToolbar.setBackgroundColor(adjustedToolbarColor)
 
+            // Retrieve behavior from Intent or XML
+            val intentBehaviorIndex = intent.extras?.getInt(TITLE_BEHAVIOR, -1) ?: -1
+            val behavior: ToolbarTitleBehavior = if (intentBehaviorIndex != -1) {
+                ToolbarTitleBehavior.entries[intentBehaviorIndex]
+            } else {
+                val xmlBehaviorIndex = typedArray.getInt(R.styleable.PdfRendererView_toolbar_pdfView_titleBehavior, 3)
+                ToolbarTitleBehavior.fromXmlValue(xmlBehaviorIndex)
+            }
 
-            // Apply toolbar visibility
+            // Apply title behavior using a separate TextView
+            binding.toolbarTitle.apply {
+                setSingleLine(behavior.isSingleLine)
+                maxLines = behavior.maxLines
+                ellipsize = behavior.ellipsize
+
+                if (behavior.ellipsize == TextUtils.TruncateAt.MARQUEE) {
+                    isFocusable = true
+                    isFocusableInTouchMode = true
+                    requestFocus()
+                }
+            }
+
+            // Apply toolbar visibility and other settings
             binding.myToolbar.visibility = if (showToolbar) VISIBLE else GONE
-
-            // Set back icon if available
             backIcon?.let { binding.myToolbar.navigationIcon = it }
 
             // Apply title text appearance safely
             if (titleTextStyle != -1) {
-                val spannable = SpannableString(binding.myToolbar.title)
+                val spannable = SpannableString(binding.toolbarTitle.text)
                 val textAppearance = TextAppearanceSpan(this, titleTextStyle)
                 spannable.setSpan(
                     textAppearance,
@@ -175,7 +203,7 @@ class PdfViewerActivity : AppCompatActivity() {
                     spannable.length,
                     Spannable.SPAN_EXCLUSIVE_EXCLUSIVE
                 )
-                binding.myToolbar.title = spannable
+                binding.toolbarTitle.text = spannable
             }
 
             // Apply action bar tint using backgroundTintList for better theming
@@ -188,6 +216,7 @@ class PdfViewerActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        enableEdgeToEdge() // Ensures backward compatibility
 
         // Inflate layout once (previously done twice)
         binding = ActivityPdfViewerBinding.inflate(layoutInflater)
@@ -197,8 +226,8 @@ class PdfViewerActivity : AppCompatActivity() {
         enableEdgeToEdgeMode()
 
         // Setup Toolbar
-        configureToolbar()
         setUpToolbar(intent.getStringExtra(FILE_TITLE) ?: "PDF")
+        configureToolbar()
 
         // Apply theme attributes (background & progress bar styles)
         applyThemeAttributes()
@@ -420,18 +449,15 @@ class PdfViewerActivity : AppCompatActivity() {
     }
 
     private fun setUpToolbar(toolbarTitle: String) {
-        // Set the title on the MaterialToolbar itself
-        binding.myToolbar.title = toolbarTitle
+        binding.toolbarTitle.text = toolbarTitle
 
-        // Set as the ActionBar
         setSupportActionBar(binding.myToolbar)
-
         supportActionBar?.apply {
             setDisplayHomeAsUpEnabled(true)
             setDisplayShowHomeEnabled(true)
+            setDisplayShowTitleEnabled(false)
         }
     }
-
 
     override fun onCreateOptionsMenu(menu: Menu): Boolean {
         val inflater: MenuInflater = menuInflater

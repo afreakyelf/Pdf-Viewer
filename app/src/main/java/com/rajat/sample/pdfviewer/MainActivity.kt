@@ -9,6 +9,7 @@ import androidx.core.view.WindowCompat
 import androidx.lifecycle.lifecycleScope
 import com.rajat.pdfviewer.PdfRendererView
 import com.rajat.pdfviewer.PdfViewerActivity
+import com.rajat.pdfviewer.util.ToolbarTitleBehavior
 import com.rajat.pdfviewer.util.saveTo
 import com.rajat.sample.pdfviewer.databinding.ActivityMainBinding
 
@@ -113,7 +114,8 @@ class MainActivity : AppCompatActivity() {
                 pdfUrl = url,
                 pdfTitle = "PDF Title",
                 saveTo = saveTo.DOWNLOADS,
-                enableDownload = true
+                enableDownload = true,
+                toolbarTitleBehavior = ToolbarTitleBehavior.SINGLE_LINE_SCROLLABLE
             )
         )
     }

@@ -41,6 +41,12 @@
         <attr name="pdfView_toolbarColor" format="reference|color" />
         <attr name="pdfView_titleTextStyle" format="reference" />
         <attr name="pdfView_showToolbar" format="boolean" />
+        <attr name="pdfView_titleBehavior" format="enum">
+            <enum name="single_line_ellipsis" value="0"/>
+            <enum name="single_line_scrollable" value="1"/>
+            <enum name="multi_line_ellipsis" value="2"/>
+            <enum name="multi_line_wrap" value="3"/>
+        </attr>
     </declare-styleable>
 
 </resources>

@@ -7,17 +7,26 @@
     android:layout_height="match_parent"
     tools:context=".PdfViewerActivity">
 
-    <!-- Material 3 Toolbar -->
     <com.google.android.material.appbar.MaterialToolbar
+        app:layout_constraintTop_toTopOf="parent"
         android:id="@+id/my_toolbar"
         android:layout_width="match_parent"
         android:layout_height="?attr/actionBarSize"
-        android:theme="@style/ThemeOverlay.PdfView.Toolbar"
         android:background="?attr/colorPrimary"
         app:navigationIcon="@drawable/pdf_viewer_ic_arrow_back"
-        app:title="@string/pdfView_appName"
         app:titleTextColor="?attr/colorOnPrimary"
-        app:layout_constraintTop_toTopOf="parent"/>
+        app:title=""
+        app:layout_scrollFlags="scroll|enterAlways">
+
+        <!-- Custom TextView for Multi-Line Title -->
+        <TextView
+            android:id="@+id/toolbar_title"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center_vertical"
+            android:textColor="?attr/pdfView_toolbarColor"/>
+    </com.google.android.material.appbar.MaterialToolbar>
+
 
     <!-- Main Layout for PDF Viewer -->
     <FrameLayout

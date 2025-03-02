@@ -10,8 +10,7 @@
         <item name="pdfView_backgroundColor">?attr/colorSurface</item>
         <item name="pdfView_toolbarColor">?attr/colorPrimary</item>
         <item name="android:statusBarColor">?attr/colorPrimary</item>
-        <item name="android:windowLightStatusBar">?attr/isLightTheme</item>
-        <item name="android:navigationBarColor">?attr/colorSurface</item>
+        <item name="android:navigationBarColor">?attr/colorPrimary</item>
     </style>
 
     <!-- Light Mode Theme -->
