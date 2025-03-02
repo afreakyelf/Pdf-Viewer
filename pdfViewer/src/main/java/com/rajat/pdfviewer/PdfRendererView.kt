@@ -37,11 +37,12 @@ import java.io.FileNotFoundException
 class PdfRendererView @JvmOverloads constructor(
     context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0
 ) : FrameLayout(context, attrs, defStyleAttr), LifecycleObserver {
-    lateinit var recyclerView: RecyclerView
+    lateinit var recyclerView: PinchZoomRecyclerView
     private lateinit var pageNo: TextView
     private lateinit var pdfRendererCore: PdfRendererCore
     private lateinit var pdfViewAdapter: PdfViewAdapter
     private var showDivider = true
+    private var isZoomEnabled = true
     private var divider: Drawable? = null
     private var runnable = Runnable {}
     private var enableLoadingForPages: Boolean = false
@@ -110,7 +111,7 @@ class PdfRendererView @JvmOverloads constructor(
         init(fileDescriptor)
     }
 
-    override fun onSaveInstanceState(): Parcelable? {
+    override fun onSaveInstanceState(): Parcelable {
         val superState = super.onSaveInstanceState()
         val savedState = Bundle()
         savedState.putParcelable("superState", superState)
@@ -158,6 +159,7 @@ class PdfRendererView @JvmOverloads constructor(
                     divider?.let { setDrawable(it) }
                 }.let { addItemDecoration(it) }
             }
+            setZoomEnabled(isZoomEnabled)
             addOnScrollListener(scrollListener)
         }
 
@@ -262,6 +264,7 @@ class PdfRendererView @JvmOverloads constructor(
         }
         disableScreenshots = typedArray.getBoolean(R.styleable.PdfRendererView_pdfView_disableScreenshots, false)
         applyScreenshotSecurity()
+        isZoomEnabled = typedArray.getBoolean(R.styleable.PdfRendererView_pdfView_enableZoom, true)
         typedArray.recycle()
     }
 
@@ -287,5 +290,9 @@ class PdfRendererView @JvmOverloads constructor(
         return (0..<totalPageCount).mapNotNull { page ->
             getBitmapByPage(page)
         }
+    }
+
+    fun setZoomEnabled(zoomEnabled: Boolean) {
+        isZoomEnabled = zoomEnabled
     }
 }

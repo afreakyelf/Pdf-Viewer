@@ -38,6 +38,10 @@ class PinchZoomRecyclerView @JvmOverloads constructor(
     private var posX = 0f
     private var posY = 0f
 
+    fun setZoomEnabled(enabled: Boolean) {
+        isZoomEnabled = enabled
+    }
+
     override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
         super.onMeasure(widthMeasureSpec, heightMeasureSpec)
         viewWidth = measuredWidth.toFloat()
@@ -54,6 +58,8 @@ class PinchZoomRecyclerView @JvmOverloads constructor(
     }
 
     override fun onTouchEvent(ev: MotionEvent): Boolean {
+        if (!isZoomEnabled) return super.onTouchEvent(ev)
+
         // Let the default handling occur first.
         val superHandled = super.onTouchEvent(ev)
 
@@ -166,6 +172,8 @@ class PinchZoomRecyclerView @JvmOverloads constructor(
      */
         private inner class ScaleListener : ScaleGestureDetector.SimpleOnScaleGestureListener() {
             override fun onScale(detector: ScaleGestureDetector): Boolean {
+                if (!isZoomEnabled) return false // Prevent scaling
+
                 val newScale = (scaleFactor * detector.scaleFactor).coerceIn(1f, maxZoom)
                 if (newScale != scaleFactor) {
                     val scaleDelta = newScale / scaleFactor

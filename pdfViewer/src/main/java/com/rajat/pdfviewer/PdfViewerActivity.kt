@@ -81,10 +81,12 @@ class PdfViewerActivity : AppCompatActivity() {
         const val ENABLE_FILE_DOWNLOAD = "enable_download"
         const val FROM_ASSETS = "from_assests"
         const val TITLE_BEHAVIOR = "title_behavior"
+        const val ENABLE_ZOOM = "enable_zoom"
         var enableDownload = false
         var isPDFFromPath = false
         var isFromAssets = false
         var SAVE_TO_DOWNLOADS = true
+        var isZoomEnabled = true
 
         fun launchPdfFromUrl(
             context: Context?,
@@ -92,6 +94,7 @@ class PdfViewerActivity : AppCompatActivity() {
             pdfTitle: String?,
             saveTo: saveTo,
             enableDownload: Boolean = true,
+            enableZoom: Boolean = true,
             headers: Map<String, String> = emptyMap(),
             toolbarTitleBehavior: ToolbarTitleBehavior? = null,
         ): Intent {
@@ -100,6 +103,7 @@ class PdfViewerActivity : AppCompatActivity() {
             intent.putExtra(FILE_TITLE, pdfTitle)
             intent.putExtra(ENABLE_FILE_DOWNLOAD, enableDownload)
             intent.putExtra("headers", HeaderData(headers))
+            intent.putExtra(ENABLE_ZOOM, enableZoom)
             toolbarTitleBehavior?.let {
                 intent.putExtra(TITLE_BEHAVIOR, it.ordinal)
             }
@@ -114,6 +118,7 @@ class PdfViewerActivity : AppCompatActivity() {
             pdfTitle: String?,
             saveTo: saveTo,
             fromAssets: Boolean = false,
+            enableZoom: Boolean = true,
             toolbarTitleBehavior: ToolbarTitleBehavior? = null,
             ): Intent {
             val intent = Intent(context, PdfViewerActivity::class.java)
@@ -124,6 +129,7 @@ class PdfViewerActivity : AppCompatActivity() {
             toolbarTitleBehavior?.let {
                 intent.putExtra(TITLE_BEHAVIOR, it.ordinal)
             }
+            intent.putExtra(ENABLE_ZOOM, enableZoom)
             isPDFFromPath = true
             SAVE_TO_DOWNLOADS = saveTo == com.rajat.pdfviewer.util.saveTo.DOWNLOADS
             return intent
@@ -305,6 +311,8 @@ class PdfViewerActivity : AppCompatActivity() {
         } else {
             intent.getParcelableExtra("headers")
         } ?: HeaderData(emptyMap())
+
+        isZoomEnabled = intent.getBooleanExtra(ENABLE_ZOOM, true)
 
         // Load string resources from XML attributes
         val typedArray = obtainStyledAttributes(R.styleable.PdfRendererView_Strings)
@@ -513,6 +521,7 @@ class PdfViewerActivity : AppCompatActivity() {
         if (TextUtils.isEmpty(fileUrl)) onPdfError("")
         //Initiating PDf Viewer with URL
         try {
+            binding.pdfView.setZoomEnabled(isZoomEnabled)
             binding.pdfView.initWithUrl(
                 fileUrl!!,
                 headers,
@@ -537,6 +546,7 @@ class PdfViewerActivity : AppCompatActivity() {
             } else {
                 File(filePath)
             }
+            binding.pdfView.setZoomEnabled(isZoomEnabled)
             binding.pdfView.initWithFile(file)
         } catch (e: Exception) {
             onPdfError(e.toString())
