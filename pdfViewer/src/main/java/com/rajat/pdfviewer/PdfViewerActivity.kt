@@ -21,8 +21,10 @@ import android.util.Log
 import android.view.Menu
 import android.view.MenuInflater
 import android.view.MenuItem
+import android.view.View
 import android.view.View.GONE
 import android.view.View.VISIBLE
+import android.view.Window
 import android.widget.Toast
 import androidx.activity.SystemBarStyle
 import androidx.activity.enableEdgeToEdge
@@ -32,7 +34,6 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import androidx.core.graphics.drawable.DrawableCompat
 import androidx.core.view.ViewCompat
-import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import androidx.core.view.updatePadding
@@ -136,6 +137,26 @@ class PdfViewerActivity : AppCompatActivity() {
         }
     }
 
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        // Inflate layout once (previously done twice)
+        binding = ActivityPdfViewerBinding.inflate(layoutInflater)
+        setContentView(binding.root)
+
+        // Setup Toolbar
+        setUpToolbar(intent.getStringExtra(FILE_TITLE) ?: "PDF")
+        configureToolbar()
+
+        // Apply theme attributes (background & progress bar styles)
+        applyThemeAttributes()
+
+        // Retrieve intent extras
+        extractIntentExtras()
+
+        // Initialize the PDF viewer
+        init()
+    }
+
     private fun configureToolbar() {
         val typedArray = theme.obtainStyledAttributes(R.styleable.PdfRendererView_toolbar)
         try {
@@ -161,6 +182,7 @@ class PdfViewerActivity : AppCompatActivity() {
             // Adjust toolbar color in dark mode
             val isDarkMode = (resources.configuration.uiMode and
                     Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES
+
             val adjustedToolbarColor = if (isDarkMode) {
                 MaterialColors.getColor(
                     this,
@@ -170,6 +192,15 @@ class PdfViewerActivity : AppCompatActivity() {
             } else {
                 toolbarColor
             }
+
+            val statusBarStyle = if (isDarkMode) {
+                SystemBarStyle.dark(adjustedToolbarColor)
+            } else {
+                SystemBarStyle.light(adjustedToolbarColor, adjustedToolbarColor) // Light mode
+            }
+
+            enableEdgeToEdge(statusBarStyle = statusBarStyle)
+            applyEdgeToEdge(window, binding.root)
 
             binding.myToolbar.setBackgroundColor(adjustedToolbarColor)
 
@@ -220,63 +251,18 @@ class PdfViewerActivity : AppCompatActivity() {
         }
     }
 
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-        enableEdgeToEdge() // Ensures backward compatibility
+    private fun applyEdgeToEdge(window: Window, rootView: View) {
+        val controller = WindowInsetsControllerCompat(window, rootView)
 
-        // Inflate layout once (previously done twice)
-        binding = ActivityPdfViewerBinding.inflate(layoutInflater)
-        setContentView(binding.root)
+        controller.isAppearanceLightStatusBars = true
+        controller.isAppearanceLightNavigationBars = true
 
-        // Enable Edge-to-Edge support
-        enableEdgeToEdgeMode()
-
-        // Setup Toolbar
-        setUpToolbar(intent.getStringExtra(FILE_TITLE) ?: "PDF")
-        configureToolbar()
-
-        // Apply theme attributes (background & progress bar styles)
-        applyThemeAttributes()
-
-        // Retrieve intent extras
-        extractIntentExtras()
-
-        // Initialize the PDF viewer
-        init()
-    }
-
-    private fun enableEdgeToEdgeMode() {
-        // Retrieve primary color and background from the current theme
-        val typedArray = theme.obtainStyledAttributes(intArrayOf(
-            android.R.attr.colorPrimary,
-            android.R.attr.colorBackground
-        ))
-
-        val primaryColor = typedArray.getColor(0, 0xFF6200EE.toInt())  // Default fallback: Indigo
-        val backgroundColor = typedArray.getColor(1, 0xFFFFFFFF.toInt()) // Default: White
-        typedArray.recycle()
-
-        // Enable edge-to-edge layout
-        WindowCompat.setDecorFitsSystemWindows(window, false)
-        WindowInsetsControllerCompat(window, binding.root).isAppearanceLightStatusBars = true
-
-        // Apply scrim colors dynamically
-        enableEdgeToEdge(
-            statusBarStyle = SystemBarStyle.auto(
-                lightScrim = backgroundColor, // Use theme's background color
-                darkScrim = primaryColor      // Use theme's primary color
-            ),
-            navigationBarStyle = SystemBarStyle.auto(
-                lightScrim = backgroundColor,
-                darkScrim = primaryColor
+        ViewCompat.setOnApplyWindowInsetsListener(rootView) { v, insets ->
+            val bars = insets.getInsets(
+                WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.displayCutout()
             )
-        )
-
-        // Handle system insets to avoid content overlap
-        ViewCompat.setOnApplyWindowInsetsListener(binding.root) { view, insets ->
-            val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
-            view.updatePadding(top = systemBars.top, bottom = systemBars.bottom)
-            insets
+            v.updatePadding(left = bars.left, top = bars.top, right = bars.right, bottom = bars.bottom)
+            WindowInsetsCompat.CONSUMED
         }
     }
 

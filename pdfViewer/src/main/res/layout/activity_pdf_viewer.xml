@@ -23,8 +23,7 @@
             android:id="@+id/toolbar_title"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:gravity="center_vertical"
-            android:textColor="?attr/pdfView_toolbarColor"/>
+            android:gravity="center_vertical"/>
     </com.google.android.material.appbar.MaterialToolbar>
 
 
