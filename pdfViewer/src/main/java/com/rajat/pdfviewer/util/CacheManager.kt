@@ -5,42 +5,53 @@ import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.util.Log
 import android.util.LruCache
+import com.rajat.pdfviewer.util.CacheHelper.handleCacheStrategy
+import com.rajat.pdfviewer.util.CommonUtils.Companion.MAX_CACHED_PDFS
+import com.rajat.pdfviewer.util.FileUtils.cachedFileNameWithFormat
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import java.io.File
 import java.io.FileOutputStream
 
-class CacheManager(private val context: Context) {
+class CacheManager(
+    context: Context,
+    currentOpenedFileName: String,
+    cacheStrategy: CacheStrategy = CacheStrategy.MAXIMIZE_PERFORMANCE
+) {
     private val memoryCache: LruCache<Int, Bitmap> = createMemoryCache()
-    private val cacheDir = File(context.cacheDir, CACHE_PATH)
+    private val cacheDir = File(context.cacheDir, "${CACHE_PATH}/$currentOpenedFileName")
 
     init {
         if (!cacheDir.exists()) {
             cacheDir.mkdirs()
         }
+
+        handleCacheStrategy(
+            "CacheManager",
+            cacheDir,
+            cacheStrategy,
+            currentOpenedFileName,
+            MAX_CACHED_PDFS
+        )
     }
 
     private fun createMemoryCache(): LruCache<Int, Bitmap> {
         val maxMemory = (Runtime.getRuntime().maxMemory() / 1024).toInt()
-        val cacheSize = maxMemory / 6  // Increased cache size
+        val cacheSize = maxMemory / 6
         return object : LruCache<Int, Bitmap>(cacheSize) {
             override fun sizeOf(key: Int, value: Bitmap): Int = value.byteCount / 1024
         }
     }
 
-    fun initCache() {
-        if (cacheDir.exists()) {
-            cacheDir.deleteRecursively()
+    fun getBitmapFromCache(pageNo: Int): Bitmap? {
+        return memoryCache.get(pageNo) ?: decodeBitmapFromDiskCache(pageNo)?.also {
+            memoryCache.put(pageNo, it)
         }
-        cacheDir.mkdirs()
     }
 
-    fun getBitmapFromCache(pageNo: Int): Bitmap? =
-        memoryCache.get(pageNo) ?: decodeBitmapFromDiskCache(pageNo)
-
     private fun decodeBitmapFromDiskCache(pageNo: Int): Bitmap? {
-        val file = File(cacheDir, pageNo.toString())
+        val file = File(cacheDir, cachedFileNameWithFormat(pageNo))
         return if (file.exists()) BitmapFactory.decodeFile(file.absolutePath) else null
     }
 
@@ -49,17 +60,15 @@ class CacheManager(private val context: Context) {
         writeBitmapToCache(pageNo, bitmap)
     }
 
-    fun writeBitmapToCache(pageNo: Int, bitmap: Bitmap) {
+    private fun writeBitmapToCache(pageNo: Int, bitmap: Bitmap) {
         CoroutineScope(Dispatchers.IO).launch {
             try {
-                // Ensure cache directory exists
                 if (!cacheDir.exists()) {
                     cacheDir.mkdirs()
                 }
 
-                val savePath = File(cacheDir, pageNo.toString())
+                val savePath = File(cacheDir, cachedFileNameWithFormat(pageNo))
 
-                // Ensure parent directory exists
                 savePath.parentFile?.let {
                     if (!it.exists()) {
                         it.mkdirs()
@@ -67,7 +76,7 @@ class CacheManager(private val context: Context) {
                 }
 
                 FileOutputStream(savePath).use { fos ->
-                    bitmap.compress(Bitmap.CompressFormat.JPEG, 75, fos)
+                    bitmap.compress(Bitmap.CompressFormat.PNG, 100, fos)
                 }
             } catch (e: Exception) {
                 Log.e("CacheManager", "Error writing bitmap to cache", e)
@@ -76,17 +85,7 @@ class CacheManager(private val context: Context) {
     }
 
     fun pageExistsInCache(pageNo: Int): Boolean =
-        File(cacheDir, pageNo.toString()).exists()
-
-    fun clearCache() {
-        memoryCache.evictAll()
-        cacheDir.deleteRecursively()
-
-        // Ensure cache directory is re-created after clearing
-        if (!cacheDir.exists()) {
-            cacheDir.mkdirs()
-        }
-    }
+        File(cacheDir, cachedFileNameWithFormat(pageNo)).exists()
 
     companion object {
         const val CACHE_PATH = "___pdf___cache___"

@@ -2,7 +2,9 @@ package com.rajat.pdfviewer
 
 import android.content.Context
 import android.util.Log
-import com.rajat.pdfviewer.util.FileUtils.clearPdfCache
+import com.rajat.pdfviewer.util.CacheHelper
+import com.rajat.pdfviewer.util.CacheStrategy
+import com.rajat.pdfviewer.util.CommonUtils.Companion.MAX_CACHED_PDFS
 import com.rajat.pdfviewer.util.FileUtils.getCachedFileName
 import com.rajat.pdfviewer.util.FileUtils.isValidPdf
 import com.rajat.pdfviewer.util.FileUtils.writeFile
@@ -22,6 +24,7 @@ class PdfDownloader(
     private val coroutineScope: CoroutineScope,
     private val headers: HeaderData,
     private val url: String,
+    private val cacheStrategy: CacheStrategy,
     private val listener: StatusListener
 ) {
 
@@ -29,7 +32,7 @@ class PdfDownloader(
         fun getContext(): Context
         fun onDownloadStart()
         fun onDownloadProgress(currentBytes: Long, totalBytes: Long)
-        fun onDownloadSuccess(absolutePath: String)
+        fun onDownloadSuccess(downloadedFile: File)
         fun onError(error: Throwable)
     }
 
@@ -46,25 +49,28 @@ class PdfDownloader(
 
     private suspend fun checkAndDownload(downloadUrl: String) {
         val cachedFileName = getCachedFileName(downloadUrl)
+        val cacheDir = File(listener.getContext().cacheDir, "___pdf___cache___/$cachedFileName") // ✅ Folder for PDF + Rendered Pages
 
-        if (lastDownloadedFile != cachedFileName) {
-            clearPdfCache(listener.getContext(), cachedFileName)
+        if (!cacheDir.exists()) {
+            cacheDir.mkdirs()
         }
 
-        val cachedFile = File(listener.getContext().cacheDir, cachedFileName)
+        val pdfFile = File(cacheDir, cachedFileName)
 
-        if (cachedFile.exists() && isValidPdf(cachedFile)) {
+        // Use centralized cache logic
+        CacheHelper.handleCacheStrategy("Downloader", cacheDir, cacheStrategy, cachedFileName, MAX_CACHED_PDFS)
+
+        if (pdfFile.exists() && isValidPdf(pdfFile)) {
             withContext(Dispatchers.Main) {
-                listener.onDownloadSuccess(cachedFile.absolutePath)
+                listener.onDownloadSuccess(pdfFile)
             }
         } else {
-            retryDownload(downloadUrl, cachedFileName)
+            retryDownload(downloadUrl, pdfFile)
         }
-
-        lastDownloadedFile = cachedFileName
     }
 
-    private suspend fun retryDownload(downloadUrl: String, cachedFileName: String) {
+
+    private suspend fun retryDownload(downloadUrl: String, cachedFileName: File) {
         var attempt = 0
         while (attempt < MAX_RETRIES) {
             try {
@@ -98,16 +104,14 @@ class PdfDownloader(
         return message.contains("Invalid content type") || message.contains("Downloaded file is not a valid PDF")
     }
 
-    private suspend fun downloadFile(downloadUrl: String, cachedFileName: String) {
+    private suspend fun downloadFile(downloadUrl: String, pdfFile: File) {
         withContext(Dispatchers.IO) {
-            val cacheDir = listener.getContext().cacheDir
-            val tempFile =
-                File.createTempFile("download_", ".tmp", cacheDir)
-            val outputFile = File(cacheDir, cachedFileName)
+            listener.getContext().cacheDir
+            val tempFile = File.createTempFile("download_", ".tmp", pdfFile.parentFile)
 
-            if (outputFile.exists() && !isValidPdf(outputFile)) {
-                Log.d("PdfDownloader", "Deleting invalid cached PDF: ${outputFile.absolutePath}")
-                outputFile.delete()
+
+            if (pdfFile.exists() && !isValidPdf(pdfFile)) {
+                pdfFile.delete()
             }
 
             val response = makeNetworkRequest(downloadUrl)
@@ -123,15 +127,17 @@ class PdfDownloader(
                 }
             }
 
-            tempFile.renameTo(outputFile)
+            tempFile.renameTo(pdfFile)
 
-            if (!isValidPdf(outputFile)) {
-                outputFile.delete()
+            if (!isValidPdf(pdfFile)) {
+                pdfFile.delete()
                 throw IOException("Downloaded file is not a valid PDF")
+            } else {
+                Log.d("PdfDownloader", "Downloaded PDF to: ${pdfFile.absolutePath}")
             }
 
             coroutineScope.launch(Dispatchers.Main) {
-                listener.onDownloadSuccess(outputFile.absolutePath)
+                listener.onDownloadSuccess(pdfFile)
             }
         }
     }

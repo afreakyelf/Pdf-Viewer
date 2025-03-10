@@ -47,6 +47,14 @@ internal class PdfViewAdapter(
             with(itemBinding) {
                 pageLoadingLayout.pdfViewPageLoadingProgress.visibility = if (enableLoadingForPages) View.VISIBLE else View.GONE
 
+                // Before we trigger rendering, explicitly ensure that cached bitmaps are used
+                renderer.getBitmapFromCache(position)?.let { cachedBitmap ->
+                    pageView.setImageBitmap(cachedBitmap)
+                    pageLoadingLayout.pdfViewPageLoadingProgress.visibility = View.GONE
+                    applyFadeInAnimation(pageView)
+                    return
+                }
+
                 renderer.getPageDimensionsAsync(position) { size ->
                     val width = pageView.width.takeIf { it > 0 } ?: context.resources.displayMetrics.widthPixels
                     val aspectRatio = size.width.toFloat() / size.height.toFloat()

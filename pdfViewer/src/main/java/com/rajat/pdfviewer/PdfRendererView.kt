@@ -27,6 +27,10 @@ import androidx.recyclerview.widget.DividerItemDecoration
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import androidx.recyclerview.widget.RecyclerView.NO_POSITION
+import com.rajat.pdfviewer.util.CacheStrategy
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import java.io.File
 import java.io.FileNotFoundException
 
@@ -53,6 +57,7 @@ class PdfRendererView @JvmOverloads constructor(
     private var restoredScrollPosition: Int = NO_POSITION
     private var disableScreenshots: Boolean = false
     private var postInitializationAction: (() -> Unit)? = null
+    private var cacheStrategy: CacheStrategy = CacheStrategy.MAXIMIZE_PERFORMANCE
 
     val totalPageCount: Int
         get() {
@@ -63,7 +68,6 @@ class PdfRendererView @JvmOverloads constructor(
         getAttrs(attrs, defStyleAttr)
     }
 
-
     interface StatusCallBack {
         fun onPdfLoadStart() {}
         fun onPdfLoadProgress(progress: Int, downloadedBytes: Long, totalBytes: Long?) {}
@@ -72,14 +76,17 @@ class PdfRendererView @JvmOverloads constructor(
         fun onPageChanged(currentPage: Int, totalPage: Int) {}
     }
 
+    // Load PDF from network URL
     fun initWithUrl(
         url: String,
         headers: HeaderData = HeaderData(),
         lifecycleCoroutineScope: LifecycleCoroutineScope,
-        lifecycle: Lifecycle
+        lifecycle: Lifecycle,
+        cacheStrategy: CacheStrategy = CacheStrategy.MAXIMIZE_PERFORMANCE
     ) {
         lifecycle.addObserver(this) // Register as LifecycleObserver
-        PdfDownloader(lifecycleCoroutineScope,headers,url, object : PdfDownloader.StatusListener {
+        this.cacheStrategy = cacheStrategy
+        PdfDownloader(lifecycleCoroutineScope,headers,url,cacheStrategy, object : PdfDownloader.StatusListener {
             override fun getContext(): Context = context
             override fun onDownloadStart() {
                 statusListener?.onPdfLoadStart()
@@ -90,9 +97,9 @@ class PdfRendererView @JvmOverloads constructor(
                     progress = 100
                 statusListener?.onPdfLoadProgress(progress, currentBytes, totalBytes)
             }
-            override fun onDownloadSuccess(absolutePath: String) {
-                initWithFile(File(absolutePath))
-                statusListener?.onPdfLoadSuccess(absolutePath)
+            override fun onDownloadSuccess(downloadedFile: File) {
+                initWithFile(File(downloadedFile.absolutePath),cacheStrategy)
+                statusListener?.onPdfLoadSuccess(downloadedFile.absolutePath)
             }
             override fun onError(error: Throwable) {
                 error.printStackTrace()
@@ -101,49 +108,25 @@ class PdfRendererView @JvmOverloads constructor(
         })
     }
 
-    fun initWithFile(file: File) {
-        init(file)
+    // Load PDF directly from File
+    fun initWithFile(file: File, cacheStrategy: CacheStrategy = CacheStrategy.MAXIMIZE_PERFORMANCE) {
+        val cacheIdentifier = file.name
+        this.cacheStrategy = cacheStrategy
+        val fileDescriptor = PdfRendererCore.getFileDescriptor(file)
+        initializeRenderer(fileDescriptor, cacheIdentifier)
     }
 
+    // Load PDF directly from Uri
     @Throws(FileNotFoundException::class)
     fun initWithUri(uri: Uri) {
         val fileDescriptor = context.contentResolver.openFileDescriptor(uri, "r") ?: return
-        init(fileDescriptor)
+        val cacheIdentifier = uri.toString().hashCode().toString()
+        initializeRenderer(fileDescriptor, cacheIdentifier)
     }
 
-    override fun onSaveInstanceState(): Parcelable {
-        val superState = super.onSaveInstanceState()
-        val savedState = Bundle()
-        savedState.putParcelable("superState", superState)
-        if (this::recyclerView.isInitialized) {
-            savedState.putInt("scrollPosition", positionToUseForState)
-        }
-        return savedState
-    }
-
-    override fun onRestoreInstanceState(state: Parcelable?) {
-        var savedState = state
-        if (savedState is Bundle) {
-            val superState = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                savedState.getParcelable("superState",Parcelable::class.java)
-            } else {
-                savedState.getParcelable("superState")
-            }
-            super.onRestoreInstanceState(superState)
-            restoredScrollPosition = savedState.getInt("scrollPosition", positionToUseForState)
-        } else {
-            super.onRestoreInstanceState(savedState)
-        }
-    }
-
-    private fun init(file: File) {
-        val fileDescriptor = PdfRendererCore.getFileDescriptor(file)
-        init(fileDescriptor)
-    }
-
-    private fun init(fileDescriptor: ParcelFileDescriptor) {
+    private fun initializeRenderer(fileDescriptor: ParcelFileDescriptor, cacheIdentifier: String) {
         // Proceed with safeFile
-        pdfRendererCore = PdfRendererCore(context, fileDescriptor)
+        pdfRendererCore = PdfRendererCore(context, fileDescriptor, cacheIdentifier, this.cacheStrategy)
         pdfRendererCoreInitialised = true
         pdfViewAdapter = PdfViewAdapter(context,pdfRendererCore, pageMargin, enableLoadingForPages)
         val v = LayoutInflater.from(context).inflate(R.layout.pdf_rendererview, this, false)
@@ -179,6 +162,8 @@ class PdfRendererView @JvmOverloads constructor(
             postInitializationAction = null
         }
 
+        // Start preloading cache into memory immediately after setting up adapter and RecyclerView
+        preloadCacheIntoMemory()
     }
 
 
@@ -295,4 +280,41 @@ class PdfRendererView @JvmOverloads constructor(
     fun setZoomEnabled(zoomEnabled: Boolean) {
         isZoomEnabled = zoomEnabled
     }
+
+    private fun preloadCacheIntoMemory() {
+        CoroutineScope(Dispatchers.IO).launch {
+            pdfRendererCore.let { renderer ->
+                (0 until renderer.getPageCount()).forEach { pageNo ->
+                    renderer.getBitmapFromCache(pageNo)
+                }
+            }
+        }
+    }
+
+
+    override fun onSaveInstanceState(): Parcelable {
+        val superState = super.onSaveInstanceState()
+        val savedState = Bundle()
+        savedState.putParcelable("superState", superState)
+        if (this::recyclerView.isInitialized) {
+            savedState.putInt("scrollPosition", positionToUseForState)
+        }
+        return savedState
+    }
+
+    override fun onRestoreInstanceState(state: Parcelable?) {
+        var savedState = state
+        if (savedState is Bundle) {
+            val superState = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                savedState.getParcelable("superState",Parcelable::class.java)
+            } else {
+                savedState.getParcelable("superState")
+            }
+            super.onRestoreInstanceState(superState)
+            restoredScrollPosition = savedState.getInt("scrollPosition", positionToUseForState)
+        } else {
+            super.onRestoreInstanceState(savedState)
+        }
+    }
+
 }

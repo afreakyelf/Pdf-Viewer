@@ -40,6 +40,7 @@ import androidx.core.view.updatePadding
 import androidx.lifecycle.lifecycleScope
 import com.google.android.material.color.MaterialColors
 import com.rajat.pdfviewer.databinding.ActivityPdfViewerBinding
+import com.rajat.pdfviewer.util.CacheStrategy
 import com.rajat.pdfviewer.util.FileUtils.createPdfDocumentUri
 import com.rajat.pdfviewer.util.FileUtils.fileFromAsset
 import com.rajat.pdfviewer.util.FileUtils.uriToFile
@@ -75,6 +76,7 @@ class PdfViewerActivity : AppCompatActivity() {
     private val viewModel: PdfViewerViewModel by viewModels()
     private var downloadedFilePath: String? = null
     private var isDownloadButtonEnabled = false
+    private lateinit var cacheStrategy: CacheStrategy
 
     companion object {
         const val FILE_URL = "pdf_file_url"
@@ -88,6 +90,7 @@ class PdfViewerActivity : AppCompatActivity() {
         var isFromAssets = false
         var SAVE_TO_DOWNLOADS = true
         var isZoomEnabled = true
+        const val CACHE_STRATEGY = "cache_strategy"
 
         fun launchPdfFromUrl(
             context: Context?,
@@ -98,6 +101,7 @@ class PdfViewerActivity : AppCompatActivity() {
             enableZoom: Boolean = true,
             headers: Map<String, String> = emptyMap(),
             toolbarTitleBehavior: ToolbarTitleBehavior? = null,
+            cacheStrategy: CacheStrategy = CacheStrategy.MAXIMIZE_PERFORMANCE
         ): Intent {
             val intent = Intent(context, PdfViewerActivity::class.java)
             intent.putExtra(FILE_URL, pdfUrl)
@@ -108,6 +112,7 @@ class PdfViewerActivity : AppCompatActivity() {
             toolbarTitleBehavior?.let {
                 intent.putExtra(TITLE_BEHAVIOR, it.ordinal)
             }
+            intent.putExtra(CACHE_STRATEGY, cacheStrategy.ordinal)
             isPDFFromPath = false
             SAVE_TO_DOWNLOADS = saveTo == com.rajat.pdfviewer.util.saveTo.DOWNLOADS
             return intent
@@ -121,7 +126,8 @@ class PdfViewerActivity : AppCompatActivity() {
             fromAssets: Boolean = false,
             enableZoom: Boolean = true,
             toolbarTitleBehavior: ToolbarTitleBehavior? = null,
-            ): Intent {
+            cacheStrategy: CacheStrategy = CacheStrategy.MAXIMIZE_PERFORMANCE
+        ): Intent {
             val intent = Intent(context, PdfViewerActivity::class.java)
             intent.putExtra(FILE_URL, path)
             intent.putExtra(FILE_TITLE, pdfTitle)
@@ -131,6 +137,7 @@ class PdfViewerActivity : AppCompatActivity() {
                 intent.putExtra(TITLE_BEHAVIOR, it.ordinal)
             }
             intent.putExtra(ENABLE_ZOOM, enableZoom)
+            intent.putExtra(CACHE_STRATEGY, cacheStrategy.ordinal)
             isPDFFromPath = true
             SAVE_TO_DOWNLOADS = saveTo == com.rajat.pdfviewer.util.saveTo.DOWNLOADS
             return intent
@@ -174,7 +181,7 @@ class PdfViewerActivity : AppCompatActivity() {
                 R.styleable.PdfRendererView_toolbar_pdfView_toolbarColor,
                 MaterialColors.getColor(
                     this,
-                    com.google.android.material.R.attr.colorPrimary,
+                    R.attr.colorPrimary,
                     Color.BLUE
                 )
             )
@@ -186,7 +193,7 @@ class PdfViewerActivity : AppCompatActivity() {
             val adjustedToolbarColor = if (isDarkMode) {
                 MaterialColors.getColor(
                     this,
-                    com.google.android.material.R.attr.colorSurface,
+                    R.attr.colorSurface,
                     Color.DKGRAY
                 )
             } else {
@@ -300,6 +307,10 @@ class PdfViewerActivity : AppCompatActivity() {
 
         isZoomEnabled = intent.getBooleanExtra(ENABLE_ZOOM, true)
 
+        // Extract cache strategy from intent
+        val strategyOrdinal = intent.getIntExtra(CACHE_STRATEGY, CacheStrategy.MAXIMIZE_PERFORMANCE.ordinal)
+        cacheStrategy = CacheStrategy.entries.toTypedArray()[strategyOrdinal]
+
         // Load string resources from XML attributes
         val typedArray = obtainStyledAttributes(R.styleable.PdfRendererView_Strings)
         error_pdf_corrupted =
@@ -343,10 +354,8 @@ class PdfViewerActivity : AppCompatActivity() {
     private fun init() {
         binding.pdfView.statusListener = object : PdfRendererView.StatusCallBack {
             override fun onPdfLoadStart() {
-                runOnUiThread {
-                    true.showProgressBar()
-                    updateDownloadButtonState(false)
-                }
+                true.showProgressBar()
+                updateDownloadButtonState(false)
             }
 
             override fun onPdfLoadProgress(
@@ -355,6 +364,7 @@ class PdfViewerActivity : AppCompatActivity() {
                 totalBytes: Long?
             ) {
                 //Download is in progress
+                true.showProgressBar()
             }
 
             override fun onPdfLoadSuccess(absolutePath: String) {
@@ -512,7 +522,8 @@ class PdfViewerActivity : AppCompatActivity() {
                 fileUrl!!,
                 headers,
                 lifecycleScope,
-                lifecycle = lifecycle
+                lifecycle = lifecycle,
+                cacheStrategy = cacheStrategy
             )
         } catch (e: Exception) {
             onPdfError(e.toString())
@@ -533,7 +544,7 @@ class PdfViewerActivity : AppCompatActivity() {
                 File(filePath)
             }
             binding.pdfView.setZoomEnabled(isZoomEnabled)
-            binding.pdfView.initWithFile(file)
+            binding.pdfView.initWithFile(file, cacheStrategy)
         } catch (e: Exception) {
             onPdfError(e.toString())
         }

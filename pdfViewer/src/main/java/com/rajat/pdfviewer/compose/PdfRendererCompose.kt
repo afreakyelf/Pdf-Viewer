@@ -10,6 +10,7 @@ import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.lifecycleScope
 import com.rajat.pdfviewer.HeaderData
 import com.rajat.pdfviewer.PdfRendererView
+import com.rajat.pdfviewer.util.CacheStrategy
 import java.io.File
 
 @Composable
@@ -42,6 +43,7 @@ fun PdfRendererViewCompose(
 fun PdfRendererViewCompose(
     file: File,
     modifier: Modifier = Modifier,
+    cacheStrategy: CacheStrategy = CacheStrategy.MAXIMIZE_PERFORMANCE,
     statusCallBack: PdfRendererView.StatusCallBack? = null,
 ) {
     AndroidView(
@@ -51,7 +53,7 @@ fun PdfRendererViewCompose(
                 pdfRendererView.statusListener = statusCallBack
             }
 
-            pdfRendererView.initWithFile(file = file)
+            pdfRendererView.initWithFile(file = file, cacheStrategy = cacheStrategy)
         },
         modifier = modifier
     )

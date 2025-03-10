@@ -8,8 +8,6 @@ import android.os.Build
 import android.os.Environment
 import android.provider.MediaStore
 import android.util.Log
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 import java.io.*
 
 object FileUtils {
@@ -17,7 +15,7 @@ object FileUtils {
     fun fileFromAsset(context: Context, assetName: String): File {
         val outFile = File(context.cacheDir, "$assetName")
         if (assetName.contains("/")) {
-            outFile.parentFile.mkdirs()
+            outFile.parentFile?.mkdirs()
         }
         copy(context.assets.open(assetName), outFile)
         return outFile
@@ -99,4 +97,6 @@ object FileUtils {
             false
         }
     }
+
+    fun cachedFileNameWithFormat(name: Any, format: String = ".jpg") = "$name$format"
 }

@@ -35,14 +35,6 @@
         app:layout_constraintTop_toBottomOf="@id/my_toolbar"
         app:layout_constraintBottom_toBottomOf="parent">
 
-        <!-- PDF Viewer -->
-        <com.rajat.pdfviewer.PdfRendererView
-            android:id="@+id/pdfView"
-            android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            app:pdfView_divider="@drawable/pdf_viewer_divider"
-            app:pdfView_showDivider="false"/>
-
         <!-- Centered ProgressBar -->
         <ProgressBar
             android:id="@+id/progressBar"
@@ -52,6 +44,15 @@
             android:layout_gravity="center"
             android:indeterminateDrawable="@drawable/pdf_viewer_progress_circle"
             android:interpolator="@android:anim/accelerate_decelerate_interpolator"/>
+
+        <!-- PDF Viewer -->
+        <com.rajat.pdfviewer.PdfRendererView
+            android:id="@+id/pdfView"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            app:pdfView_divider="@drawable/pdf_viewer_divider"
+            app:pdfView_showDivider="false"/>
+
 
     </FrameLayout>
 
