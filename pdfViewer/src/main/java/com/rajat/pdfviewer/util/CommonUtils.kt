@@ -7,7 +7,7 @@ class CommonUtils {
 
     companion object {
 
-        const val MAX_CACHED_PDFS = 2
+        const val MAX_CACHED_PDFS = 5
 
         object BitmapPool {
             private val pool = LinkedList<Bitmap>()

@@ -36,8 +36,6 @@ class PdfDownloader(
         fun onError(error: Throwable)
     }
 
-    private var lastDownloadedFile: String? = null
-
     init {
         coroutineScope.launch { checkAndDownload(url) }
     }
@@ -49,7 +47,7 @@ class PdfDownloader(
 
     private suspend fun checkAndDownload(downloadUrl: String) {
         val cachedFileName = getCachedFileName(downloadUrl)
-        val cacheDir = File(listener.getContext().cacheDir, "___pdf___cache___/$cachedFileName") // ✅ Folder for PDF + Rendered Pages
+        val cacheDir = File(listener.getContext().cacheDir, "___pdf___cache___/$cachedFileName") // Folder for PDF + Rendered Pages
 
         if (!cacheDir.exists()) {
             cacheDir.mkdirs()
@@ -108,7 +106,6 @@ class PdfDownloader(
         withContext(Dispatchers.IO) {
             listener.getContext().cacheDir
             val tempFile = File.createTempFile("download_", ".tmp", pdfFile.parentFile)
-
 
             if (pdfFile.exists() && !isValidPdf(pdfFile)) {
                 pdfFile.delete()

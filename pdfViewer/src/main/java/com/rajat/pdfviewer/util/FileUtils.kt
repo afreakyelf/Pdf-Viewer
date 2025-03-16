@@ -3,17 +3,21 @@ package com.rajat.pdfviewer.util
 import android.content.ContentResolver
 import android.content.ContentValues
 import android.content.Context
+import android.graphics.pdf.PdfRenderer
 import android.net.Uri
 import android.os.Build
 import android.os.Environment
+import android.os.ParcelFileDescriptor
 import android.provider.MediaStore
 import android.util.Log
 import java.io.*
 
 object FileUtils {
+    private const val TAG = "PdfValidator"
+
     @Throws(IOException::class)
     fun fileFromAsset(context: Context, assetName: String): File {
-        val outFile = File(context.cacheDir, "$assetName")
+        val outFile = File(context.cacheDir, assetName)
         if (assetName.contains("/")) {
             outFile.parentFile?.mkdirs()
         }
@@ -84,16 +88,44 @@ object FileUtils {
         }
     }
 
-    fun isValidPdf(file: File): Boolean {
+    fun isValidPdf(file: File?): Boolean {
+        if (file == null || !file.exists() || file.length() < 4) {
+            Log.e(TAG, "Validation failed: File is null, does not exist, or is too small.")
+            return false
+        }
+
         return try {
             FileInputStream(file).use { inputStream ->
-                val signature = ByteArray(4)
-                if (inputStream.read(signature) != 4) return false
-                val pdfHeader = String(signature, Charsets.US_ASCII)
-                pdfHeader.startsWith("%PDF")
+                val buffer = ByteArray(1024) // Read first 1024 bytes or less
+                val bytesRead = inputStream.read(buffer)
+                if (bytesRead == -1) {
+                    Log.e(TAG, "Validation failed: Unable to read file content.")
+                    return false
+                }
+
+                val pdfContent = String(buffer, Charsets.US_ASCII)
+                val pdfIndex = pdfContent.indexOf("%PDF") // Look for `%PDF` anywhere in first 1024 bytes
+                if (pdfIndex == -1) {
+                    Log.e(TAG, "Validation failed: `%PDF` signature not found in first 1024 bytes.")
+                    return false
+                }
+
+                Log.d(TAG, "PDF signature found at byte offset: $pdfIndex")
+
+                // Check if PdfRenderer can open it
+                ParcelFileDescriptor.open(file, ParcelFileDescriptor.MODE_READ_ONLY).use { pfd ->
+                    PdfRenderer(pfd).use { renderer ->
+                        if (renderer.pageCount <= 0) {
+                            Log.e(TAG, "Validation failed: PDF has no pages.")
+                            return false
+                        }
+                        Log.d(TAG, "Validation successful: PDF is valid with ${renderer.pageCount} pages.")
+                    }
+                }
+                true
             }
         } catch (e: Exception) {
-            Log.e("FileUtils", "Error checking PDF validity: ${e.message}")
+            Log.e(TAG, "Validation failed: ${e.message}", e)
             false
         }
     }
