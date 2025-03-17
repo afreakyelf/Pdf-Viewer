@@ -166,10 +166,15 @@ class PdfRendererView @JvmOverloads constructor(
         preloadCacheIntoMemory()
     }
 
-
     private val scrollListener = object : RecyclerView.OnScrollListener() {
-        private var lastFirstVisiblePosition = NO_POSITION
-        private var lastCompletelyVisiblePosition = NO_POSITION
+        private var lastDisplayedPage = NO_POSITION
+        private var lastScrollDirection = 0 // 1 = Down, -1 = Up
+
+        private val hideRunnable = Runnable {
+            if (pageNo.visibility == View.VISIBLE) {
+                pageNo.visibility = View.GONE
+            }
+        }
 
         override fun onScrolled(recyclerView: RecyclerView, dx: Int, dy: Int) {
             super.onScrolled(recyclerView, dx, dy)
@@ -177,40 +182,55 @@ class PdfRendererView @JvmOverloads constructor(
 
             val firstVisiblePosition = layoutManager.findFirstVisibleItemPosition()
             val firstCompletelyVisiblePosition = layoutManager.findFirstCompletelyVisibleItemPosition()
-            val isPositionChanged = firstVisiblePosition != lastFirstVisiblePosition ||
-                    firstCompletelyVisiblePosition != lastCompletelyVisiblePosition
-            if (isPositionChanged) {
-                val positionToUse = if (firstCompletelyVisiblePosition != NO_POSITION) {
-                    firstCompletelyVisiblePosition
-                } else {
-                    firstVisiblePosition
-                }
-                positionToUseForState = positionToUse
-                updatePageNumberDisplay(positionToUse)
-                lastFirstVisiblePosition = firstVisiblePosition
-                lastCompletelyVisiblePosition = firstCompletelyVisiblePosition
-            }else{
-                positionToUseForState = firstVisiblePosition
+            val lastVisiblePosition = layoutManager.findLastVisibleItemPosition()
+            val lastCompletelyVisiblePosition = layoutManager.findLastCompletelyVisibleItemPosition()
+
+            // Determine scroll direction
+            val scrollDirection = when {
+                dy > 0 -> 1  // Scrolling Down
+                dy < 0 -> -1 // Scrolling Up
+                else -> lastScrollDirection
+            }
+            lastScrollDirection = scrollDirection
+
+            // Determine the most dominant page to display
+            val pageToShow = when (scrollDirection) {
+                1 -> lastCompletelyVisiblePosition.takeIf { it != NO_POSITION }
+                    ?: lastVisiblePosition.takeIf { it != NO_POSITION }
+                    ?: firstVisiblePosition // Scrolling Down - Prefer the last fully visible, then partially visible
+                -1 -> firstCompletelyVisiblePosition.takeIf { it != NO_POSITION }
+                    ?: firstVisiblePosition.takeIf { it != NO_POSITION }
+                    ?: lastVisiblePosition // Scrolling Up - Prefer the first fully visible, then partially visible
+                else -> firstVisiblePosition // Default case
+            }
+
+            // Ensure updates happen when the page actually changes
+            if (pageToShow != lastDisplayedPage) {
+                updatePageNumberDisplay(pageToShow)
+                lastDisplayedPage = pageToShow
             }
         }
 
-        private fun updatePageNumberDisplay(position: Int) {
+        fun updatePageNumberDisplay(position: Int) {
             if (position != NO_POSITION) {
                 pageNo.text = context.getString(R.string.pdfView_page_no, position + 1, totalPageCount)
                 pageNo.visibility = View.VISIBLE
-                if (position == 0) {
-                    pageNo.postDelayed({ pageNo.visibility = View.GONE }, 3000)
-                }
-                statusListener?.onPageChanged(position, totalPageCount)
+
+                // Remove any existing hide delays before scheduling a new one
+                pageNo.removeCallbacks(hideRunnable)
+                pageNo.postDelayed(hideRunnable, 3000)
+
+                statusListener?.onPageChanged(position + 1, totalPageCount)
             }
         }
 
         override fun onScrollStateChanged(recyclerView: RecyclerView, newState: Int) {
             super.onScrollStateChanged(recyclerView, newState)
             if (newState == RecyclerView.SCROLL_STATE_IDLE) {
-                pageNo.postDelayed(runnable, 3000)
+                pageNo.removeCallbacks(hideRunnable)
+                pageNo.postDelayed(hideRunnable, 3000)
             } else {
-                pageNo.removeCallbacks(runnable)
+                pageNo.removeCallbacks(hideRunnable)
             }
         }
     }
@@ -219,7 +239,10 @@ class PdfRendererView @JvmOverloads constructor(
         val action = {
             if (pageNumber in 0 until totalPageCount) {
                 recyclerView.post {
-                    recyclerView.scrollToPosition(pageNumber)
+                    val layoutManager = recyclerView.layoutManager as LinearLayoutManager
+                    layoutManager.scrollToPositionWithOffset(pageNumber, 0) // Ensures full visibility
+
+                    recyclerView.post { forceUpdatePageNumber() } // No delay needed
                 }
             }
         }
@@ -227,6 +250,30 @@ class PdfRendererView @JvmOverloads constructor(
             action()
         } else {
             postInitializationAction = action
+        }
+    }
+
+    private fun forceUpdatePageNumber() {
+        val layoutManager = recyclerView.layoutManager as LinearLayoutManager
+        val firstVisiblePosition = layoutManager.findFirstVisibleItemPosition()
+        val firstCompletelyVisiblePosition = layoutManager.findFirstCompletelyVisibleItemPosition()
+        val lastVisiblePosition = layoutManager.findLastVisibleItemPosition()
+        val lastCompletelyVisiblePosition = layoutManager.findLastCompletelyVisibleItemPosition()
+       val positionToUse = lastCompletelyVisiblePosition.takeIf { it != NO_POSITION }
+            ?: lastVisiblePosition.takeIf { it != NO_POSITION }
+            ?: firstCompletelyVisiblePosition.takeIf { it != NO_POSITION }
+            ?: firstVisiblePosition
+        updatePageNumberDisplay(positionToUse)
+    }
+
+    private fun updatePageNumberDisplay(position: Int) {
+        if (position != NO_POSITION) {
+            pageNo.text = context.getString(R.string.pdfView_page_no, position + 1, totalPageCount)
+            pageNo.visibility = View.VISIBLE
+            if (position == 0) {
+                pageNo.postDelayed({ pageNo.visibility = View.GONE }, 3000)
+            }
+            statusListener?.onPageChanged(position + 1, totalPageCount)
         }
     }
 
@@ -239,19 +286,23 @@ class PdfRendererView @JvmOverloads constructor(
     private fun setTypeArray(typedArray: TypedArray) {
         showDivider = typedArray.getBoolean(R.styleable.PdfRendererView_pdfView_showDivider, true)
         divider = typedArray.getDrawable(R.styleable.PdfRendererView_pdfView_divider)
-        enableLoadingForPages = typedArray.getBoolean(R.styleable.PdfRendererView_pdfView_enableLoadingForPages, enableLoadingForPages)
-        val marginDim = typedArray.getDimensionPixelSize(R.styleable.PdfRendererView_pdfView_page_margin, 0)
-        pageMargin = Rect(marginDim, marginDim, marginDim, marginDim).apply {
-            top = typedArray.getDimensionPixelSize(R.styleable.PdfRendererView_pdfView_page_marginTop, top)
-            left = typedArray.getDimensionPixelSize(R.styleable.PdfRendererView_pdfView_page_marginLeft, left)
-            right = typedArray.getDimensionPixelSize(R.styleable.PdfRendererView_pdfView_page_marginRight, right)
-            bottom = typedArray.getDimensionPixelSize(R.styleable.PdfRendererView_pdfView_page_marginBottom, bottom)
-        }
+        enableLoadingForPages = typedArray.getBoolean(R.styleable.PdfRendererView_pdfView_enableLoadingForPages, false)
         disableScreenshots = typedArray.getBoolean(R.styleable.PdfRendererView_pdfView_disableScreenshots, false)
-        applyScreenshotSecurity()
         isZoomEnabled = typedArray.getBoolean(R.styleable.PdfRendererView_pdfView_enableZoom, true)
+
+        // Fetch all margin values efficiently
+        val marginDim = typedArray.getDimensionPixelSize(R.styleable.PdfRendererView_pdfView_page_margin, 0)
+        pageMargin.set(
+            typedArray.getDimensionPixelSize(R.styleable.PdfRendererView_pdfView_page_marginLeft, marginDim),
+            typedArray.getDimensionPixelSize(R.styleable.PdfRendererView_pdfView_page_marginTop, marginDim),
+            typedArray.getDimensionPixelSize(R.styleable.PdfRendererView_pdfView_page_marginRight, marginDim),
+            typedArray.getDimensionPixelSize(R.styleable.PdfRendererView_pdfView_page_marginBottom, marginDim)
+        )
+
+        applyScreenshotSecurity()
         typedArray.recycle()
     }
+
 
     private fun applyScreenshotSecurity() {
         if (disableScreenshots) {
