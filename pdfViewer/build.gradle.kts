@@ -4,6 +4,7 @@ import com.vanniktech.maven.publish.SonatypeHost
 plugins {
     id("com.android.library")
     id("org.jetbrains.kotlin.android")
+    id("org.jetbrains.kotlin.plugin.compose")
     id("kotlin-parcelize")
     id("org.jetbrains.dokka") version "1.9.20"
     id("com.vanniktech.maven.publish") version "0.28.0"
@@ -52,7 +53,7 @@ android {
 
 dependencies {
     implementation("androidx.compose.material3:material3-android:1.3.1")
-    val kotlin_version = "1.9.21"
+    val kotlin_version = "2.1.10"
     implementation(fileTree(mapOf("dir" to "libs", "include" to listOf("*.jar"))))
     implementation("org.jetbrains.kotlin:kotlin-stdlib:$kotlin_version")
     implementation("androidx.core:core-ktx:1.15.0")
