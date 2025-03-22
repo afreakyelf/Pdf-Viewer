@@ -157,8 +157,20 @@ open class PdfRendererCore(
     private suspend fun <T> withPdfPage(pageNo: Int, block: (PdfRenderer.Page) -> T): T? =
         withContext(Dispatchers.IO) {
             synchronized(this@PdfRendererCore) {
-                pdfRenderer.openPage(pageNo).use { page ->
-                    return@withContext block(page)
+                if (!isRendererOpen) return@withContext null
+
+                // Ensure previous page is closed on API < 34
+                if (Build.VERSION.SDK_INT < Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                    closeAllOpenPages()
+                }
+
+                return@withContext try {
+                    pdfRenderer.openPage(pageNo).use { page ->
+                        block(page)
+                    }
+                } catch (e: Exception) {
+                    Log.e("PdfRendererCore", "withPdfPage error: ${e.message}", e)
+                    null
                 }
             }
         }
@@ -186,8 +198,11 @@ open class PdfRendererCore(
 
     private fun openPageSafely(pageNo: Int): PdfRenderer.Page? {
         synchronized(this) {
-            if (!isRendererOpen) {
-                return null
+            if (!isRendererOpen) return null
+
+            // Close all pages for API < 34
+            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                closeAllOpenPages()
             }
 
             openPages[pageNo]?.let {
@@ -198,13 +213,14 @@ open class PdfRendererCore(
                 val page = pdfRenderer.openPage(pageNo)
                 openPages[pageNo] = page
 
-                // ✅ Keep last 5 pages open instead of just 3
-                if (openPages.size > 5) {
-                    val oldestPage = openPages.keys.minOrNull()
-                    oldestPage?.let { oldPage ->
-                        openPages.remove(oldPage)?.close()
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                    // For newer versions, allow multiple open pages
+                    if (openPages.size > 5) {
+                        val oldest = openPages.keys.minOrNull()
+                        oldest?.let { openPages.remove(it)?.close() }
                     }
                 }
+
                 page
             } catch (e: Exception) {
                 Log.e("PDF_OPEN_TRACKER", "Error opening page $pageNo: ${e.message}", e)
