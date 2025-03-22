@@ -126,6 +126,7 @@ class PdfRendererView @JvmOverloads constructor(
 
     private fun initializeRenderer(fileDescriptor: ParcelFileDescriptor, cacheIdentifier: String) {
         // Proceed with safeFile
+        PdfRendererCore.enableDebugMetrics = true
         pdfRendererCore = PdfRendererCore(context, fileDescriptor, cacheIdentifier, this.cacheStrategy)
         pdfRendererCoreInitialised = true
         pdfViewAdapter = PdfViewAdapter(context,pdfRendererCore, pageMargin, enableLoadingForPages)

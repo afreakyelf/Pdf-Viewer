@@ -61,6 +61,7 @@ internal class PdfViewAdapter(
                                 pageView.setImageBitmap(renderedBitmap ?: bitmap)
                                 applyFadeInAnimation(pageView)
                                 pageLoadingLayout.pdfViewPageLoadingProgress.visibility = View.GONE
+                                    currentPage = position,
                             }
                         } else {
                             CommonUtils.Companion.BitmapPool.recycleBitmap(bitmap)
