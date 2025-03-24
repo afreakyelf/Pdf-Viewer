@@ -40,57 +40,69 @@ jobs:
           dry_run="${{ github.event.inputs.dry_run }}"
           summary_file="logs/summary.txt"
           touch "$summary_file"
-        
+
           echo "### 🔄 Fixed Issue Report" >> "$summary_file"
           echo "" >> "$summary_file"
-        
+
+          issue_list_file="logs/issues_raw.json"
+
+          # Fetch issues and store raw JSON
           gh issue list --label "Fixed" --state open --limit 100 --json number,updatedAt,author,title \
-          | jq -c '.[]' \
-          | jq -s 'sort_by((now - (.[] | .updatedAt | fromdateiso8601)) / 86400)' \
-          | tee logs/issues_raw.json \
-          | while read -r issue; do
-              issue_number=$(echo "$issue" | jq '.number')
-              issue_title=$(echo "$issue" | jq -r '.title')
-              updated_at=$(echo "$issue" | jq -r '.updatedAt')
-              author=$(echo "$issue" | jq -r '.author.login')
-              updated_epoch=$(date --date="$updated_at" +%s)
-              now_epoch=$(date +%s)
-              days_inactive=$(( (now_epoch - updated_epoch) / 86400 ))
-              days_left=$(( 30 - days_inactive ))
-              issue_url="https://github.com/${{ github.repository }}/issues/$issue_number"
-        
-              line="- [#$issue_number]($issue_url) — \"$issue_title\" (by @$author, $days_inactive days inactive"
-        
-              if [ "$days_inactive" -ge 30 ]; then
-                echo "⛔ Closing issue #$issue_number"
-                closed_issues+=$'\n'"❌ $line)"
-                if [ "$dry_run" != "true" ]; then
-                  gh issue close "$issue_number" --comment "This issue is marked **Fixed** and has had no activity for 30+ days. Closing it now. Feel free to reopen if needed. ✅"
-                fi
-        
-              elif [ "$days_inactive" -ge 25 ]; then
-                echo "⚠️ Warning for issue #$issue_number"
-                warned_issues+=$'\n'"⚠️ $line, closes in $days_left days)"
-                if [ "$dry_run" != "true" ]; then
-                  gh issue comment "$issue_number" --body "⚠️ Hi @$author — this issue is marked **Fixed** and has had no activity for $days_inactive days. It will be automatically closed in $days_left days if no updates are made. Please comment or reopen if needed."
-                fi
-        
-              else
-                echo "ℹ️ Issue #$issue_number is not yet stale"
-                active_issues+=$'\n'"🟢 $line, closes in $days_left days)"
+            | jq -c '.' > "$issue_list_file"
+
+          # Sort and iterate
+          sorted_issues=$(jq -s 'sort_by((now - (.updatedAt | fromdateiso8601)) / 86400)' "$issue_list_file")
+
+          echo "$sorted_issues" | jq -c '.[]' | while read -r issue; do
+            issue_number=$(echo "$issue" | jq '.number')
+            issue_title=$(echo "$issue" | jq -r '.title')
+            updated_at=$(echo "$issue" | jq -r '.updatedAt')
+            author=$(echo "$issue" | jq -r '.author.login')
+            updated_epoch=$(date --date="$updated_at" +%s)
+            now_epoch=$(date +%s)
+            days_inactive=$(( (now_epoch - updated_epoch) / 86400 ))
+            days_left=$(( 30 - days_inactive ))
+            issue_url="https://github.com/${{ github.repository }}/issues/$issue_number"
+
+            line="- [#$issue_number]($issue_url) — \"$issue_title\" (by @$author, $days_inactive days inactive"
+
+            if [ "$days_inactive" -ge 30 ]; then
+              echo "⛔ Closing issue #$issue_number"
+              closed_issues+=$'\n'"❌ $line)"
+              if [ "$dry_run" != "true" ]; then
+                gh issue close "$issue_number" --comment "This issue is marked **Fixed** and has had no activity for 30+ days. Closing it now. Feel free to reopen if needed. ✅"
               fi
-            done
-        
-          echo "## 🟢 Active Issues" >> "$summary_file"
-          echo "$active_issues" >> "$summary_file"
-          echo "" >> "$summary_file"
-        
-          echo "## ⚠️ Warned Issues" >> "$summary_file"
-          echo "$warned_issues" >> "$summary_file"
-          echo "" >> "$summary_file"
-        
-          echo "## ❌ Closed Issues" >> "$summary_file"
-          echo "$closed_issues" >> "$summary_file"
+
+            elif [ "$days_inactive" -ge 25 ]; then
+              echo "⚠️ Warning for issue #$issue_number"
+              warned_issues+=$'\n'"⚠️ $line, closes in $days_left days)"
+              if [ "$dry_run" != "true" ]; then
+                gh issue comment "$issue_number" --body "⚠️ Hi @$author — this issue is marked **Fixed** and has had no activity for $days_inactive days. It will be automatically closed in $days_left days if no updates are made. Please comment or reopen if needed."
+              fi
+
+            else
+              echo "ℹ️ Issue #$issue_number is not yet stale"
+              active_issues+=$'\n'"🟢 $line, closes in $days_left days)"
+            fi
+          done
+
+          if [ -n "$active_issues" ]; then
+            echo "### 🟢 Active Issues" >> "$summary_file"
+            echo "$active_issues" >> "$summary_file"
+            echo "" >> "$summary_file"
+          fi
+
+          if [ -n "$warned_issues" ]; then
+            echo "### ⚠️ Warned Issues" >> "$summary_file"
+            echo "$warned_issues" >> "$summary_file"
+            echo "" >> "$summary_file"
+          fi
+
+          if [ -n "$closed_issues" ]; then
+            echo "### ❌ Closed Issues" >> "$summary_file"
+            echo "$closed_issues" >> "$summary_file"
+            echo "" >> "$summary_file"
+          fi
 
       - name: Upload summary as artifact
         uses: actions/upload-artifact@v4
