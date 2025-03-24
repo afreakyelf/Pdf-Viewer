@@ -2,32 +2,77 @@ name: Close Fixed Issues
 
 on:
   schedule:
-    - cron: '0 2 * * *'  # Daily at 2 AM UTC
+    - cron: '0 2 * * *'
   workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Enable dry-run (log only, no warnings or closing)"
+        required: false
+        default: "true"
 
 jobs:
-  close-fixed-issues:
+  manage-fixed-issues:
     runs-on: ubuntu-latest
+    permissions:
+      issues: write 
+      contents: read
+
     steps:
-      - name: Checkout repository
+      - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Install GitHub CLI
+      - name: Install GitHub CLI & jq
         run: |
           sudo apt update
           sudo apt install -y gh jq
-
       - name: Authenticate GitHub CLI
         run: |
           echo "${{ secrets.GITHUB_TOKEN }}" | gh auth login --with-token
+      - name: Create logs directory
+        run: mkdir logs
 
-      - name: Close stale Fixed issues
+      - name: Analyze and manage Fixed issues
+        id: analyze
         run: |
-          echo "Checking for Fixed issues inactive for 30+ days..."
-          gh issue list --label "Fixed" --state open --limit 100 --json number,updatedAt \
-          | jq -c '.[] | select((now - ( .updatedAt | fromdateiso8601 )) > (60*60*24*30))' \
+          echo "🔍 Dry-run mode: ${{ github.event.inputs.dry_run }}"
+          dry_run="${{ github.event.inputs.dry_run }}"
+          summary_file="logs/summary.txt"
+          touch "$summary_file"
+          echo "### 🔄 Fixed Issue Report" >> "$summary_file"
+          echo "" >> "$summary_file"
+          gh issue list --label "Fixed" --state open --limit 100 --json number,updatedAt,author \
+          | jq -c '.[]' \
           | while read -r issue; do
               issue_number=$(echo "$issue" | jq '.number')
-              echo "Closing issue #$issue_number"
-              gh issue close "$issue_number" --comment "This issue is marked **Fixed** and has had no activity for 30+ days. Closing it now. Feel free to reopen if needed. ✅"
+              updated_at=$(echo "$issue" | jq -r '.updatedAt')
+              author=$(echo "$issue" | jq -r '.author.login')
+              updated_epoch=$(date --date="$updated_at" +%s)
+              now_epoch=$(date +%s)
+              days_inactive=$(( (now_epoch - updated_epoch) / 86400 ))
+              days_left=$(( 30 - days_inactive ))
+              echo "➡️ Issue #$issue_number by @$author - $days_inactive days inactive"
+              if [ "$days_inactive" -ge 30 ]; then
+                echo "⛔ Closing issue #$issue_number"
+                echo "- ❌ Closed #$issue_number (inactive $days_inactive days)" >> "$summary_file"
+                if [ "$dry_run" != "true" ]; then
+                  gh issue close "$issue_number" --comment "This issue is marked **Fixed** and has had no activity for 30+ days. Closing it now. Feel free to reopen if needed. ✅"
+                fi
+              elif [ "$days_inactive" -ge 25 ]; then
+                echo "⚠️ Warning for issue #$issue_number"
+                echo "- ⚠️ Warned #$issue_number (inactive $days_inactive days, will close in $days_left)" >> "$summary_file"
+                if [ "$dry_run" != "true" ]; then
+                  gh issue comment "$issue_number" --body "⚠️ Hi @$author — this issue is marked **Fixed** and has had no activity for $days_inactive days. It will be automatically closed in $days_left days if no updates are made. Please comment or reopen if needed."
+                fi
+              else
+                echo "ℹ️ Issue #$issue_number is not yet stale"
+                echo "- ℹ️ Issue #$issue_number (inactive $days_inactive days, will close in $days_left)" >> "$summary_file"
+              fi
             done
+      - name: Upload logs as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: fixed-issue-report
+          path: logs/summary.txt
+
+      - name: Write summary to Actions UI
+        run: cat logs/summary.txt >> $GITHUB_STEP_SUMMARY
