@@ -31,6 +31,7 @@ import com.rajat.pdfviewer.util.CacheStrategy
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import org.jetbrains.annotations.TestOnly
 import java.io.File
 import java.io.FileNotFoundException
 
@@ -331,6 +332,11 @@ class PdfRendererView @JvmOverloads constructor(
 
     fun setZoomEnabled(zoomEnabled: Boolean) {
         isZoomEnabled = zoomEnabled
+    }
+
+    @TestOnly
+    fun getZoomEnabled(): Boolean {
+        return isZoomEnabled
     }
 
     private fun preloadCacheIntoMemory() {

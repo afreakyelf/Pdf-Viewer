@@ -26,6 +26,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.rajat.pdfviewer.PdfRendererView
 import com.rajat.pdfviewer.compose.PdfRendererViewCompose
+import com.rajat.pdfviewer.compose.PdfRendererViewComposeFromAsset
 import com.rajat.sample.pdfviewer.ui.theme.AndroidpdfviewerTheme
 import java.io.File
 
@@ -46,9 +47,7 @@ class ComposeActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    MyPdfScreenFromUri(
-                        modifier = Modifier.fillMaxSize()
-                    )
+                    MyPdfScreenFromAsset()
                 }
             }
         }
@@ -171,6 +170,14 @@ fun MyPdfScreenFromFile() {
     val pdfFile = File("path/to/your/file.pdf")  // Replace with your file path
     PdfRendererViewCompose(
         file = pdfFile,
+    )
+}
+
+@Composable
+fun MyPdfScreenFromAsset(modifier: Modifier = Modifier) {
+    PdfRendererViewComposeFromAsset(
+        assetFileName = "quote.pdf",
+        modifier = modifier
     )
 }
 

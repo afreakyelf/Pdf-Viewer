@@ -61,20 +61,50 @@ android {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
         }
     }
+
+    testOptions {
+        managedDevices {
+            localDevices {
+                create("pixel2api30") {
+                    device = "Pixel 2"
+                    apiLevel = 30
+                }
+                create("api27Pixel") {
+                    device = "Pixel 3a"
+                    apiLevel = 27
+                    systemImageSource = "aosp"
+                }
+                create("api35Pixel") {
+                    device = "Pixel 5"
+                    apiLevel = 35
+                    systemImageSource = "aosp"
+                }
+            }
+            // Create a group to test across all defined devices
+            groups {
+                create("allApis") {
+                    targetDevices.addAll(localDevices)
+                }
+            }
+        }
+    }
+
 }
+
 
 dependencies {
 
     implementation("com.google.android.material:material:1.12.0")
+    implementation("androidx.test.espresso:espresso-contrib:3.6.1")
     val kotlin_version = "1.9.21"
     implementation(kotlin("stdlib"))
     implementation(fileTree(mapOf("dir" to "libs", "include" to listOf("*.jar"))))
+    //noinspection GradleDependency
     implementation("org.jetbrains.kotlin:kotlin-stdlib:$kotlin_version")
     implementation("androidx.core:core-ktx:1.15.0")
     implementation("androidx.appcompat:appcompat:1.7.0")
-    implementation("androidx.constraintlayout:constraintlayout:2.2.0")
+    implementation("androidx.constraintlayout:constraintlayout:2.2.1")
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.8.7")
-    implementation(platform("androidx.compose:compose-bom:2025.02.00"))
     implementation("androidx.compose.ui:ui-graphics")
     testImplementation("junit:junit:4.13.2")
     androidTestImplementation("androidx.test.ext:junit:1.2.1")
@@ -82,15 +112,13 @@ dependencies {
     implementation(project(":pdfViewer"))
 //    implementation("io.github.afreakyelf:Pdf-Viewer:2.1.1")
     testImplementation("androidx.test:core:1.6.1")
-    androidTestImplementation("androidx.test:runner:1.6.2")
     androidTestImplementation("androidx.test:rules:1.6.1")
     androidTestImplementation("androidx.test.ext:junit-ktx:1.2.1")
 
     implementation("androidx.recyclerview:recyclerview:1.4.0") // Check for the latest version available
 
     // compose
-    implementation(platform("androidx.compose:compose-bom:2025.02.00"))
-    androidTestImplementation(platform("androidx.compose:compose-bom:2025.02.00"))
+    implementation(platform("androidx.compose:compose-bom:2025.03.00"))
 
     // Choose one of the following:
     // Material Design 3
@@ -105,7 +133,7 @@ dependencies {
 
     // Android Studio Preview support
     implementation("androidx.compose.ui:ui-tooling-preview")
-    androidTestImplementation(platform("androidx.compose:compose-bom:2025.02.00"))
+    androidTestImplementation(platform("androidx.compose:compose-bom:2025.03.00"))
     debugImplementation("androidx.compose.ui:ui-tooling")
 
     // UI Tests
@@ -113,10 +141,12 @@ dependencies {
     debugImplementation("androidx.compose.ui:ui-test-manifest")
     androidTestImplementation("androidx.test.ext:junit:1.2.1")
     androidTestImplementation("androidx.test.espresso:espresso-core:3.6.1")
+    androidTestImplementation("androidx.test:rules:1.6.1")
+    androidTestImplementation("androidx.test:runner:1.6.1")
 
 
     // Optional - Integration with activities
-    implementation("androidx.activity:activity-compose:1.10.0")
+    implementation("androidx.activity:activity-compose:1.10.1")
 
 
 }

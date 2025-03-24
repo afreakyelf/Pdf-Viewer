@@ -4,6 +4,7 @@ import android.content.Context
 import android.net.Uri
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.LifecycleOwner
@@ -11,6 +12,7 @@ import androidx.lifecycle.lifecycleScope
 import com.rajat.pdfviewer.HeaderData
 import com.rajat.pdfviewer.PdfRendererView
 import com.rajat.pdfviewer.util.CacheStrategy
+import com.rajat.pdfviewer.util.FileUtils.fileFromAsset
 import java.io.File
 
 @Composable
@@ -73,6 +75,27 @@ fun PdfRendererViewCompose(
             }
 
             pdfRendererView.initWithUri(uri = uri)
+        },
+        modifier = modifier,
+    )
+}
+
+@Composable
+fun PdfRendererViewComposeFromAsset(
+    assetFileName: String,
+    modifier: Modifier = Modifier,
+    statusCallBack: PdfRendererView.StatusCallBack? = null,
+) {
+    val context = LocalContext.current
+    AndroidView(
+        factory = { PdfRendererView(it) },
+        update = { pdfRendererView ->
+            if (statusCallBack != null) {
+                pdfRendererView.statusListener = statusCallBack
+            }
+
+            val file = fileFromAsset(context, assetFileName)
+            pdfRendererView.initWithFile(file)
         },
         modifier = modifier,
     )

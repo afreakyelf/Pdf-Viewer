@@ -14,8 +14,6 @@ import com.rajat.pdfviewer.util.CacheStrategy
 import com.rajat.pdfviewer.util.ToolbarTitleBehavior
 import com.rajat.pdfviewer.util.saveTo
 import com.rajat.sample.pdfviewer.databinding.ActivityMainBinding
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
 
 class MainActivity : AppCompatActivity() {
 
@@ -62,13 +60,13 @@ class MainActivity : AppCompatActivity() {
         }
 
         binding.fromAssets.setOnClickListener {
-            launchPdfFromAssets("password_protected.pdf")
+            launchPdfFromAssets("quote.pdf")
         }
 
         binding.showInView.setOnClickListener {
             setupPdfStatusListener()
             binding.pdfView.initWithUrl(
-                url = textbookPdf,
+                url = largePdf,
                 lifecycleCoroutineScope = lifecycleScope,
                 lifecycle = lifecycle,
                 cacheStrategy = CacheStrategy.MINIMIZE_CACHE
@@ -96,9 +94,6 @@ class MainActivity : AppCompatActivity() {
 
             override fun onPdfLoadSuccess(absolutePath: String) {
                 Log.i("PDF Status", "Load successful: $absolutePath")
-                binding.pdfView.post {
-                    binding.pdfView.recyclerView.scrollToPosition(1)
-                }
             }
 
             override fun onError(error: Throwable) {
@@ -122,9 +117,9 @@ class MainActivity : AppCompatActivity() {
                 pdfUrl = url,
                 pdfTitle = "PDF Title",
                 saveTo = saveTo.DOWNLOADS,
-                enableDownload = true,
+                enableDownload = false,
                 toolbarTitleBehavior = ToolbarTitleBehavior.SINGLE_LINE_SCROLLABLE,
-                cacheStrategy = CacheStrategy.MINIMIZE_CACHE
+                cacheStrategy = CacheStrategy.MAXIMIZE_PERFORMANCE
             )
         )
     }

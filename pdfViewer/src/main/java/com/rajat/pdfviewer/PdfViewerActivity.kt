@@ -12,7 +12,6 @@ import android.os.Bundle
 import android.os.Environment
 import android.text.TextUtils
 import android.util.Log
-import android.view.ContextThemeWrapper
 import android.view.Menu
 import android.view.MenuInflater
 import android.view.MenuItem
@@ -42,6 +41,7 @@ import com.rajat.pdfviewer.util.ViewerStrings
 import com.rajat.pdfviewer.util.ViewerStrings.Companion.getMessageForError
 import com.rajat.pdfviewer.util.ViewerStyle
 import com.rajat.pdfviewer.util.saveTo
+import org.jetbrains.annotations.TestOnly
 import java.io.File
 import java.net.SocketTimeoutException
 import java.net.UnknownHostException
@@ -137,11 +137,6 @@ class PdfViewerActivity : AppCompatActivity() {
             return intent
         }
     }
-
-//    override fun attachBaseContext(newBase: Context) {
-//        val themeWrapper = ContextThemeWrapper(newBase, R.style.Theme_PdfView_SelectedTheme)
-//        super.attachBaseContext(themeWrapper)
-//    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         setTheme(R.style.Theme_PdfView_SelectedTheme)
@@ -329,6 +324,7 @@ class PdfViewerActivity : AppCompatActivity() {
         val inflater: MenuInflater = menuInflater
         inflater.inflate(R.menu.menu, menu)
         menuItem = menu.findItem(R.id.download)
+        menuItem?.isVisible = enableDownload
 
         // Apply download icon tint from theme
         val toolbarStyle = ToolbarStyle.from(this, intent)
@@ -339,9 +335,11 @@ class PdfViewerActivity : AppCompatActivity() {
         }
 
         updateDownloadButtonState(isDownloadButtonEnabled)
-        menuItem?.isVisible = enableDownload
         return true
     }
+
+    @TestOnly
+    fun isDownloadButtonVisible(): Boolean = menuItem?.isVisible == true
 
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
         // Handle item selection.
