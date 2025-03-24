@@ -1,7 +1,7 @@
 <resources>
     <style name="Theme.PdfView.SelectedTheme" parent="@style/Theme.PdfView.Light">
         <item name="pdfView_showToolbar">true</item>
-        <item name="pdfView_toolbarColor">@color/design_default_color_primary</item>
+        <item name="pdfView_toolbarColor">@color/pdf_viewer_icon_tint</item>
         <item name="pdfView_downloadIconTint">#ffffff</item>
         <item name="pdfView_enableLoadingForPages">true</item>
         <item name="pdfView_titleTextStyle">@style/actionBarTitleAppearance</item>
@@ -13,7 +13,8 @@
     <style name="actionBarTitleAppearance" parent="TextAppearance.AppCompat.Title">
         <item name="android:gravity">center</item>
         <item name="android:layout_gravity">center</item>
-        <item name="android:textColor">#ffffff</item>
+        <item name="android:textColor">#FA3030</item>
+        <item name="android:textSize">20sp</item>
     </style>
 
 </resources>

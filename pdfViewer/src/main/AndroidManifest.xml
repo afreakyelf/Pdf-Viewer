@@ -8,8 +8,7 @@
         android:hardwareAccelerated="true">
         <activity
             android:name=".PdfViewerActivity"
-            android:windowSoftInputMode="adjustResize"
-            android:theme="@style/Theme.PdfView.SelectedTheme" />
+            android:windowSoftInputMode="adjustResize" />
     </application>
 
 </manifest>

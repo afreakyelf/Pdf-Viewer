@@ -32,6 +32,7 @@
         <attr name="pdf_viewer_retry" format="reference|string"/>
         <attr name="pdf_viewer_grant" format="reference|string"/>
         <attr name="pdf_viewer_cancel" format="reference|string"/>
+        <attr name="pdf_viewer_error_dialog_title" format="reference|string" />
     </declare-styleable>
 
     <declare-styleable name="PdfRendererView_toolbar">

@@ -149,6 +149,21 @@ open class PdfRendererCore(
         }
     }
 
+    suspend fun renderPageAsync(pageNo: Int, width: Int, height: Int): Bitmap? {
+        return suspendCancellableCoroutine { continuation ->
+            val bitmap = CommonUtils.Companion.BitmapPool.getBitmap(width, height)
+            renderPage(pageNo, bitmap) { success, _, renderedBitmap ->
+                if (success) {
+                    continuation.resume(renderedBitmap ?: bitmap, null)
+                } else {
+                    CommonUtils.Companion.BitmapPool.recycleBitmap(bitmap)
+                    continuation.resume(null, null)
+                }
+            }
+        }
+    }
+
+
     private fun updateAggregateMetrics(page: Int, duration: Long) {
         totalPagesRendered++
         totalRenderTime += duration

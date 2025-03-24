@@ -6,4 +6,13 @@
     <color name="colorBackground">#F5F5F5</color> <!-- Light Gray -->
     <color name="colorSurface">#FFFFFF</color> <!-- White -->
     <color name="colorOnSurface">#000000</color> <!-- Black -->
+
+    <color name="pdf_viewer_primary">#6200EE</color>
+    <color name="pdf_viewer_on_primary">#FFFFFF</color>
+    <color name="pdf_viewer_surface">#FFFFFF</color>
+    <color name="pdf_viewer_on_surface">#000000</color>
+    <color name="pdf_viewer_icon_tint">#333333</color>
+    <color name="pdf_viewer_icon_tint_dark">#DDDDDD</color>
+    <color name="pdf_viewer_background_dark">#121212</color>
+
 </resources>

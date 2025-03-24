@@ -51,6 +51,7 @@ android {
 }
 
 dependencies {
+    implementation("androidx.compose.material3:material3-android:1.3.1")
     val kotlin_version = "1.9.21"
     implementation(fileTree(mapOf("dir" to "libs", "include" to listOf("*.jar"))))
     implementation("org.jetbrains.kotlin:kotlin-stdlib:$kotlin_version")
@@ -94,7 +95,7 @@ mavenPublishing {
     publishToMavenCentral(SonatypeHost.CENTRAL_PORTAL)
     signAllPublications()
 
-    coordinates("io.github.afreakyelf", "Pdf-Viewer", "2.2.2")
+    coordinates("io.github.afreakyelf", "Pdf-Viewer", "2.2.3")
 
     pom {
         name.set("PDF Viewer")

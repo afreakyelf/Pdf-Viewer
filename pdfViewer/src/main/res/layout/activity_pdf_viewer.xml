@@ -4,19 +4,19 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
+    android:id="@+id/parentLayout"
     android:layout_height="match_parent"
     tools:context=".PdfViewerActivity">
 
     <com.google.android.material.appbar.MaterialToolbar
-        app:layout_constraintTop_toTopOf="parent"
         android:id="@+id/my_toolbar"
         android:layout_width="match_parent"
         android:layout_height="?attr/actionBarSize"
         android:background="?attr/colorPrimary"
-        app:navigationIcon="@drawable/pdf_viewer_ic_arrow_back"
-        app:titleTextColor="?attr/colorOnPrimary"
-        app:title=""
-        app:layout_scrollFlags="scroll|enterAlways">
+        android:visibility="gone"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_scrollFlags="scroll|enterAlways"
+        app:navigationIcon="@drawable/pdf_viewer_ic_arrow_back">
 
         <!-- Custom TextView for Multi-Line Title -->
         <TextView
