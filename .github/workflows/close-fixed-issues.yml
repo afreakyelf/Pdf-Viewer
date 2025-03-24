@@ -51,7 +51,7 @@ jobs:
             | jq -c '.' > "$issue_list_file"
 
           # Sort and iterate
-          sorted_issues=$(jq -s 'sort_by((now - (.updatedAt | fromdateiso8601)) / 86400)' "$issue_list_file")
+          sorted_issues=$(jq -s '.[0] | sort_by((.updatedAt | fromdateiso8601)) | reverse' "$issue_list_file")
 
           echo "$sorted_issues" | jq -c '.[]' | while read -r issue; do
             issue_number=$(echo "$issue" | jq '.number')
