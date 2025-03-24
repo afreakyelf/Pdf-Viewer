@@ -1,0 +1,29 @@
+name: Close Fixed Issues
+
+on:
+  schedule:
+    - cron: '0 2 * * *'  # Runs every day at 2 AM UTC
+  workflow_dispatch:      # Allows manual run from the GitHub UI
+
+jobs:
+  close-fixed-issues:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up GitHub CLI
+        uses: cli/gh-action@v2
+
+      - name: Close stale Fixed issues
+        run: |
+          echo "Looking for Fixed issues inactive for 30+ days..."
+          gh issue list --label "Fixed" --state open --limit 100 --json number,updatedAt \
+          | jq -c '.[] | select((now - ( .updatedAt | fromdateiso8601 )) > (60*60*24*30))' \
+          | while read -r issue; do
+              issue_number=$(echo "$issue" | jq '.number')
+              echo "Closing issue #$issue_number"
+              gh issue close "$issue_number" --comment "This issue is marked **Fixed** and has had no activity for 30+ days. Closing it now. Feel free to reopen if needed. ✅"
+            done
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
