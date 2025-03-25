@@ -17,55 +17,46 @@ class PinchZoomRecyclerView @JvmOverloads constructor(
     defStyleAttr: Int = 0
 ) : RecyclerView(context, attrs, defStyleAttr) {
 
-    // Active pointer for panning
+    // Touch tracking for gesture state
     private var activePointerId = INVALID_POINTER_ID
-
-    // Gesture detectors for scaling and double tap
     private val scaleDetector = ScaleGestureDetector(context, ScaleListener())
     private val gestureDetector = GestureDetector(context, GestureListener())
 
-    // State values for zooming and panning
+    // Zoom and pan state
     private var scaleFactor = 1f
     private var isZoomEnabled = true
     private var maxZoom = MAX_ZOOM
     private var zoomDuration = ZOOM_DURATION
+    private var isZoomingInProgress = false
 
-    // View dimensions and translation values
-    private var viewWidth = 0f
-    private var viewHeight = 0f
+    // Panning offsets and touch memory
     private var lastTouchX = 0f
     private var lastTouchY = 0f
     private var posX = 0f
     private var posY = 0f
 
+    init {
+        setWillNotDraw(false)
+    }
+
     fun setZoomEnabled(enabled: Boolean) {
         isZoomEnabled = enabled
     }
 
-    override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
-        super.onMeasure(widthMeasureSpec, heightMeasureSpec)
-        viewWidth = measuredWidth.toFloat()
-        viewHeight = measuredHeight.toFloat()
-    }
-
-    override fun onInterceptTouchEvent(ev: MotionEvent): Boolean {
-        return try {
-            super.onInterceptTouchEvent(ev)
-        } catch (ex: IllegalArgumentException) {
-            ex.printStackTrace()
-            false
-        }
-    }
-
+    /**
+     * Handles touch interactions — zoom, pan, and scroll.
+     */
     override fun onTouchEvent(ev: MotionEvent): Boolean {
         if (!isZoomEnabled) return super.onTouchEvent(ev)
 
-        // Let the default handling occur first.
-        val superHandled = super.onTouchEvent(ev)
-
-        // Process our custom gesture detectors.
         gestureDetector.onTouchEvent(ev)
         scaleDetector.onTouchEvent(ev)
+
+        if (isZoomingInProgress) {
+            return true // Block RecyclerView scroll during zoom
+        }
+
+        val superHandled = super.onTouchEvent(ev)
 
         when (ev.actionMasked) {
             MotionEvent.ACTION_DOWN -> {
@@ -84,6 +75,7 @@ class PinchZoomRecyclerView @JvmOverloads constructor(
                         posX += dx
                         posY += dy
                         clampPosition()
+                        invalidate()
 
                         lastTouchX = x
                         lastTouchY = y
@@ -103,16 +95,21 @@ class PinchZoomRecyclerView @JvmOverloads constructor(
             MotionEvent.ACTION_CANCEL -> {
                 activePointerId = INVALID_POINTER_ID
             }
-            MotionEvent.ACTION_SCROLL -> {
-                val dy = ev.getAxisValue(MotionEvent.AXIS_VSCROLL) * scaleFactor
-                posY += dy
-                clampPosition()
-                invalidate()
-            }
         }
+
         return superHandled || scaleFactor > 1f
     }
 
+    /**
+     * Intercepts vertical scroll only during pinch-to-zoom.
+     */
+    override fun onInterceptTouchEvent(ev: MotionEvent): Boolean {
+        return if (isZoomingInProgress) true else super.onInterceptTouchEvent(ev)
+    }
+
+    /**
+     * Transforms canvas for zoom + pan before drawing children.
+     */
     override fun onDraw(canvas: Canvas) {
         canvas.save()
         canvas.translate(posX, posY)
@@ -129,70 +126,92 @@ class PinchZoomRecyclerView @JvmOverloads constructor(
         canvas.restore()
     }
 
+    /**
+     * Allow vertical scroll only when zoomed in.
+     */
     override fun canScrollVertically(direction: Int): Boolean {
-        val layoutManager = layoutManager as? LinearLayoutManager ?: return false
-        return when (direction) {
-            1 -> layoutManager.findLastVisibleItemPosition() < (adapter?.itemCount ?: 0) - 1 // Check if last item is visible
-            -1 -> layoutManager.findFirstVisibleItemPosition() > 0 // Check if first item is visible
-            else -> false
-        }
+        return scaleFactor > 1f && super.canScrollVertically(direction)
     }
 
-    override fun computeVerticalScrollRange(): Int {
-        val layoutManager = layoutManager as? LinearLayoutManager ?: return height
-        val itemCount = adapter?.itemCount ?: 0
-
-        // Get the last visible item position
-        val lastVisibleItem = layoutManager.findLastVisibleItemPosition()
-        val lastVisibleView = layoutManager.findViewByPosition(lastVisibleItem)
-
-        return if (lastVisibleView != null) {
-            val lastItemBottom = lastVisibleView.bottom
-            val totalHeight = lastItemBottom + (height * (itemCount - lastVisibleItem - 1))
-
-            (totalHeight * scaleFactor).toInt()
-        } else {
-            (height * itemCount * scaleFactor).toInt()
-        }
-    }
-
+    /**
+     * Corrects scrollbar offset for zoom state.
+     */
     override fun computeVerticalScrollOffset(): Int {
         val layoutManager = layoutManager as? LinearLayoutManager ?: return 0
-        val firstVisibleItem = layoutManager.findFirstVisibleItemPosition()
-        val firstVisibleView = layoutManager.findViewByPosition(firstVisibleItem) ?: return 0
-        val offset = -firstVisibleView.top  // Distance scrolled from the top of the first item
+        val firstVisible = layoutManager.findFirstVisibleItemPosition()
+        val firstView = layoutManager.findViewByPosition(firstVisible) ?: return 0
 
-        // Consider zooming effect
+        val scrolledPast = -layoutManager.getDecoratedTop(firstView)
+        val itemHeight = firstView.height.takeIf { it > 0 } ?: height
+        val offset = (firstVisible * itemHeight + scrolledPast)
+
         return (offset * scaleFactor).toInt()
     }
 
+    /**
+     * Corrects scrollbar range for zoom state.
+     */
+    override fun computeVerticalScrollRange(): Int {
+        val layoutManager = layoutManager as? LinearLayoutManager ?: return height
+        val itemCount = adapter?.itemCount ?: return height
+
+        val visibleHeights = (0 until layoutManager.childCount).mapNotNull {
+            layoutManager.getChildAt(it)?.height
+        }
+
+        val averageHeight = visibleHeights.average().takeIf { it > 0 } ?: height.toDouble()
+        return (averageHeight * itemCount * scaleFactor).toInt()
+    }
 
     /**
-     * ScaleListener ensures that the zoom is centered around the gesture’s focal point.
+     * Handles pinch-to-zoom scaling with focal-point centering.
      */
-        private inner class ScaleListener : ScaleGestureDetector.SimpleOnScaleGestureListener() {
-            override fun onScale(detector: ScaleGestureDetector): Boolean {
-                if (!isZoomEnabled) return false // Prevent scaling
-
-                val newScale = (scaleFactor * detector.scaleFactor).coerceIn(1f, maxZoom)
-                if (newScale != scaleFactor) {
-                    val scaleDelta = newScale / scaleFactor
-
-                    // Get the gesture's focal point
-                    val focusX = detector.focusX
-                    val focusY = detector.focusY
-
-                    // Adjust position so that the gesture's focal point remains fixed
-                    posX -= (focusX - posX) * (scaleDelta - 1)
-                    posY -= (focusY - posY) * (scaleDelta - 1)
-
-                    scaleFactor = newScale
-                    clampPosition()
-                    invalidate()
-                }
-                return true
-            }
+    private inner class ScaleListener : ScaleGestureDetector.SimpleOnScaleGestureListener() {
+        override fun onScaleBegin(detector: ScaleGestureDetector): Boolean {
+            isZoomingInProgress = true
+            suppressLayout(true)
+            return true
         }
+
+        override fun onScale(detector: ScaleGestureDetector): Boolean {
+            val scaleFactorChange = detector.scaleFactor
+            if (scaleFactorChange in 0.98f..1.02f) return true // ignore micro-changes
+
+            val newScale = (scaleFactor * scaleFactorChange).coerceIn(1f, maxZoom)
+            if (newScale != scaleFactor) {
+                val focusXInContent = (detector.focusX - posX) / scaleFactor
+                val focusYInContent = (detector.focusY - posY) / scaleFactor
+
+                scaleFactor = newScale
+
+                posX = detector.focusX - focusXInContent * scaleFactor
+                posY = detector.focusY - focusYInContent * scaleFactor
+
+                clampPosition()
+                invalidate()
+                awakenScrollBars()
+            }
+
+            return true
+        }
+
+        override fun onScaleEnd(detector: ScaleGestureDetector) {
+            isZoomingInProgress = false
+            suppressLayout(false)
+        }
+
+
+    }
+
+    override fun fling(velocityX: Int, velocityY: Int): Boolean {
+        return if (scaleFactor > 1f) {
+            // Only allow vertical fling when zoomed in
+            super.fling(0, velocityY)
+        } else {
+            super.fling(velocityX, velocityY)
+        }
+    }
+
 
     /**
      * Clamps the panning translation to avoid over-scrolling beyond the content bounds.
@@ -230,8 +249,8 @@ class PinchZoomRecyclerView @JvmOverloads constructor(
          */
         private fun zoomTo(targetScale: Float, focusX: Float, focusY: Float, duration: Long) {
             val startScale = scaleFactor
-            val startPosX = posX
-            val startPosY = posY
+            val focusXInContent = (focusX - posX) / scaleFactor
+            val focusYInContent = (focusY - posY) / scaleFactor
 
             ValueAnimator.ofFloat(0f, 1f).apply {
                 this.duration = duration
@@ -239,15 +258,14 @@ class PinchZoomRecyclerView @JvmOverloads constructor(
                 addUpdateListener { animator ->
                     val fraction = animator.animatedValue as Float
                     val scale = startScale + (targetScale - startScale) * fraction
-                    val scaleDelta = scale / startScale
-
-                    // Update translation to keep the focus point fixed.
-                    posX = startPosX - (focusX - startPosX) * (scaleDelta - 1)
-                    posY = startPosY - (focusY - startPosY) * (scaleDelta - 1)
                     scaleFactor = scale
+
+                    posX = focusX - focusXInContent * scaleFactor
+                    posY = focusY - focusYInContent * scaleFactor
 
                     clampPosition()
                     invalidate()
+                    awakenScrollBars()
                 }
                 start()
             }
