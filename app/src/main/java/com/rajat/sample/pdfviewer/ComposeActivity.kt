@@ -47,7 +47,9 @@ class ComposeActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    MyPdfScreenFromAsset()
+                    MyPdfScreenFromUrl(
+                        url = "https://source.android.com/docs/compatibility/5.0/android-5.0-cdd.pdf"
+                    )
                 }
             }
         }

@@ -199,7 +199,7 @@ open class PdfRendererCore(
         withContext(Dispatchers.IO) {
             renderLock.withLock {
                 if (!isRendererOpen) return@withContext null
-                if (Build.VERSION.SDK_INT < Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
                     closeAllOpenPages()
                 }
                 try {
@@ -234,7 +234,7 @@ open class PdfRendererCore(
 
     private fun openPageSafely(pageNo: Int): PdfRenderer.Page? {
         if (!isRendererOpen) return null
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+        if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
             closeAllOpenPages()
         }
 
