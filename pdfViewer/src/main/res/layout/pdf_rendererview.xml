@@ -12,12 +12,6 @@
         android:scrollbars="vertical"
         tools:listitem="@layout/list_item_pdf_page" />
 
-    <WebView
-        android:id="@+id/webView"
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:visibility="gone" />
-
     <include
         android:id="@+id/pageNumber"
         layout="@layout/pdf_view_page_no"
