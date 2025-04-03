@@ -38,9 +38,9 @@ class CacheManager(
 
     private fun createMemoryCache(): LruCache<Int, Bitmap> {
         val maxMemory = (Runtime.getRuntime().maxMemory() / 1024).toInt()
-        val cacheSize = maxMemory / 6
+        val cacheSize = maxMemory / 16
         return object : LruCache<Int, Bitmap>(cacheSize) {
-            override fun sizeOf(key: Int, value: Bitmap): Int = value.byteCount / 1024
+            override fun sizeOf(key: Int, value: Bitmap): Int = value.allocationByteCount / 1024
         }
     }
 
