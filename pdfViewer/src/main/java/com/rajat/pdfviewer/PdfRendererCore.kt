@@ -146,6 +146,7 @@ open class PdfRendererCore(
         }
     }
 
+    @OptIn(ExperimentalCoroutinesApi::class)
     suspend fun renderPageAsync(pageNo: Int, width: Int, height: Int): Bitmap? {
         return suspendCancellableCoroutine { continuation ->
             renderPage(pageNo, Size(width, maxOf(1, height))) { _, renderedBitmap ->
