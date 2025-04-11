@@ -18,7 +18,6 @@ import java.nio.file.Files
 import java.nio.file.Paths
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicInteger
-import kotlin.math.abs
 
 open class PdfRendererCore(
     private val context: Context,
@@ -84,19 +83,19 @@ open class PdfRendererCore(
 
     fun renderPage(
         pageNo: Int,
-        bitmap: Bitmap,
-        onBitmapReady: ((success: Boolean, pageNo: Int, bitmap: Bitmap?) -> Unit)? = null
+        size: Size,
+        onBitmapReady: ((pageNo: Int, bitmap: Bitmap?) -> Unit)? = null
     ) {
         val startTime = System.nanoTime()
 
         if (pageNo >= getPageCount()) {
-            onBitmapReady?.invoke(false, pageNo, null)
+            onBitmapReady?.invoke(pageNo, null)
             return
         }
 
         getBitmapFromCache(pageNo)?.let { cachedBitmap ->
             scope.launch(Dispatchers.Main) {
-                onBitmapReady?.invoke(true, pageNo, cachedBitmap)
+                onBitmapReady?.invoke(pageNo, cachedBitmap)
                 if (enableDebugMetrics) {
                     Log.d("PdfRendererCore", "Page $pageNo loaded from cache")
                 }
@@ -108,7 +107,6 @@ open class PdfRendererCore(
 
         renderJobs[pageNo]?.cancel()
         renderJobs[pageNo] = scope.launch {
-            var success = false
             var renderedBitmap: Bitmap? = null
 
             renderLock.withLock {
@@ -117,14 +115,13 @@ open class PdfRendererCore(
 
                 try {
                     val aspectRatio = pdfPage.width.toFloat() / pdfPage.height
-                    val height = bitmap.height
+                    val height = size.height
                     val width = (height * aspectRatio).toInt()
 
                     val tempBitmap = CommonUtils.Companion.BitmapPool.getBitmap(width, height)
                     pdfPage.render(tempBitmap, null, null, PdfRenderer.Page.RENDER_MODE_FOR_DISPLAY)
 
                     addBitmapToMemoryCache(pageNo, tempBitmap)
-                    success = true
                     renderedBitmap = tempBitmap
 
                 } catch (e: Exception) {
@@ -144,25 +141,19 @@ open class PdfRendererCore(
             updateAggregateMetrics(pageNo, renderTime)
 
             withContext(Dispatchers.Main) {
-                onBitmapReady?.invoke(success, pageNo, renderedBitmap)
+                onBitmapReady?.invoke(pageNo, renderedBitmap)
             }
         }
     }
 
+    @OptIn(ExperimentalCoroutinesApi::class)
     suspend fun renderPageAsync(pageNo: Int, width: Int, height: Int): Bitmap? {
         return suspendCancellableCoroutine { continuation ->
-            val bitmap = CommonUtils.Companion.BitmapPool.getBitmap(width, height)
-            renderPage(pageNo, bitmap) { success, _, renderedBitmap ->
-                if (success) {
-                    continuation.resume(renderedBitmap ?: bitmap, null)
-                } else {
-                    CommonUtils.Companion.BitmapPool.recycleBitmap(bitmap)
-                    continuation.resume(null, null)
-                }
+            renderPage(pageNo, Size(width, maxOf(1, height))) { _, renderedBitmap ->
+                continuation.resume(renderedBitmap, null)
             }
         }
     }
-
 
     private fun updateAggregateMetrics(page: Int, duration: Long) {
         totalPagesRendered++
@@ -186,9 +177,7 @@ open class PdfRendererCore(
                 if (renderJobs[pageNo]?.isActive != true) {
                     renderJobs[pageNo]?.cancel()
                     renderJobs[pageNo] = scope.launch {
-                        val bitmap = CommonUtils.Companion.BitmapPool.getBitmap(width, height)
-                        renderPage(pageNo, bitmap) { success, _, _ ->
-                            if (!success) CommonUtils.Companion.BitmapPool.recycleBitmap(bitmap)
+                        renderPage(pageNo, Size(width, maxOf(1, height))) { _, _ ->
                         }
                     }
                 }

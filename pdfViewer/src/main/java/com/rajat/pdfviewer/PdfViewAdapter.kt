@@ -2,6 +2,8 @@ package com.rajat.pdfviewer
 
 import android.content.Context
 import android.graphics.Rect
+//import android.util.Log
+import android.util.Size
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -9,7 +11,6 @@ import android.view.animation.AlphaAnimation
 import android.view.animation.LinearInterpolator
 import androidx.recyclerview.widget.RecyclerView
 import com.rajat.pdfviewer.databinding.ListItemPdfPageBinding
-import com.rajat.pdfviewer.util.CommonUtils
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -34,9 +35,47 @@ internal class PdfViewAdapter(
         holder.bind(position)
     }
 
+    override fun onViewRecycled(holder: PdfPageViewHolder) {
+        holder.recycle()
+    }
+
+    override fun onViewDetachedFromWindow(holder: PdfPageViewHolder) {
+        holder.detach()
+    }
+
+    override fun onViewAttachedToWindow(holder: PdfPageViewHolder) {
+        holder.attach(holder.bindingAdapterPosition)
+    }
+
     inner class PdfPageViewHolder(private val itemBinding: ListItemPdfPageBinding) : RecyclerView.ViewHolder(itemBinding.root) {
+        private var detached = false
+
+        private fun clearBitmap() {
+            with(itemBinding) {
+                pageView.setImageBitmap(null);
+            }
+            detached = true
+        }
+
+        fun attach(position: Int) {
+//            Log.d("PdfViewAdapter", "Attached to window: $bindingAdapterPosition")
+            if ( detached )
+                bind(position)
+        }
+
+        fun detach() {
+//            Log.d("PdfViewAdapter", "Detached from window: $bindingAdapterPosition")
+            clearBitmap()
+        }
+
+        fun recycle() {
+//            Log.d("PdfViewAdapter", "Recycled page: $bindingAdapterPosition")
+            clearBitmap()
+        }
+
         fun bind(position: Int) {
             with(itemBinding) {
+//                Log.d("PdfViewAdapter", "Binding page: $position")
                 pageLoadingLayout.pdfViewPageLoadingProgress.visibility = if (enableLoadingForPages) View.VISIBLE else View.GONE
 
                 // Before we trigger rendering, explicitly ensure that cached bitmaps are used
@@ -54,13 +93,13 @@ internal class PdfViewAdapter(
 
                     updateLayoutParams(height)
 
-                    val bitmap = CommonUtils.Companion.BitmapPool.getBitmap(width, maxOf(1, height))
-                    renderer.renderPage(position, bitmap) { success, pageNo, renderedBitmap ->
-                        if (success && pageNo == position) {
+                    renderer.renderPage(position, Size(width, maxOf(1, height))) { pageNo, renderedBitmap ->
+                        if (renderedBitmap != null && pageNo == position) {
                             CoroutineScope(Dispatchers.Main).launch {
-                                pageView.setImageBitmap(renderedBitmap ?: bitmap)
+                                pageView.setImageBitmap(renderedBitmap)
                                 applyFadeInAnimation(pageView)
                                 pageLoadingLayout.pdfViewPageLoadingProgress.visibility = View.GONE
+                                this@PdfPageViewHolder.detached = false
 
                                 // Prefetch here
                                 renderer.prefetchPagesAround(
@@ -68,10 +107,7 @@ internal class PdfViewAdapter(
                                     width = pageView.width.takeIf { it > 0 } ?: context.resources.displayMetrics.widthPixels,
                                     height = pageView.height.takeIf { it > 0 } ?: context.resources.displayMetrics.heightPixels
                                 )
-
                             }
-                        } else {
-                            CommonUtils.Companion.BitmapPool.recycleBitmap(bitmap)
                         }
                     }
                 }
