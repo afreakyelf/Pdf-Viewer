@@ -197,10 +197,54 @@ PdfRendererViewCompose(
     statusCallBack = object : PdfRendererView.StatusCallBack {
         // Override functions here
     },
+    zoomListener = object : PdfRendererView.ZoomListener {
+      // Override functions here
+  }
 )
 ```
 
 That's all you need to integrate PDF rendering in your Compose application.
+
+### Track PDF Load & Zoom Events 
+You can monitor download progress, rendering success, page changes, and zoom state using the following callbacks:
+
+#### PDF Load Status
+Use the `statusListener` to get callbacks on PDF lifecycle events:
+
+```kotlin
+binding.pdfView.statusListener = object : PdfRendererView.StatusCallBack {
+    override fun onPdfLoadStart() {
+        Log.i("PDF Status", "Loading started")
+    }
+
+    override fun onPdfLoadProgress(progress: Int, downloadedBytes: Long, totalBytes: Long?) {
+        Log.i("PDF Status", "Download progress: $progress%")
+    }
+
+    override fun onPdfLoadSuccess(absolutePath: String) {
+        Log.i("PDF Status", "Load successful: $absolutePath")
+    }
+
+    override fun onError(error: Throwable) {
+        Log.e("PDF Status", "Error loading PDF: ${error.message}")
+    }
+
+    override fun onPageChanged(currentPage: Int, totalPage: Int) {
+        Log.i("PDF Status", "Page changed: $currentPage / $totalPage")
+    }
+}
+```
+
+#### Zoom Change Listener
+You can also monitor when the user zooms in or out using `zoomListener`:
+
+```kotlin
+binding.pdfView.zoomListener = object : PdfRendererView.ZoomListener {
+    override fun onZoomChanged(isZoomedIn: Boolean, scale: Float) {
+        Log.i("PDF Zoom", "Zoomed in: $isZoomedIn, Scale: $scale")
+    }
+}
+```
 
 ### Ui Customizations
 You need to add the custom theme to styles.xml/themes.xml file and override the required attribute values.

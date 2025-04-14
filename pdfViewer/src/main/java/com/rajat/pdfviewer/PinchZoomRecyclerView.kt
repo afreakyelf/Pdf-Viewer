@@ -35,12 +35,22 @@ class PinchZoomRecyclerView @JvmOverloads constructor(
     private var posX = 0f
     private var posY = 0f
 
+    private var zoomChangeListener: ((Boolean, Float) -> Unit)? = null
+
     init {
         setWillNotDraw(false)
     }
 
     fun setZoomEnabled(enabled: Boolean) {
         isZoomEnabled = enabled
+    }
+
+    fun isZoomedIn(): Boolean = scaleFactor > 1f
+
+    fun getZoomScale(): Float = scaleFactor
+
+    fun setOnZoomChangeListener(listener: (isZoomedIn: Boolean, scale: Float) -> Unit) {
+        zoomChangeListener = listener
     }
 
     /**
@@ -190,6 +200,8 @@ class PinchZoomRecyclerView @JvmOverloads constructor(
                 clampPosition()
                 invalidate()
                 awakenScrollBars()
+
+                zoomChangeListener?.invoke(isZoomedIn(), scaleFactor)
             }
 
             return true
@@ -266,6 +278,8 @@ class PinchZoomRecyclerView @JvmOverloads constructor(
                     clampPosition()
                     invalidate()
                     awakenScrollBars()
+
+                    zoomChangeListener?.invoke(isZoomedIn(), scaleFactor)
                 }
                 start()
             }

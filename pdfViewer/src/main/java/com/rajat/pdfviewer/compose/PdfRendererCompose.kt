@@ -22,12 +22,16 @@ fun PdfRendererViewCompose(
     headers: HeaderData = HeaderData(),
     lifecycleOwner: LifecycleOwner = LocalLifecycleOwner.current,
     statusCallBack: PdfRendererView.StatusCallBack? = null,
+    zoomListener: PdfRendererView.ZoomListener? = null,
 ) {
     AndroidView(
         factory = { context: Context -> PdfRendererView(context) },
         update = { pdfRendererView: PdfRendererView ->
             if (statusCallBack != null) {
                 pdfRendererView.statusListener = statusCallBack
+            }
+            if (zoomListener != null) {
+                pdfRendererView.zoomListener = zoomListener
             }
 
             pdfRendererView.initWithUrl(
@@ -47,12 +51,16 @@ fun PdfRendererViewCompose(
     modifier: Modifier = Modifier,
     cacheStrategy: CacheStrategy = CacheStrategy.MAXIMIZE_PERFORMANCE,
     statusCallBack: PdfRendererView.StatusCallBack? = null,
-) {
+    zoomListener: PdfRendererView.ZoomListener? = null,
+    ) {
     AndroidView(
         factory = { context -> PdfRendererView(context) },
         update = { pdfRendererView: PdfRendererView ->
             if (statusCallBack != null) {
                 pdfRendererView.statusListener = statusCallBack
+            }
+            if (zoomListener != null) {
+                pdfRendererView.zoomListener = zoomListener
             }
 
             pdfRendererView.initWithFile(file = file, cacheStrategy = cacheStrategy)
@@ -66,12 +74,16 @@ fun PdfRendererViewCompose(
     uri: Uri,
     modifier: Modifier = Modifier,
     statusCallBack: PdfRendererView.StatusCallBack? = null,
-) {
+    zoomListener: PdfRendererView.ZoomListener? = null,
+    ) {
     AndroidView(
         factory = { context -> PdfRendererView(context) },
         update = { pdfRendererView: PdfRendererView ->
             if (statusCallBack != null) {
                 pdfRendererView.statusListener = statusCallBack
+            }
+            if (zoomListener != null) {
+                pdfRendererView.zoomListener = zoomListener
             }
 
             pdfRendererView.initWithUri(uri = uri)
@@ -85,13 +97,18 @@ fun PdfRendererViewComposeFromAsset(
     assetFileName: String,
     modifier: Modifier = Modifier,
     statusCallBack: PdfRendererView.StatusCallBack? = null,
-) {
+    zoomListener: PdfRendererView.ZoomListener? = null,
+    ) {
     val context = LocalContext.current
     AndroidView(
         factory = { PdfRendererView(it) },
         update = { pdfRendererView ->
             if (statusCallBack != null) {
                 pdfRendererView.statusListener = statusCallBack
+            }
+
+            if (zoomListener != null) {
+                pdfRendererView.zoomListener = zoomListener
             }
 
             val file = fileFromAsset(context, assetFileName)

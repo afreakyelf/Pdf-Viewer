@@ -162,6 +162,11 @@ fun MyPdfScreenFromUrl(url: String, modifier: Modifier = Modifier) {
             override fun onPageChanged(currentPage: Int, totalPage: Int) {
                 //Page change. Not require
             }
+        },
+        zoomListener = object : PdfRendererView.ZoomListener {
+            override fun onZoomChanged(isZoomedIn: Boolean, scale: Float) {
+                Log.i("PDF Zoom", "Compose Zoomed in: $isZoomedIn, Scale: $scale")
+            }
         }
 
     )

@@ -60,6 +60,10 @@ class PdfRendererView @JvmOverloads constructor(
     private var postInitializationAction: (() -> Unit)? = null
     private var cacheStrategy: CacheStrategy = CacheStrategy.MAXIMIZE_PERFORMANCE
 
+    fun isZoomedIn(): Boolean = this::recyclerView.isInitialized && recyclerView.isZoomedIn()
+
+    fun getZoomScale(): Float = if (this::recyclerView.isInitialized) recyclerView.getZoomScale() else 1f
+
     val totalPageCount: Int
         get() {
             return pdfRendererCore.getPageCount()
@@ -76,6 +80,12 @@ class PdfRendererView @JvmOverloads constructor(
         fun onError(error: Throwable) {}
         fun onPageChanged(currentPage: Int, totalPage: Int) {}
     }
+
+    interface ZoomListener {
+        fun onZoomChanged(isZoomedIn: Boolean, scale: Float)
+    }
+
+    var zoomListener: ZoomListener? = null
 
     // Load PDF from network URL
     fun initWithUrl(
@@ -154,6 +164,10 @@ class PdfRendererView @JvmOverloads constructor(
                 restoredScrollPosition = NO_POSITION  // Reset after applying
             }
         }, 500) // Adjust delay as needed
+
+        recyclerView.setOnZoomChangeListener { isZoomedIn, scale ->
+            zoomListener?.onZoomChanged(isZoomedIn, scale)
+        }
 
         runnable = Runnable {
             pageNo.visibility = View.GONE

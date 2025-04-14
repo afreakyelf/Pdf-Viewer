@@ -104,6 +104,12 @@ class MainActivity : AppCompatActivity() {
                 Log.i("PDF Status", "Page changed: $currentPage / $totalPage")
             }
         }
+
+        binding.pdfView.zoomListener = object : PdfRendererView.ZoomListener {
+            override fun onZoomChanged(isZoomedIn: Boolean, scale: Float) {
+                Log.i("PDF Zoom", "Zoomed in: $isZoomedIn, Scale: $scale")
+            }
+        }
     }
 
     /**
@@ -114,10 +120,10 @@ class MainActivity : AppCompatActivity() {
         startActivity(
             PdfViewerActivity.launchPdfFromUrl(
                 context = this,
-                pdfUrl = url,
+                pdfUrl = "https://api.printnode.com/static/test/pdf/multipage.pdf",
                 pdfTitle = "PDF Title",
                 saveTo = saveTo.DOWNLOADS,
-                enableDownload = false,
+                enableDownload = true,
                 toolbarTitleBehavior = ToolbarTitleBehavior.SINGLE_LINE_SCROLLABLE,
                 cacheStrategy = CacheStrategy.MAXIMIZE_PERFORMANCE
             )
