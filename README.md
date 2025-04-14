@@ -67,6 +67,10 @@ dependencies {
 }
 ```
 
+### Requirements:
+- Minimum SDK version: 23
+- Compile & Target SDK version: 35 (updated since version 2.2.0)
+
 ## How to use the library?
 Now you have integrated the library in your project but **how do you use it**? Well it's really easy. Just launch the intent with in following way: (Refer to [MainActivity.kt](https://github.com/afreakyelf/Pdf-Viewer/blob/master/app/src/main/java/com/rajat/sample/pdfviewer/MainActivity.kt) for more details.)
 
