@@ -174,7 +174,7 @@ class PdfViewerActivity : AppCompatActivity() {
             supportActionBar?.hide() // Hide it (avoids double toolbar)
         } catch (e: IllegalStateException) {
             // Do nothing — if it crashes here, we’ll fallback safely below
-            Log.w("PdfViewer-configureToolbar", "supportActionBar check failed: ${e.message}")
+            Log.w("PdfViewer", "supportActionBar check failed: ${e.message}")
         }
 
         // Use our custom toolbar always
@@ -183,8 +183,8 @@ class PdfViewerActivity : AppCompatActivity() {
             setSupportActionBar(binding.myToolbar)
             supportActionBar?.setDisplayShowTitleEnabled(false)
         } catch (e: IllegalStateException) {
-            Log.e("PdfViewer-configureToolbar", "Can't setSupportActionBar(): ${e.message}")
             // fallback — don't set toolbar, maybe layout-only mode
+            Log.e("PdfViewer", "Can't setSupportActionBar(): ${e.message}")
         }
 
         toolbarStyle.applyTo(binding.myToolbar, binding.toolbarTitle)

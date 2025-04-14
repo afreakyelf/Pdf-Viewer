@@ -68,7 +68,7 @@ dependencies {
 ```
 
 ### Requirements:
-- Minimum SDK version: 23
+- Minimum SDK version: 21
 - Compile & Target SDK version: 35 (updated since version 2.2.0)
 
 ## How to use the library?
