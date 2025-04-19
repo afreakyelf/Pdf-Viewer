@@ -108,8 +108,12 @@ class PdfRendererView @JvmOverloads constructor(
                 statusListener?.onPdfLoadProgress(progress, currentBytes, totalBytes)
             }
             override fun onDownloadSuccess(downloadedFile: File) {
-                initWithFile(File(downloadedFile.absolutePath),cacheStrategy)
-                statusListener?.onPdfLoadSuccess(downloadedFile.absolutePath)
+                try {
+                    initWithFile(File(downloadedFile.absolutePath), cacheStrategy)
+                    statusListener?.onPdfLoadSuccess(downloadedFile.absolutePath)
+                } catch (e: Exception) {
+                    statusListener?.onError(e)
+                }
             }
             override fun onError(error: Throwable) {
                 error.printStackTrace()
