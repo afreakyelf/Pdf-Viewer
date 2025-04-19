@@ -11,11 +11,9 @@ import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
-import android.os.ParcelFileDescriptor
 import android.os.Parcelable
 import android.util.AttributeSet
 import android.view.LayoutInflater
-import android.view.View
 import android.view.WindowManager
 import android.widget.FrameLayout
 import android.widget.TextView
@@ -31,6 +29,7 @@ import com.rajat.pdfviewer.util.CacheStrategy
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import org.jetbrains.annotations.TestOnly
 import java.io.File
 import java.io.FileNotFoundException
@@ -116,29 +115,53 @@ class PdfRendererView @JvmOverloads constructor(
                 error.printStackTrace()
                 statusListener?.onError(error)
             }
-        })
+        }).start()
     }
 
     // Load PDF directly from File
     fun initWithFile(file: File, cacheStrategy: CacheStrategy = CacheStrategy.MAXIMIZE_PERFORMANCE) {
-        val cacheIdentifier = file.name
         this.cacheStrategy = cacheStrategy
-        val fileDescriptor = PdfRendererCore.getFileDescriptor(file)
-        initializeRenderer(fileDescriptor, cacheIdentifier)
+        val cacheIdentifier = file.name
+
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                val fileDescriptor = PdfRendererCore.getFileDescriptor(file)
+                val renderer = PdfRendererCore.create(context, fileDescriptor, cacheIdentifier, cacheStrategy)
+                withContext(Dispatchers.Main) {
+                    initializeRenderer(renderer)
+                }
+            } catch (e: Exception) {
+                withContext(Dispatchers.Main) {
+                    statusListener?.onError(e)
+                }
+            }
+        }
     }
 
     // Load PDF directly from Uri
     @Throws(FileNotFoundException::class)
     fun initWithUri(uri: Uri) {
-        val fileDescriptor = context.contentResolver.openFileDescriptor(uri, "r") ?: return
         val cacheIdentifier = uri.toString().hashCode().toString()
-        initializeRenderer(fileDescriptor, cacheIdentifier)
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                val fileDescriptor = context.contentResolver.openFileDescriptor(uri, "r") ?: return@launch
+                val renderer = PdfRendererCore.create(context, fileDescriptor, cacheIdentifier, cacheStrategy)
+                withContext(Dispatchers.Main) {
+                    initializeRenderer(renderer)
+                }
+            } catch (e: Exception) {
+                withContext(Dispatchers.Main) {
+                    statusListener?.onError(e)
+                }
+            }
+        }
     }
 
-    private fun initializeRenderer(fileDescriptor: ParcelFileDescriptor, cacheIdentifier: String) {
+
+    private fun initializeRenderer(renderer: PdfRendererCore) {
         // Proceed with safeFile
         PdfRendererCore.enableDebugMetrics = true
-        pdfRendererCore = PdfRendererCore(context, fileDescriptor, cacheIdentifier, this.cacheStrategy)
+        pdfRendererCore = renderer
         pdfRendererCoreInitialised = true
         pdfViewAdapter = PdfViewAdapter(context,pdfRendererCore, pageMargin, enableLoadingForPages)
         val v = LayoutInflater.from(context).inflate(R.layout.pdf_rendererview, this, false)
@@ -170,7 +193,7 @@ class PdfRendererView @JvmOverloads constructor(
         }
 
         runnable = Runnable {
-            pageNo.visibility = View.GONE
+            pageNo.visibility = GONE
         }
 
         recyclerView.post {
@@ -187,8 +210,8 @@ class PdfRendererView @JvmOverloads constructor(
         private var lastScrollDirection = 0 // 1 = Down, -1 = Up
 
         private val hideRunnable = Runnable {
-            if (pageNo.visibility == View.VISIBLE) {
-                pageNo.visibility = View.GONE
+            if (pageNo.visibility == VISIBLE) {
+                pageNo.visibility = GONE
             }
         }
 
@@ -230,7 +253,7 @@ class PdfRendererView @JvmOverloads constructor(
         fun updatePageNumberDisplay(position: Int) {
             if (position != NO_POSITION) {
                 pageNo.text = context.getString(R.string.pdfView_page_no, position + 1, totalPageCount)
-                pageNo.visibility = View.VISIBLE
+                pageNo.visibility = VISIBLE
 
                 // Remove any existing hide delays before scheduling a new one
                 pageNo.removeCallbacks(hideRunnable)
@@ -285,9 +308,9 @@ class PdfRendererView @JvmOverloads constructor(
     private fun updatePageNumberDisplay(position: Int) {
         if (position != NO_POSITION) {
             pageNo.text = context.getString(R.string.pdfView_page_no, position + 1, totalPageCount)
-            pageNo.visibility = View.VISIBLE
+            pageNo.visibility = VISIBLE
             if (position == 0) {
-                pageNo.postDelayed({ pageNo.visibility = View.GONE }, 3000)
+                pageNo.postDelayed({ pageNo.visibility = GONE }, 3000)
             }
             statusListener?.onPageChanged(position + 1, totalPageCount)
         }
@@ -334,11 +357,11 @@ class PdfRendererView @JvmOverloads constructor(
         }
     }
 
-    private fun getBitmapByPage(page: Int): Bitmap? {
+    private suspend fun getBitmapByPage(page: Int): Bitmap? {
         return pdfRendererCore.getBitmapFromCache(page)
     }
 
-    fun getLoadedBitmaps(): List<Bitmap> {
+    suspend fun getLoadedBitmaps(): List<Bitmap> {
         return (0..<totalPageCount).mapNotNull { page ->
             getBitmapByPage(page)
         }

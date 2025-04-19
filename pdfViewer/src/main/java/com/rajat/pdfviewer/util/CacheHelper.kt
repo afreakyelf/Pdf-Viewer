@@ -1,19 +1,21 @@
 package com.rajat.pdfviewer.util
 
 import android.util.Log
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import java.io.File
 import kotlin.math.max
 
 object CacheHelper {
 
     // **Apply Cache Strategy**
-    fun handleCacheStrategy(
+    suspend fun handleCacheStrategy(
         origin: String,
         cacheDir: File,
         cacheStrategy: CacheStrategy,
         newFileName: String,
         maxCachedPdfs: Int
-    ) {
+    ) = withContext(Dispatchers.IO) {
         Log.d(
             "CacheHelper",
             "[$origin] Cache Strategy: $cacheStrategy | Directory: $cacheDir | File: $newFileName"

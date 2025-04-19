@@ -18,17 +18,13 @@ import java.nio.file.Files
 import java.nio.file.Paths
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicInteger
-import kotlin.math.abs
 
 open class PdfRendererCore(
-    private val context: Context,
-    private val fileDescriptor: ParcelFileDescriptor,
-    private val cacheIdentifier: String,
-    private val cacheStrategy: CacheStrategy
+    private val fileDescriptor: ParcelFileDescriptor
 ) {
 
     private var isRendererOpen = false
-    private val cacheManager = CacheManager(context, cacheIdentifier, cacheStrategy)
+    private lateinit var cacheManager: CacheManager
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
     private val renderLock = Mutex()
     private val pageCount = AtomicInteger(-1)
@@ -54,6 +50,19 @@ open class PdfRendererCore(
         }
 
         internal fun getCacheIdentifierFromFile(file: File): String = file.name.toString()
+
+        suspend fun create(
+            context: Context,
+            fileDescriptor: ParcelFileDescriptor,
+            cacheIdentifier: String,
+            cacheStrategy: CacheStrategy
+        ): PdfRendererCore = withContext(Dispatchers.IO) {
+            val core = PdfRendererCore(fileDescriptor)
+            val manager = CacheManager(context, cacheIdentifier, cacheStrategy)
+            manager.initialize()
+            core.cacheManager = manager
+            core
+        }
     }
 
     private var totalPagesRendered = 0
@@ -71,12 +80,14 @@ open class PdfRendererCore(
         isRendererOpen = true
     }
 
-    internal fun getBitmapFromCache(pageNo: Int): Bitmap? = cacheManager.getBitmapFromCache(pageNo)
+    suspend fun getBitmapFromCache(pageNo: Int): Bitmap? =
+        cacheManager.getBitmapFromCache(pageNo)
 
     private fun addBitmapToMemoryCache(pageNo: Int, bitmap: Bitmap) =
         cacheManager.addBitmapToCache(pageNo, bitmap)
 
-    fun pageExistInCache(pageNo: Int): Boolean = cacheManager.pageExistsInCache(pageNo)
+    private suspend fun pageExistInCache(pageNo: Int): Boolean =
+        cacheManager.pageExistsInCache(pageNo)
 
     fun getPageCount(): Int = if (!isRendererOpen) 0 else pageCount.get()
 
@@ -94,57 +105,58 @@ open class PdfRendererCore(
             return
         }
 
-        getBitmapFromCache(pageNo)?.let { cachedBitmap ->
-            scope.launch(Dispatchers.Main) {
-                onBitmapReady?.invoke(true, pageNo, cachedBitmap)
+        scope.launch {
+            val cachedBitmap = cacheManager.getBitmapFromCache(pageNo)
+            if (cachedBitmap != null) {
+                withContext(Dispatchers.Main) {
+                    onBitmapReady?.invoke(true, pageNo, cachedBitmap)
+                    if (enableDebugMetrics) {
+                        Log.d("PdfRendererCore", "Page $pageNo loaded from cache")
+                    }
+                }
+                return@launch
+            }
+
+            if (renderJobs[pageNo]?.isActive == true) return@launch
+            renderJobs[pageNo]?.cancel()
+            renderJobs[pageNo] = launch {
+                var success = false
+                var renderedBitmap: Bitmap? = null
+
+                renderLock.withLock {
+                    if (!isRendererOpen) return@withLock
+                    val pdfPage = openPageSafely(pageNo) ?: return@withLock
+
+                    try {
+                        val aspectRatio = pdfPage.width.toFloat() / pdfPage.height
+                        val height = bitmap.height
+                        val width = (height * aspectRatio).toInt()
+
+                        val tempBitmap = CommonUtils.Companion.BitmapPool.getBitmap(width, height)
+                        pdfPage.render(tempBitmap, null, null, PdfRenderer.Page.RENDER_MODE_FOR_DISPLAY)
+
+                        addBitmapToMemoryCache(pageNo, tempBitmap)
+                        success = true
+                        renderedBitmap = tempBitmap
+                    } catch (e: Exception) {
+                        Log.e("PdfRendererCore", "Error rendering page $pageNo: ${e.message}", e)
+                    }
+                }
+
+                val renderTime = (System.nanoTime() - startTime) / 1_000_000
+
                 if (enableDebugMetrics) {
-                    Log.d("PdfRendererCore", "Page $pageNo loaded from cache")
+                    Log.d("PdfRendererCore_Metrics", "Page $pageNo rendered in ${renderTime}ms")
+                    if (renderTime > 500) {
+                        Log.w("PdfRendererCore_Metrics", "⚠️ Slow render: Page $pageNo took ${renderTime}ms")
+                    }
                 }
-            }
-            return
-        }
 
-        if (renderJobs[pageNo]?.isActive == true) return
+                updateAggregateMetrics(pageNo, renderTime)
 
-        renderJobs[pageNo]?.cancel()
-        renderJobs[pageNo] = scope.launch {
-            var success = false
-            var renderedBitmap: Bitmap? = null
-
-            renderLock.withLock {
-                if (!isRendererOpen) return@launch
-                val pdfPage = openPageSafely(pageNo) ?: return@launch
-
-                try {
-                    val aspectRatio = pdfPage.width.toFloat() / pdfPage.height
-                    val height = bitmap.height
-                    val width = (height * aspectRatio).toInt()
-
-                    val tempBitmap = CommonUtils.Companion.BitmapPool.getBitmap(width, height)
-                    pdfPage.render(tempBitmap, null, null, PdfRenderer.Page.RENDER_MODE_FOR_DISPLAY)
-
-                    addBitmapToMemoryCache(pageNo, tempBitmap)
-                    success = true
-                    renderedBitmap = tempBitmap
-
-                } catch (e: Exception) {
-                    Log.e("PdfRendererCore", "Error rendering page $pageNo: ${e.message}", e)
+                withContext(Dispatchers.Main) {
+                    onBitmapReady?.invoke(success, pageNo, renderedBitmap)
                 }
-            }
-
-            val renderTime = (System.nanoTime() - startTime) / 1_000_000
-
-            if (enableDebugMetrics) {
-                Log.d("PdfRendererCore_Metrics", "Page $pageNo rendered in ${renderTime}ms")
-                if (renderTime > 500) {
-                    Log.w("PdfRendererCore_Metrics", "⚠️ Slow render: Page $pageNo took ${renderTime}ms")
-                }
-            }
-
-            updateAggregateMetrics(pageNo, renderTime)
-
-            withContext(Dispatchers.Main) {
-                onBitmapReady?.invoke(success, pageNo, renderedBitmap)
             }
         }
     }
@@ -173,7 +185,7 @@ open class PdfRendererCore(
         }
     }
 
-    fun prefetchPagesAround(currentPage: Int, width: Int, height: Int, direction: Int = 0) {
+    suspend fun prefetchPagesAround(currentPage: Int, width: Int, height: Int, direction: Int = 0) {
         val range = when (direction) {
             1 -> (currentPage + 1)..(currentPage + prefetchDistance)
             -1 -> (currentPage - prefetchDistance)..<currentPage

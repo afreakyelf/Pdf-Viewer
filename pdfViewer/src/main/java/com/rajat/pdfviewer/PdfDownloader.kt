@@ -8,15 +8,8 @@ import com.rajat.pdfviewer.util.CommonUtils.Companion.MAX_CACHED_PDFS
 import com.rajat.pdfviewer.util.FileUtils.getCachedFileName
 import com.rajat.pdfviewer.util.FileUtils.isValidPdf
 import com.rajat.pdfviewer.util.FileUtils.writeFile
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
-import okhttp3.OkHttpClient
-import okhttp3.Protocol
-import okhttp3.Request
-import okhttp3.Response
+import kotlinx.coroutines.*
+import okhttp3.*
 import java.io.File
 import java.io.IOException
 
@@ -25,7 +18,8 @@ class PdfDownloader(
     private val headers: HeaderData,
     private val url: String,
     private val cacheStrategy: CacheStrategy,
-    private val listener: StatusListener
+    private val listener: StatusListener,
+    private val httpClient: OkHttpClient = defaultHttpClient()
 ) {
 
     interface StatusListener {
@@ -36,26 +30,35 @@ class PdfDownloader(
         fun onError(error: Throwable)
     }
 
-    init {
-        coroutineScope.launch { checkAndDownload(url) }
+    fun start() {
+        coroutineScope.launch(Dispatchers.Main) {
+            listener.onDownloadStart()
+        }
+        coroutineScope.launch(Dispatchers.IO) {
+            checkAndDownload(url)
+        }
     }
 
     companion object {
         private const val MAX_RETRIES = 2
         private const val RETRY_DELAY = 2000L
+
+        private fun defaultHttpClient(): OkHttpClient = OkHttpClient.Builder()
+            .followRedirects(true)
+            .followSslRedirects(true)
+            .protocols(listOf(Protocol.HTTP_2, Protocol.HTTP_1_1))
+            .build()
     }
 
     private suspend fun checkAndDownload(downloadUrl: String) {
         val cachedFileName = getCachedFileName(downloadUrl)
-        val cacheDir = File(listener.getContext().cacheDir, "___pdf___cache___/$cachedFileName") // Folder for PDF + Rendered Pages
-
+        val cacheDir = File(listener.getContext().cacheDir, "___pdf___cache___/$cachedFileName")
         if (!cacheDir.exists()) {
             cacheDir.mkdirs()
         }
 
         val pdfFile = File(cacheDir, cachedFileName)
 
-        // Use centralized cache logic
         CacheHelper.handleCacheStrategy("Downloader", cacheDir, cacheStrategy, cachedFileName, MAX_CACHED_PDFS)
 
         if (pdfFile.exists() && isValidPdf(pdfFile)) {
@@ -67,31 +70,33 @@ class PdfDownloader(
         }
     }
 
-
-    private suspend fun retryDownload(downloadUrl: String, cachedFileName: File) {
+    private suspend fun retryDownload(downloadUrl: String, pdfFile: File) {
+        Log.d("PdfDownloader", "Retrying download for: $downloadUrl")
+        withContext(Dispatchers.Main) {
+            listener.onDownloadStart()
+        }
         var attempt = 0
         while (attempt < MAX_RETRIES) {
             try {
-                downloadFile(downloadUrl, cachedFileName)
-                return // Exit loop on success
+                downloadFile(downloadUrl, pdfFile)
+                return
             } catch (e: IOException) {
                 if (isInvalidFileError(e)) {
                     listener.onError(e)
-                    return // Exit immediately for invalid files (do not retry)
+                    return
                 }
 
                 attempt++
                 Log.e("PdfDownloader", "Attempt $attempt failed: $downloadUrl", e)
 
                 if (attempt < MAX_RETRIES) {
-                    delay(RETRY_DELAY) // Wait before retrying
+                    delay(RETRY_DELAY)
                 } else {
-                    listener.onError(
-                        IOException(
-                            "Failed to download after $MAX_RETRIES attempts: $downloadUrl",
-                            e
+                    withContext(Dispatchers.Main) {
+                        listener.onError(
+                            IOException("Failed to download after $MAX_RETRIES attempts: $downloadUrl", e)
                         )
-                    )
+                    }
                 }
             }
         }
@@ -99,57 +104,58 @@ class PdfDownloader(
 
     private fun isInvalidFileError(error: IOException): Boolean {
         val message = error.message ?: return false
-        return message.contains("Invalid content type") || message.contains("Downloaded file is not a valid PDF")
+        return message.contains("Invalid content type", ignoreCase = true) ||
+                message.contains("Downloaded file is not a valid PDF", ignoreCase = true)
     }
 
-    private suspend fun downloadFile(downloadUrl: String, pdfFile: File) {
-        withContext(Dispatchers.IO) {
-            listener.getContext().cacheDir
-            val tempFile = File.createTempFile("download_", ".tmp", pdfFile.parentFile)
+    private suspend fun downloadFile(downloadUrl: String, pdfFile: File) = withContext(Dispatchers.IO) {
+        val tempFile = File.createTempFile("download_", ".tmp", pdfFile.parentFile)
 
+        try {
             if (pdfFile.exists() && !isValidPdf(pdfFile)) {
                 pdfFile.delete()
             }
 
             val response = makeNetworkRequest(downloadUrl)
-
             validateResponse(response)
 
-            response.body?.byteStream()?.use { inputStream ->
-                writeFile(inputStream, tempFile, response.body!!.contentLength()) { progress ->
-                    // Ensure progress updates happen on the Main Thread
-                    coroutineScope.launch(Dispatchers.Main) {
-                        listener.onDownloadProgress(progress, response.body!!.contentLength())
+            response.body?.use { body ->
+                body.byteStream().use { inputStream ->
+                    writeFile(inputStream, tempFile, body.contentLength()) { progress ->
+                        coroutineScope.launch(Dispatchers.Main) {
+                            listener.onDownloadProgress(progress, body.contentLength())
+                        }
                     }
                 }
-            }
+            } ?: throw IOException("Empty response body received for PDF")
 
-            tempFile.renameTo(pdfFile)
+            val renamed = tempFile.renameTo(pdfFile)
+            if (!renamed) {
+                tempFile.delete()
+                throw IOException("Failed to rename temp file to final PDF path")
+            }
 
             if (!isValidPdf(pdfFile)) {
                 pdfFile.delete()
                 throw IOException("Downloaded file is not a valid PDF")
-            } else {
-                Log.d("PdfDownloader", "Downloaded PDF to: ${pdfFile.absolutePath}")
             }
+
+            Log.d("PdfDownloader", "Downloaded PDF to: ${pdfFile.absolutePath}")
 
             coroutineScope.launch(Dispatchers.Main) {
                 listener.onDownloadSuccess(pdfFile)
             }
+        } catch (e: Exception) {
+            tempFile.delete() // Clean up temp on failure
+            throw e
         }
     }
 
     private fun makeNetworkRequest(downloadUrl: String): Response {
-        val client = OkHttpClient.Builder()
-            .followRedirects(true)
-            .followSslRedirects(true)
-            .protocols(listOf(Protocol.HTTP_2, Protocol.HTTP_1_1))
-            .build()
-
         val requestBuilder = Request.Builder().url(downloadUrl)
         headers.headers.forEach { (key, value) -> requestBuilder.addHeader(key, value) }
 
-        return client.newCall(requestBuilder.build()).execute()
+        return httpClient.newCall(requestBuilder.build()).execute()
     }
 
     private fun validateResponse(response: Response) {

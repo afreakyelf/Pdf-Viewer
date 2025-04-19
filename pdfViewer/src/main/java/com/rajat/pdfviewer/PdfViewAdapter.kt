@@ -13,6 +13,7 @@ import com.rajat.pdfviewer.util.CommonUtils
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 /**
  * Created by Rajat on 11,July,2020
@@ -36,39 +37,44 @@ internal class PdfViewAdapter(
 
     inner class PdfPageViewHolder(private val itemBinding: ListItemPdfPageBinding) : RecyclerView.ViewHolder(itemBinding.root) {
         fun bind(position: Int) {
-            with(itemBinding) {
-                pageLoadingLayout.pdfViewPageLoadingProgress.visibility = if (enableLoadingForPages) View.VISIBLE else View.GONE
+            val width = itemBinding.pageView.width.takeIf { it > 0 }
+                ?: context.resources.displayMetrics.widthPixels
 
-                // Before we trigger rendering, explicitly ensure that cached bitmaps are used
-                renderer.getBitmapFromCache(position)?.let { cachedBitmap ->
-                    pageView.setImageBitmap(cachedBitmap)
-                    pageLoadingLayout.pdfViewPageLoadingProgress.visibility = View.GONE
-                    applyFadeInAnimation(pageView)
-                    return
+            CoroutineScope(Dispatchers.Main).launch {
+                itemBinding.pageLoadingLayout.pdfViewPageLoadingProgress.visibility =
+                    if (enableLoadingForPages) View.VISIBLE else View.GONE
+
+                val cached = withContext(Dispatchers.IO) {
+                    renderer.getBitmapFromCache(position)
+                }
+
+                if (cached != null) {
+                    itemBinding.pageView.setImageBitmap(cached)
+                    itemBinding.pageLoadingLayout.pdfViewPageLoadingProgress.visibility = View.GONE
+                    applyFadeInAnimation(itemBinding.pageView)
+                    return@launch
                 }
 
                 renderer.getPageDimensionsAsync(position) { size ->
-                    val width = pageView.width.takeIf { it > 0 } ?: context.resources.displayMetrics.widthPixels
                     val aspectRatio = size.width.toFloat() / size.height.toFloat()
                     val height = (width / aspectRatio).toInt()
 
-                    updateLayoutParams(height)
+                    itemBinding.updateLayoutParams(height)
 
                     val bitmap = CommonUtils.Companion.BitmapPool.getBitmap(width, maxOf(1, height))
                     renderer.renderPage(position, bitmap) { success, pageNo, renderedBitmap ->
                         if (success && pageNo == position) {
                             CoroutineScope(Dispatchers.Main).launch {
-                                pageView.setImageBitmap(renderedBitmap ?: bitmap)
-                                applyFadeInAnimation(pageView)
-                                pageLoadingLayout.pdfViewPageLoadingProgress.visibility = View.GONE
+                                itemBinding.pageView.setImageBitmap(renderedBitmap ?: bitmap)
+                                applyFadeInAnimation(itemBinding.pageView)
+                                itemBinding.pageLoadingLayout.pdfViewPageLoadingProgress.visibility = View.GONE
 
-                                // Prefetch here
                                 renderer.prefetchPagesAround(
                                     currentPage = position,
-                                    width = pageView.width.takeIf { it > 0 } ?: context.resources.displayMetrics.widthPixels,
-                                    height = pageView.height.takeIf { it > 0 } ?: context.resources.displayMetrics.heightPixels
+                                    width = width,
+                                    height = itemBinding.pageView.height.takeIf { it > 0 }
+                                        ?: context.resources.displayMetrics.heightPixels
                                 )
-
                             }
                         } else {
                             CommonUtils.Companion.BitmapPool.recycleBitmap(bitmap)
@@ -93,11 +99,5 @@ internal class PdfViewAdapter(
                 duration = 300
             })
         }
-
-        private fun handleLoadingForPage(position: Int) {
-            itemBinding.pageLoadingLayout.pdfViewPageLoadingProgress.visibility =
-                if (enableLoadingForPages && !renderer.pageExistInCache(position)) View.VISIBLE else View.GONE
-        }
     }
 }
-

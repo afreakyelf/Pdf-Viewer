@@ -41,6 +41,9 @@ import com.rajat.pdfviewer.util.ViewerStrings
 import com.rajat.pdfviewer.util.ViewerStrings.Companion.getMessageForError
 import com.rajat.pdfviewer.util.ViewerStyle
 import com.rajat.pdfviewer.util.saveTo
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import org.jetbrains.annotations.TestOnly
 import java.io.File
 import java.net.SocketTimeoutException
@@ -68,7 +71,7 @@ class PdfViewerActivity : AppCompatActivity() {
     private lateinit var headers: HeaderData
     private lateinit var binding: ActivityPdfViewerBinding
     private val viewModel: PdfViewerViewModel by viewModels()
-    private var downloadedFilePath: String? = null
+    var downloadedFilePath: String? = null
     private var isDownloadButtonEnabled = false
     private lateinit var cacheStrategy: CacheStrategy
 
@@ -286,20 +289,19 @@ class PdfViewerActivity : AppCompatActivity() {
             }
         }
 
-        if (intent.extras!!.containsKey(FILE_URL)) {
-            fileUrl = intent.extras!!.getString(FILE_URL)
+        intent.extras?.getString(FILE_URL)?.let { fileUrl ->
+            this.fileUrl = fileUrl
             if (isPDFFromPath) {
-                initPdfViewerWithPath(this.fileUrl)
-            } else {
-                if (checkInternetConnection(this)) {
-                    loadFileFromNetwork(this.fileUrl)
-                } else {
-                    Toast.makeText(
-                        this, error_no_internet_connection, Toast.LENGTH_SHORT
-                    ).show()
+                lifecycleScope.launch {
+                    initPdfViewerWithPath(fileUrl)
                 }
+            } else if (checkInternetConnection(this)) {
+                loadFileFromNetwork(fileUrl)
+            } else {
+                Toast.makeText(this, error_no_internet_connection, Toast.LENGTH_SHORT).show()
             }
         }
+
     }
 
 
@@ -381,7 +383,7 @@ class PdfViewerActivity : AppCompatActivity() {
         }
     }
 
-    private fun initPdfViewerWithPath(filePath: String?) {
+    private suspend fun initPdfViewerWithPath(filePath: String?) {
         if (TextUtils.isEmpty(filePath)) {
             onPdfError("")
             return
@@ -453,7 +455,7 @@ class PdfViewerActivity : AppCompatActivity() {
         }
     }
 
-    private fun startDownload() {
+    fun startDownload() {
         val fileName = intent.getStringExtra(FILE_TITLE) ?: "downloaded_file.pdf"
         downloadedFilePath?.let { filePath ->
             if (SAVE_TO_DOWNLOADS) {
@@ -481,23 +483,40 @@ class PdfViewerActivity : AppCompatActivity() {
         registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
             if (result.resultCode == RESULT_OK) {
                 result.data?.data?.let { uri ->
-                    contentResolver.openOutputStream(uri)?.use { outputStream ->
-                        downloadedFilePath?.let { filePath ->
-                            File(filePath).inputStream().copyTo(outputStream)
+                    lifecycleScope.launch(Dispatchers.IO) {
+                        try {
+                            val file = File(downloadedFilePath ?: return@launch)
+                            contentResolver.openOutputStream(uri)?.use { outputStream ->
+                                file.inputStream().use { inputStream ->
+                                    inputStream.copyTo(outputStream)
+                                }
+                            }
+                            withContext(Dispatchers.Main) {
+                                Toast.makeText(this@PdfViewerActivity, file_saved_successfully, Toast.LENGTH_SHORT).show()
+                            }
+                        } catch (e: Exception) {
+                            Log.e("PdfViewerActivity", "Error saving PDF: ${e.message}", e)
+                            withContext(Dispatchers.Main) {
+                                Toast.makeText(this@PdfViewerActivity, "Failed to save PDF", Toast.LENGTH_SHORT).show()
+                            }
                         }
                     }
-                    Toast.makeText(this, file_saved_successfully, Toast.LENGTH_SHORT).show()
                 }
             }
         }
 
     private fun saveFileToPublicDirectoryScopedStorage(filePath: String, fileName: String) {
-        val contentResolver = applicationContext.contentResolver
-        val uri = createPdfDocumentUri(contentResolver, fileName)
-        contentResolver.openOutputStream(uri)?.use { outputStream ->
-            File(filePath).inputStream().copyTo(outputStream)
+        lifecycleScope.launch {
+            val uri = createPdfDocumentUri(contentResolver, fileName)
+            withContext(Dispatchers.IO) {
+                contentResolver.openOutputStream(uri)?.use { outputStream ->
+                    File(filePath).inputStream().copyTo(outputStream)
+                }
+            }
+            withContext(Dispatchers.Main) {
+                Toast.makeText(this@PdfViewerActivity, file_saved_to_downloads, Toast.LENGTH_SHORT).show()
+            }
         }
-        Toast.makeText(this, file_saved_to_downloads, Toast.LENGTH_SHORT).show()
     }
 
     private fun saveFileToPublicDirectoryLegacy(filePath: String, fileName: String) {

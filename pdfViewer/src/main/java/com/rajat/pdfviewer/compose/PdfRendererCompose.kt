@@ -1,8 +1,13 @@
 package com.rajat.pdfviewer.compose
 
-import android.content.Context
 import android.net.Uri
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
@@ -13,6 +18,8 @@ import com.rajat.pdfviewer.HeaderData
 import com.rajat.pdfviewer.PdfRendererView
 import com.rajat.pdfviewer.util.CacheStrategy
 import com.rajat.pdfviewer.util.FileUtils.fileFromAsset
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import java.io.File
 
 @Composable
@@ -25,14 +32,10 @@ fun PdfRendererViewCompose(
     zoomListener: PdfRendererView.ZoomListener? = null,
 ) {
     AndroidView(
-        factory = { context: Context -> PdfRendererView(context) },
-        update = { pdfRendererView: PdfRendererView ->
-            if (statusCallBack != null) {
-                pdfRendererView.statusListener = statusCallBack
-            }
-            if (zoomListener != null) {
-                pdfRendererView.zoomListener = zoomListener
-            }
+        factory = { context -> PdfRendererView(context) },
+        update = { pdfRendererView ->
+            statusCallBack?.let { pdfRendererView.statusListener = it }
+            zoomListener?.let { pdfRendererView.zoomListener = it }
 
             pdfRendererView.initWithUrl(
                 url = url,
@@ -52,18 +55,14 @@ fun PdfRendererViewCompose(
     cacheStrategy: CacheStrategy = CacheStrategy.MAXIMIZE_PERFORMANCE,
     statusCallBack: PdfRendererView.StatusCallBack? = null,
     zoomListener: PdfRendererView.ZoomListener? = null,
-    ) {
+) {
     AndroidView(
         factory = { context -> PdfRendererView(context) },
-        update = { pdfRendererView: PdfRendererView ->
-            if (statusCallBack != null) {
-                pdfRendererView.statusListener = statusCallBack
-            }
-            if (zoomListener != null) {
-                pdfRendererView.zoomListener = zoomListener
-            }
+        update = { pdfRendererView ->
+            statusCallBack?.let { pdfRendererView.statusListener = it }
+            zoomListener?.let { pdfRendererView.zoomListener = it }
 
-            pdfRendererView.initWithFile(file = file, cacheStrategy = cacheStrategy)
+            pdfRendererView.initWithFile(file, cacheStrategy)
         },
         modifier = modifier
     )
@@ -75,18 +74,15 @@ fun PdfRendererViewCompose(
     modifier: Modifier = Modifier,
     statusCallBack: PdfRendererView.StatusCallBack? = null,
     zoomListener: PdfRendererView.ZoomListener? = null,
-    ) {
+) {
     AndroidView(
         factory = { context -> PdfRendererView(context) },
-        update = { pdfRendererView: PdfRendererView ->
-            if (statusCallBack != null) {
-                pdfRendererView.statusListener = statusCallBack
-            }
-            if (zoomListener != null) {
-                pdfRendererView.zoomListener = zoomListener
-            }
+        update = { pdfRendererView ->
+            statusCallBack?.let { pdfRendererView.statusListener = it }
+            zoomListener?.let { pdfRendererView.zoomListener = it }
 
-            pdfRendererView.initWithUri(uri = uri)
+            // Safely offload to background if needed
+            pdfRendererView.initWithUri(uri)
         },
         modifier = modifier,
     )
@@ -96,24 +92,29 @@ fun PdfRendererViewCompose(
 fun PdfRendererViewComposeFromAsset(
     assetFileName: String,
     modifier: Modifier = Modifier,
+    cacheStrategy: CacheStrategy = CacheStrategy.MAXIMIZE_PERFORMANCE,
     statusCallBack: PdfRendererView.StatusCallBack? = null,
     zoomListener: PdfRendererView.ZoomListener? = null,
-    ) {
+) {
     val context = LocalContext.current
-    AndroidView(
-        factory = { PdfRendererView(it) },
-        update = { pdfRendererView ->
-            if (statusCallBack != null) {
-                pdfRendererView.statusListener = statusCallBack
-            }
+    val scope = rememberCoroutineScope()
+    var file by remember(assetFileName) { mutableStateOf<File?>(null) }
 
-            if (zoomListener != null) {
-                pdfRendererView.zoomListener = zoomListener
-            }
+    LaunchedEffect(assetFileName) {
+        scope.launch(Dispatchers.IO) {
+            file = fileFromAsset(context, assetFileName)
+        }
+    }
 
-            val file = fileFromAsset(context, assetFileName)
-            pdfRendererView.initWithFile(file)
-        },
-        modifier = modifier,
-    )
+    file?.let { readyFile ->
+        AndroidView(
+            factory = { PdfRendererView(it) },
+            update = { pdfRendererView ->
+                statusCallBack?.let { pdfRendererView.statusListener = it }
+                zoomListener?.let { pdfRendererView.zoomListener = it }
+                pdfRendererView.initWithFile(readyFile, cacheStrategy)
+            },
+            modifier = modifier,
+        )
+    }
 }

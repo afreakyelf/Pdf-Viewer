@@ -11,18 +11,20 @@ import com.rajat.pdfviewer.util.FileUtils.cachedFileNameWithFormat
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.FileOutputStream
 
 class CacheManager(
-    context: Context,
-    currentOpenedFileName: String,
-    cacheStrategy: CacheStrategy = CacheStrategy.MAXIMIZE_PERFORMANCE
+    private val context: Context,
+    private val currentOpenedFileName: String,
+    private val cacheStrategy: CacheStrategy = CacheStrategy.MAXIMIZE_PERFORMANCE
 ) {
     private val memoryCache: LruCache<Int, Bitmap> = createMemoryCache()
-    private val cacheDir = File(context.cacheDir, "${CACHE_PATH}/$currentOpenedFileName")
+    private var cacheDir = File(context.cacheDir, "${CACHE_PATH}/$currentOpenedFileName")
 
-    init {
+    suspend fun initialize() = withContext(Dispatchers.IO) {
+        cacheDir = File(context.cacheDir, "$CACHE_PATH/$currentOpenedFileName")
         if (!cacheDir.exists()) {
             cacheDir.mkdirs()
         }
@@ -44,8 +46,8 @@ class CacheManager(
         }
     }
 
-    fun getBitmapFromCache(pageNo: Int): Bitmap? {
-        return memoryCache.get(pageNo) ?: decodeBitmapFromDiskCache(pageNo)?.also {
+    suspend fun getBitmapFromCache(pageNo: Int): Bitmap? = withContext(Dispatchers.IO) {
+        memoryCache.get(pageNo) ?: decodeBitmapFromDiskCache(pageNo)?.also {
             memoryCache.put(pageNo, it)
         }
     }
@@ -84,8 +86,9 @@ class CacheManager(
         }
     }
 
-    fun pageExistsInCache(pageNo: Int): Boolean =
+    suspend fun pageExistsInCache(pageNo: Int): Boolean = withContext(Dispatchers.IO) {
         File(cacheDir, cachedFileNameWithFormat(pageNo)).exists()
+    }
 
     companion object {
         const val CACHE_PATH = "___pdf___cache___"
