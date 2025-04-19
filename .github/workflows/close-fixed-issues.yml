@@ -1,0 +1,39 @@
+name: 'Close stale Fixed issues'
+
+on:
+  schedule:
+    - cron: '30 1 * * *'  # every day at 01:30 UTC
+  workflow_dispatch:      # optional: allow manual runs
+
+jobs:
+  stale:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/stale@v7
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+
+          # Only process issues with the "Fixed" label
+          only-labels: 'Fixed'
+
+          # Stale after 30 days, close after 5 more
+          days-before-stale: 30
+          days-before-close: 5
+
+          # Do not process PRs
+          days-before-pr-stale: -1
+          days-before-pr-close: -1
+
+          # Optional: skip pinned or security issues
+          exempt-issue-labels: 'pinned,security'
+
+          stale-issue-label: 'stale'
+
+          stale-issue-message: |
+            👋 Hi — this issue was marked as **Fixed** but hasn’t had any activity since then.  
+            If it’s still relevant, feel free to leave a comment or remove the `stale` label to keep it open.  
+            Otherwise, it will be automatically closed in 5 days.
+
+          close-issue-message: |
+            📪 Hi @{{ issue.user.login }} — this issue was automatically closed because it was marked as **Fixed** and had no activity for 5 more days after being marked stale.  
+            If you believe this was closed in error, feel free to reopen it or leave a comment.

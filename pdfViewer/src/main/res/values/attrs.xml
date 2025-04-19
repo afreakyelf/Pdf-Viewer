@@ -6,10 +6,6 @@
             <enum name="normal" value="2" />
             <enum name="enhanced" value="3" />
         </attr>
-        <attr name="pdfView_engine" format="enum">
-            <enum name="internal" value="100" />
-            <enum name="google" value="200" />
-        </attr>
         <attr name="pdfView_showDivider" format="boolean" />
         <attr name="pdfView_divider" format="reference" />
         <attr name="pdfView_enableLoadingForPages" format="reference|boolean" />
@@ -21,7 +17,7 @@
         <attr name="pdfView_disableScreenshots" format="boolean" />
         <attr name="pdfView_progressBar" format="reference"/>
         <attr name="pdfView_backgroundColor" format="reference|color"/>
-
+        <attr name="pdfView_enableZoom" format="boolean" />
     </declare-styleable>
 
     <declare-styleable name="PdfRendererView_Strings">
@@ -36,15 +32,22 @@
         <attr name="pdf_viewer_retry" format="reference|string"/>
         <attr name="pdf_viewer_grant" format="reference|string"/>
         <attr name="pdf_viewer_cancel" format="reference|string"/>
+        <attr name="pdf_viewer_error_dialog_title" format="reference|string" />
     </declare-styleable>
 
     <declare-styleable name="PdfRendererView_toolbar">
         <attr name="pdfView_backIcon" format="reference" />
         <attr name="pdfView_downloadIcon" format="reference" />
         <attr name="pdfView_downloadIconTint" format="reference|color" />
-        <attr name="pdfView_actionBarTint" format="reference|color" />
+        <attr name="pdfView_toolbarColor" format="reference|color" />
         <attr name="pdfView_titleTextStyle" format="reference" />
         <attr name="pdfView_showToolbar" format="boolean" />
+        <attr name="pdfView_titleBehavior" format="enum">
+            <enum name="single_line_ellipsis" value="0"/>
+            <enum name="single_line_scrollable" value="1"/>
+            <enum name="multi_line_ellipsis" value="2"/>
+            <enum name="multi_line_wrap" value="3"/>
+        </attr>
     </declare-styleable>
 
 </resources>

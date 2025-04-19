@@ -14,4 +14,5 @@
     <string name="pdf_viewer_retry">Retry</string>
     <string name="pdf_viewer_grant">Grant</string>
     <string name="pdf_viewer_cancel">Cancel</string>
+    <string name="pdf_viewer_error_dialog_title">Error Loading PDF</string>
 </resources>

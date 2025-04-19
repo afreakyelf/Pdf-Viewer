@@ -19,7 +19,6 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalLifecycleOwner
@@ -27,6 +26,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.rajat.pdfviewer.PdfRendererView
 import com.rajat.pdfviewer.compose.PdfRendererViewCompose
+import com.rajat.pdfviewer.compose.PdfRendererViewComposeFromAsset
 import com.rajat.sample.pdfviewer.ui.theme.AndroidpdfviewerTheme
 import java.io.File
 
@@ -47,8 +47,8 @@ class ComposeActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    MyPdfScreenFromUri(
-                        modifier = Modifier.fillMaxSize()
+                    MyPdfScreenFromUrl(
+                        url = "https://source.android.com/docs/compatibility/5.0/android-5.0-cdd.pdf"
                     )
                 }
             }
@@ -100,11 +100,9 @@ fun MyPdfScreenFromUri(modifier: Modifier = Modifier) {
 
 @Composable
 fun MyPdfScreenFromUri(uri: Uri, modifier: Modifier = Modifier) {
-    val lifecycleOwner = LocalLifecycleOwner.current
     PdfRendererViewCompose(
         modifier = modifier,
         uri = uri,
-        lifecycleOwner = lifecycleOwner,
         statusCallBack = object : PdfRendererView.StatusCallBack {
             override fun onPdfLoadStart() {
                 Log.i("statusCallBack", "onPdfLoadStart")
@@ -164,6 +162,11 @@ fun MyPdfScreenFromUrl(url: String, modifier: Modifier = Modifier) {
             override fun onPageChanged(currentPage: Int, totalPage: Int) {
                 //Page change. Not require
             }
+        },
+        zoomListener = object : PdfRendererView.ZoomListener {
+            override fun onZoomChanged(isZoomedIn: Boolean, scale: Float) {
+                Log.i("PDF Zoom", "Compose Zoomed in: $isZoomedIn, Scale: $scale")
+            }
         }
 
     )
@@ -171,11 +174,17 @@ fun MyPdfScreenFromUrl(url: String, modifier: Modifier = Modifier) {
 
 @Composable
 fun MyPdfScreenFromFile() {
-    val lifecycleOwner = LocalLifecycleOwner.current
     val pdfFile = File("path/to/your/file.pdf")  // Replace with your file path
     PdfRendererViewCompose(
         file = pdfFile,
-        lifecycleOwner = lifecycleOwner
+    )
+}
+
+@Composable
+fun MyPdfScreenFromAsset(modifier: Modifier = Modifier) {
+    PdfRendererViewComposeFromAsset(
+        assetFileName = "quote.pdf",
+        modifier = modifier
     )
 }
 

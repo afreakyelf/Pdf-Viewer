@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="colorPrimary">#6200EE</color>
-    <color name="colorPrimaryDark">#3700B3</color>
-    <color name="colorAccent">#03DAC5</color>
+    <color name="colorPrimary">#6200EE</color> <!-- Material Default Indigo -->
+    <color name="colorBackground">#F5F5F5</color> <!-- Light Gray -->
+    <color name="colorSurface">#FFFFFF</color> <!-- White -->
+    <color name="colorOnSurface">#000000</color> <!-- Black -->
 </resources>

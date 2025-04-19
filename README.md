@@ -67,6 +67,10 @@ dependencies {
 }
 ```
 
+### Requirements:
+- Minimum SDK version: 21
+- Compile & Target SDK version: 35 (updated since version 2.2.0)
+
 ## How to use the library?
 Now you have integrated the library in your project but **how do you use it**? Well it's really easy. Just launch the intent with in following way: (Refer to [MainActivity.kt](https://github.com/afreakyelf/Pdf-Viewer/blob/master/app/src/main/java/com/rajat/sample/pdfviewer/MainActivity.kt) for more details.)
 
@@ -90,7 +94,7 @@ PdfViewerActivity.launchPdfFromUrl(
     context = this,
     pdfUrl = "your_pdf_url_here",
     pdfTitle = "PDF Title",
-    saveTo = PdfViewerActivity.saveTo.ASK_EVERYTIME,
+    saveTo = saveTo.ASK_EVERYTIME,
     enableDownload = true
 )
 ```
@@ -108,7 +112,7 @@ PdfViewerActivity.launchPdfFromPath(
     context = this,
     path = "your_file_path_or_uri_here",
     pdfTitle = "Title",
-    saveTo = PdfViewerActivity.saveTo.ASK_EVERYTIME,
+    saveTo = saveTo.ASK_EVERYTIME,
     fromAssets = false
 )
 ```
@@ -126,7 +130,7 @@ PdfViewerActivity.launchPdfFromPath(
   context = this,
   path = "file_name_in_assets",
   pdfTitle = "Title",
-  saveTo = PdfViewerActivity.saveTo.ASK_EVERYTIME,
+  saveTo = saveTo.ASK_EVERYTIME,
   fromAssets = true
 )
 ```
@@ -155,16 +159,92 @@ binding.pdfView.initWithUrl(
 ```
 
 #### Using with Jetpack Compose
-For Jetpack Compose, utilize PdfRendererViewCompose:
+
+For Jetpack Compose, utilize `PdfRendererViewCompose` to render PDF files.
+
+To render a PDF from a URL:
 
 ```kotlin
 PdfRendererViewCompose(
     url = "your_pdf_url_here",
-    lifecycleOwner = LocalLifecycleOwner.current
 )
 ```
 
-That's pretty much it and you're all wrapped up.
+To render a PDF from a local file:
+
+```kotlin
+PdfRendererViewCompose(
+    file = yourFile,
+)
+```
+
+To render a PDF from a URI:
+
+```kotlin
+PdfRendererViewCompose(
+    uri = yourUri,
+)
+```
+
+You can also provide arguments for additional parameters such as `modifier`, `headers`, `lifecycleOwner`, and `statusCallBack`:
+
+```kotlin
+PdfRendererViewCompose(
+    url = "your_pdf_url_here",
+    modifier = Modifier,
+    headers = HeaderData(mapOf("Authorization" to "123456789")),
+    lifecycleOwner = LocalLifecycleOwner.current,
+    statusCallBack = object : PdfRendererView.StatusCallBack {
+        // Override functions here
+    },
+    zoomListener = object : PdfRendererView.ZoomListener {
+      // Override functions here
+  }
+)
+```
+
+That's all you need to integrate PDF rendering in your Compose application.
+
+### Track PDF Load & Zoom Events 
+You can monitor download progress, rendering success, page changes, and zoom state using the following callbacks:
+
+#### PDF Load Status
+Use the `statusListener` to get callbacks on PDF lifecycle events:
+
+```kotlin
+binding.pdfView.statusListener = object : PdfRendererView.StatusCallBack {
+    override fun onPdfLoadStart() {
+        Log.i("PDF Status", "Loading started")
+    }
+
+    override fun onPdfLoadProgress(progress: Int, downloadedBytes: Long, totalBytes: Long?) {
+        Log.i("PDF Status", "Download progress: $progress%")
+    }
+
+    override fun onPdfLoadSuccess(absolutePath: String) {
+        Log.i("PDF Status", "Load successful: $absolutePath")
+    }
+
+    override fun onError(error: Throwable) {
+        Log.e("PDF Status", "Error loading PDF: ${error.message}")
+    }
+
+    override fun onPageChanged(currentPage: Int, totalPage: Int) {
+        Log.i("PDF Status", "Page changed: $currentPage / $totalPage")
+    }
+}
+```
+
+#### Zoom Change Listener
+You can also monitor when the user zooms in or out using `zoomListener`:
+
+```kotlin
+binding.pdfView.zoomListener = object : PdfRendererView.ZoomListener {
+    override fun onZoomChanged(isZoomedIn: Boolean, scale: Float) {
+        Log.i("PDF Zoom", "Zoomed in: $isZoomedIn, Scale: $scale")
+    }
+}
+```
 
 ### Ui Customizations
 You need to add the custom theme to styles.xml/themes.xml file and override the required attribute values.
@@ -220,7 +300,7 @@ Custom:
 |pdfView_backIcon|drawable|Navigation icon|
 |pdfView_downloadIcon|drawable|Download icon|
 |pdfView_downloadIconTint|color|Download icon tint|
-|pdfView_actionBarTint|color|Actionbar background color|
+|pdfView_toolbarColor|color|Actionbar background color|
 |pdfView_titleTextStyle|style|Actionbar title text appearance|
 |pdfView_progressBar|style|Progress bar style|
 
