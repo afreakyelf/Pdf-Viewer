@@ -1,34 +1,53 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
 
-    <style name="Theme.PdfView.SelectedTheme" parent="@style/Theme.PdfView.Light" />
+    <!-- Selected Theme (Auto Light/Dark mode based on system settings) -->
+    <style name="Theme.PdfView.SelectedTheme" parent="Theme.Material3.DayNight.NoActionBar">
+        <item name="colorPrimary">@color/pdf_viewer_primary</item>
+        <item name="colorOnPrimary">@color/pdf_viewer_on_primary</item>
+        <item name="colorSurface">@color/pdf_viewer_surface</item>
+        <item name="colorOnSurface">@color/pdf_viewer_on_surface</item>
+        <item name="pdfView_backgroundColor">@color/pdf_viewer_surface</item>
+        <item name="pdfView_toolbarColor">@color/pdf_viewer_primary</item>
+    </style>
 
-    <style name="Theme.PdfView.Light" parent="@style/Theme.AppCompat.Light.NoActionBar">
+    <!-- Light Mode Theme -->
+    <style name="Theme.PdfView.Light" parent="Theme.Material3.Light.NoActionBar">
         <item name="pdfView_backIcon">@drawable/pdf_viewer_ic_arrow_back</item>
         <item name="pdfView_downloadIcon">@android:drawable/stat_sys_download</item>
-        <item name="pdfView_downloadIconTint">#888A87</item>
-        <item name="pdfView_actionBarTint">#000000</item>
+        <item name="pdfView_downloadIconTint">@color/pdf_viewer_icon_tint</item>
+        <item name="pdfView_toolbarColor">@color/pdf_viewer_primary</item>
         <item name="pdfView_titleTextStyle">@style/pdfView_titleTextAppearance</item>
-        <item name="pdfView_backgroundColor">#EAEAEA</item>
+        <item name="pdfView_backgroundColor">@color/pdf_viewer_surface</item>
     </style>
 
-    <style name="Theme.PdfView.Dark" parent="@style/Theme.AppCompat.Light.NoActionBar">
+    <!-- Dark Mode Theme -->
+    <style name="Theme.PdfView.Dark" parent="Theme.Material3.Dark.NoActionBar">
         <item name="pdfView_backIcon">@drawable/pdf_viewer_ic_arrow_back_alt</item>
         <item name="pdfView_downloadIcon">@android:drawable/stat_sys_download</item>
-        <item name="pdfView_downloadIconTint">#2f2f2f</item>
-        <item name="pdfView_actionBarTint">#ffffff</item>
+        <item name="pdfView_downloadIconTint">@color/pdf_viewer_icon_tint_dark</item>
+        <item name="pdfView_toolbarColor">@color/pdf_viewer_primary</item>
         <item name="pdfView_titleTextStyle">@style/pdfView_titleTextAppearanceDark</item>
-        <item name="pdfView_backgroundColor">#100F0F</item>
+        <item name="pdfView_backgroundColor">@color/pdf_viewer_background_dark</item>
     </style>
 
-    <style name="pdfView_titleTextAppearance" parent="TextAppearance.AppCompat.Widget.ActionBar.Title">
-        <item name="android:gravity">center_vertical</item>
-        <item name="android:textColor">#ffffff</item>
+    <!-- Toolbar Styling -->
+    <style name="ThemeOverlay.PdfView.Toolbar" parent="ThemeOverlay.Material3">
+        <item name="colorSurface">@color/pdf_viewer_primary</item>
+        <item name="colorOnSurface">@color/pdf_viewer_on_primary</item>
+        <item name="android:textColorPrimary">@color/pdf_viewer_on_primary</item>
+        <item name="android:elevation">4dp</item>
     </style>
 
-    <style name="pdfView_titleTextAppearanceDark" parent="TextAppearance.AppCompat.Widget.ActionBar.Title">
+    <!-- Title Text Appearance Styles -->
+    <style name="pdfView_titleTextAppearance" parent="TextAppearance.Material3.TitleMedium">
         <item name="android:gravity">center_vertical</item>
-        <item name="android:textColor">#2f2f2f</item>
+        <item name="android:textColor">@color/pdf_viewer_on_primary</item>
+    </style>
+
+    <style name="pdfView_titleTextAppearanceDark" parent="TextAppearance.Material3.TitleMedium">
+        <item name="android:gravity">center_vertical</item>
+        <item name="android:textColor">@color/pdf_viewer_on_surface</item>
     </style>
 
 </resources>
