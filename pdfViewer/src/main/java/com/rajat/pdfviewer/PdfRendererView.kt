@@ -123,12 +123,15 @@ class PdfRendererView @JvmOverloads constructor(
         this.cacheStrategy = cacheStrategy
         val cacheIdentifier = file.name
 
+        // Notify loading started
+        statusListener?.onPdfLoadStart()
         CoroutineScope(Dispatchers.IO).launch {
             try {
                 val fileDescriptor = PdfRendererCore.getFileDescriptor(file)
                 val renderer = PdfRendererCore.create(context, fileDescriptor, cacheIdentifier, cacheStrategy)
                 withContext(Dispatchers.Main) {
                     initializeRenderer(renderer)
+                    statusListener?.onPdfLoadSuccess(file.absolutePath)
                 }
             } catch (e: Exception) {
                 withContext(Dispatchers.Main) {
@@ -138,16 +141,21 @@ class PdfRendererView @JvmOverloads constructor(
         }
     }
 
+
     // Load PDF directly from Uri
     @Throws(FileNotFoundException::class)
     fun initWithUri(uri: Uri) {
         val cacheIdentifier = uri.toString().hashCode().toString()
+
+        statusListener?.onPdfLoadStart()
+
         CoroutineScope(Dispatchers.IO).launch {
             try {
                 val fileDescriptor = context.contentResolver.openFileDescriptor(uri, "r") ?: return@launch
                 val renderer = PdfRendererCore.create(context, fileDescriptor, cacheIdentifier, cacheStrategy)
                 withContext(Dispatchers.Main) {
                     initializeRenderer(renderer)
+                    statusListener?.onPdfLoadSuccess("uri:$uri")
                 }
             } catch (e: Exception) {
                 withContext(Dispatchers.Main) {
