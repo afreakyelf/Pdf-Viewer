@@ -125,7 +125,7 @@ class PdfRendererView @JvmOverloads constructor(
     // Load PDF directly from File
     fun initWithFile(file: File, cacheStrategy: CacheStrategy = CacheStrategy.MAXIMIZE_PERFORMANCE) {
         this.cacheStrategy = cacheStrategy
-        val cacheIdentifier = file.name
+        val cacheIdentifier = "${file.name}_${file.parent?.hashCode()}_${file.length()}"
 
         // Notify loading started
         statusListener?.onPdfLoadStart()
