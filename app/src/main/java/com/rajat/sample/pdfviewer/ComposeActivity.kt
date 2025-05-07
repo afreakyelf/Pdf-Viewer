@@ -12,7 +12,6 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.rajat.pdfviewer.PdfRendererView
@@ -30,41 +29,53 @@ class ComposeActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    MyPdfScreenFromUrl(url = "https://source.android.com/docs/compatibility/5.0/android-5.0-cdd.pdf")
+                    MyPdfScreenFromUrl(
+                        modifier = Modifier.systemBarsPadding(),
+                        url = "https://source.android.com/docs/compatibility/5.0/android-5.0-cdd.pdf"
+                    )
                 }
             }
         }
     }
 }
 
-
 @Composable
-fun MyPdfScreenFromUrl(url: String, modifier: Modifier = Modifier) {
-    val lifecycleOwner = LocalLifecycleOwner.current
+private fun MyPdfScreenFromUrl(url: String, modifier: Modifier = Modifier) {
     PdfRendererViewCompose(
-        source = PdfSource.Remote(url),
+        source = remember(url) { PdfSource.Remote(url) },
         modifier = modifier,
-        lifecycleOwner = lifecycleOwner,
-        statusCallBack = object : PdfRendererView.StatusCallBack {
-            override fun onPdfLoadStart() {
-                Log.i("statusCallBack", "onPdfLoadStart")
+        statusCallBack = remember {
+            object : PdfRendererView.StatusCallBack {
+                override fun onPdfLoadStart() {
+                    Log.i("statusCallBack", "onPdfLoadStart")
+                }
+
+                override fun onPdfLoadProgress(
+                    progress: Int,
+                    downloadedBytes: Long,
+                    totalBytes: Long?
+                ) {
+                    Log.i("statusCallBack", "onPdfLoadProgress: $progress")
+                }
+
+                override fun onPdfLoadSuccess(absolutePath: String) {
+                    Log.i("statusCallBack", "onPdfLoadSuccess: $absolutePath")
+                }
+
+                override fun onError(error: Throwable) {
+                    Log.e("statusCallBack", "onError: ${error.message}")
+                }
+
+                override fun onPageChanged(currentPage: Int, totalPage: Int) {
+                    Log.i("statusCallBack", "onPageChanged: $currentPage / $totalPage")
+                }
             }
-
-            override fun onPdfLoadProgress(progress: Int, downloadedBytes: Long, totalBytes: Long?) {}
-
-            override fun onPdfLoadSuccess(absolutePath: String) {
-                Log.i("statusCallBack", "onPdfLoadSuccess: $absolutePath")
-            }
-
-            override fun onError(error: Throwable) {
-                Log.e("statusCallBack", "onError: ${error.message}")
-            }
-
-            override fun onPageChanged(currentPage: Int, totalPage: Int) {}
         },
-        zoomListener = object : PdfRendererView.ZoomListener {
-            override fun onZoomChanged(isZoomedIn: Boolean, scale: Float) {
-                Log.i("PDF Zoom", "Zoomed in: $isZoomedIn, Scale: $scale")
+        zoomListener = remember {
+            object : PdfRendererView.ZoomListener {
+                override fun onZoomChanged(isZoomedIn: Boolean, scale: Float) {
+                    Log.i("PDF Zoom", "Zoomed in: $isZoomedIn, Scale: $scale")
+                }
             }
         },
         onReady = {
@@ -74,7 +85,7 @@ fun MyPdfScreenFromUrl(url: String, modifier: Modifier = Modifier) {
 }
 
 @Composable
-fun MyPdfScreenFromUri(modifier: Modifier = Modifier) {
+private fun MyPdfScreenFromUri(modifier: Modifier = Modifier) {
     val (uri, setUri) = remember { mutableStateOf<Uri?>(null) }
     val launcher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) {
         setUri(it)
@@ -108,7 +119,7 @@ fun MyPdfScreenFromUri(modifier: Modifier = Modifier) {
 }
 
 @Composable
-fun MyPdfScreenFromAsset(modifier: Modifier = Modifier) {
+private fun MyPdfScreenFromAsset(modifier: Modifier = Modifier) {
     PdfRendererViewCompose(
         source = PdfSource.PdfSourceFromAsset("quote.pdf"),
         modifier = modifier
@@ -116,7 +127,7 @@ fun MyPdfScreenFromAsset(modifier: Modifier = Modifier) {
 }
 
 @Composable
-fun MyPdfScreenFromFile() {
+private fun MyPdfScreenFromFile() {
     val pdfFile = File("path/to/your/file.pdf") // Replace with actual path
     PdfRendererViewCompose(
         source = PdfSource.LocalFile(pdfFile)
@@ -125,7 +136,7 @@ fun MyPdfScreenFromFile() {
 
 @Preview(showBackground = true)
 @Composable
-fun GreetingPreview() {
+private fun MyPdfScreenFromUrlPreview() {
     AndroidpdfviewerTheme {
         MyPdfScreenFromUrl("https://css4.pub/2015/textbook/somatosensory.pdf")
     }
