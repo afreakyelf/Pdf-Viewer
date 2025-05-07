@@ -10,14 +10,22 @@ import android.util.Size
 import com.rajat.pdfviewer.util.CacheManager
 import com.rajat.pdfviewer.util.CacheStrategy
 import com.rajat.pdfviewer.util.CommonUtils
-import kotlinx.coroutines.*
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancelChildren
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withContext
 import java.io.File
 import java.nio.file.Files
 import java.nio.file.Paths
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicInteger
+import kotlin.coroutines.resume
 
 open class PdfRendererCore(
     private val fileDescriptor: ParcelFileDescriptor
@@ -166,10 +174,10 @@ open class PdfRendererCore(
             val bitmap = CommonUtils.Companion.BitmapPool.getBitmap(width, height)
             renderPage(pageNo, bitmap) { success, _, renderedBitmap ->
                 if (success) {
-                    continuation.resume(renderedBitmap ?: bitmap, null)
+                    continuation.resume(renderedBitmap ?: bitmap)
                 } else {
                     CommonUtils.Companion.BitmapPool.recycleBitmap(bitmap)
-                    continuation.resume(null, null)
+                    continuation.resume(null)
                 }
             }
         }

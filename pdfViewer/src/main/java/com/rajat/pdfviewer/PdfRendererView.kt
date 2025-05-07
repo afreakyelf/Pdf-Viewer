@@ -28,11 +28,12 @@ import androidx.recyclerview.widget.RecyclerView.NO_POSITION
 import com.rajat.pdfviewer.util.CacheStrategy
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancelChildren
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.jetbrains.annotations.TestOnly
 import java.io.File
-import java.io.FileNotFoundException
 
 /**
  * Created by Rajat on 11,July,2020
@@ -58,6 +59,7 @@ class PdfRendererView @JvmOverloads constructor(
     private var disableScreenshots: Boolean = false
     private var postInitializationAction: (() -> Unit)? = null
     private var cacheStrategy: CacheStrategy = CacheStrategy.MAXIMIZE_PERFORMANCE
+    private val coroutineScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
     fun isZoomedIn(): Boolean = this::recyclerView.isInitialized && recyclerView.isZoomedIn()
 
@@ -129,7 +131,7 @@ class PdfRendererView @JvmOverloads constructor(
 
         // Notify loading started
         statusListener?.onPdfLoadStart()
-        CoroutineScope(Dispatchers.IO).launch {
+        coroutineScope.launch {
             try {
                 val fileDescriptor = PdfRendererCore.getFileDescriptor(file)
                 val renderer = PdfRendererCore.create(context, fileDescriptor, cacheIdentifier, cacheStrategy)
@@ -147,15 +149,13 @@ class PdfRendererView @JvmOverloads constructor(
 
 
     // Load PDF directly from Uri
-    @Throws(FileNotFoundException::class)
     fun initWithUri(uri: Uri) {
         val cacheIdentifier = uri.toString().hashCode().toString()
 
         statusListener?.onPdfLoadStart()
-
-        CoroutineScope(Dispatchers.IO).launch {
+        coroutineScope.launch {
             try {
-                val fileDescriptor = context.contentResolver.openFileDescriptor(uri, "r") ?: return@launch
+                val fileDescriptor = context.contentResolver.openFileDescriptor(uri, "r")!!
                 val renderer = PdfRendererCore.create(context, fileDescriptor, cacheIdentifier, cacheStrategy)
                 withContext(Dispatchers.Main) {
                     initializeRenderer(renderer)
@@ -389,7 +389,7 @@ class PdfRendererView @JvmOverloads constructor(
     }
 
     private fun preloadCacheIntoMemory() {
-        CoroutineScope(Dispatchers.IO).launch {
+        coroutineScope.launch {
             pdfRendererCore.let { renderer ->
                 (0 until renderer.getPageCount()).forEach { pageNo ->
                     renderer.getBitmapFromCache(pageNo)
@@ -401,6 +401,7 @@ class PdfRendererView @JvmOverloads constructor(
     override fun onDetachedFromWindow() {
         super.onDetachedFromWindow()
         closePdfRender()
+        coroutineScope.coroutineContext.cancelChildren()
     }
 
     override fun onSaveInstanceState(): Parcelable {

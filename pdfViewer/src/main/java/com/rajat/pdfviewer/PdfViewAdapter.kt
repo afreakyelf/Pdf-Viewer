@@ -12,6 +12,8 @@ import com.rajat.pdfviewer.databinding.ListItemPdfPageBinding
 import com.rajat.pdfviewer.util.CommonUtils
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancelChildren
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -25,6 +27,13 @@ internal class PdfViewAdapter(
     private val pageSpacing: Rect,
     private val enableLoadingForPages: Boolean
 ) : RecyclerView.Adapter<PdfViewAdapter.PdfPageViewHolder>() {
+
+    private val coroutineScope = CoroutineScope(Dispatchers.Main + SupervisorJob())
+
+    override fun onDetachedFromRecyclerView(recyclerView: RecyclerView) {
+        super.onDetachedFromRecyclerView(recyclerView)
+        coroutineScope.coroutineContext.cancelChildren()
+    }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): PdfPageViewHolder =
         PdfPageViewHolder(ListItemPdfPageBinding.inflate(LayoutInflater.from(parent.context), parent, false))
@@ -40,7 +49,7 @@ internal class PdfViewAdapter(
             val width = itemBinding.pageView.width.takeIf { it > 0 }
                 ?: context.resources.displayMetrics.widthPixels
 
-            CoroutineScope(Dispatchers.Main).launch {
+            coroutineScope.launch {
                 itemBinding.pageLoadingLayout.pdfViewPageLoadingProgress.visibility =
                     if (enableLoadingForPages) View.VISIBLE else View.GONE
 
@@ -64,7 +73,7 @@ internal class PdfViewAdapter(
                     val bitmap = CommonUtils.Companion.BitmapPool.getBitmap(width, maxOf(1, height))
                     renderer.renderPage(position, bitmap) { success, pageNo, renderedBitmap ->
                         if (success && pageNo == position) {
-                            CoroutineScope(Dispatchers.Main).launch {
+                            launch {
                                 itemBinding.pageView.setImageBitmap(renderedBitmap ?: bitmap)
                                 applyFadeInAnimation(itemBinding.pageView)
                                 itemBinding.pageLoadingLayout.pdfViewPageLoadingProgress.visibility = View.GONE
