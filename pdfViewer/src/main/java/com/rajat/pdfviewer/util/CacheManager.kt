@@ -92,5 +92,14 @@ class CacheManager(
 
     companion object {
         const val CACHE_PATH = "___pdf___cache___"
+
+        suspend fun clearCacheDir(context: Context) {
+            withContext(Dispatchers.IO) {
+                val cacheDir = File(context.cacheDir, CACHE_PATH)
+                if (cacheDir.exists()) {
+                    cacheDir.deleteRecursively()
+                }
+            }
+        }
     }
 }
