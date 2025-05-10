@@ -15,13 +15,10 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
-/**
- * Created by Rajat on 11,July,2020
- */
-
 internal class PdfViewAdapter(
     private val context: Context,
     private val renderer: PdfRendererCore,
+    private val parentView: PdfRendererView,
     private val pageSpacing: Rect,
     private val enableLoadingForPages: Boolean
 ) : RecyclerView.Adapter<PdfViewAdapter.PdfPageViewHolder>() {
@@ -69,11 +66,16 @@ internal class PdfViewAdapter(
                                 applyFadeInAnimation(itemBinding.pageView)
                                 itemBinding.pageLoadingLayout.pdfViewPageLoadingProgress.visibility = View.GONE
 
-                                renderer.prefetchPagesAround(
+                                // adaptive directional prefetch
+                                val direction = parentView.getScrollDirection()
+                                val fallbackHeight = itemBinding.pageView.height.takeIf { it > 0 }
+                                    ?: context.resources.displayMetrics.heightPixels
+
+                                renderer.schedulePrefetch(
                                     currentPage = position,
                                     width = width,
-                                    height = itemBinding.pageView.height.takeIf { it > 0 }
-                                        ?: context.resources.displayMetrics.heightPixels
+                                    height = fallbackHeight,
+                                    direction = direction
                                 )
                             }
                         } else {

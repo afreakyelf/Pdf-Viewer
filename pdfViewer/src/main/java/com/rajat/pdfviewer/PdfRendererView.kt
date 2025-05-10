@@ -33,6 +33,7 @@ import kotlinx.coroutines.withContext
 import org.jetbrains.annotations.TestOnly
 import java.io.File
 import java.io.FileNotFoundException
+import androidx.core.view.isVisible
 
 /**
  * Created by Rajat on 11,July,2020
@@ -58,6 +59,7 @@ class PdfRendererView @JvmOverloads constructor(
     private var disableScreenshots: Boolean = false
     private var postInitializationAction: (() -> Unit)? = null
     private var cacheStrategy: CacheStrategy = CacheStrategy.MAXIMIZE_PERFORMANCE
+    private var lastDy: Int = 0
 
     fun isZoomedIn(): Boolean = this::recyclerView.isInitialized && recyclerView.isZoomedIn()
 
@@ -125,7 +127,7 @@ class PdfRendererView @JvmOverloads constructor(
     // Load PDF directly from File
     fun initWithFile(file: File, cacheStrategy: CacheStrategy = CacheStrategy.MAXIMIZE_PERFORMANCE) {
         this.cacheStrategy = cacheStrategy
-        val cacheIdentifier = "${file.name}_${file.parent?.hashCode()}_${file.length()}"
+        val cacheIdentifier = file.name
 
         // Notify loading started
         statusListener?.onPdfLoadStart()
@@ -175,7 +177,7 @@ class PdfRendererView @JvmOverloads constructor(
         PdfRendererCore.enableDebugMetrics = true
         pdfRendererCore = renderer
         pdfRendererCoreInitialised = true
-        pdfViewAdapter = PdfViewAdapter(context,pdfRendererCore, pageMargin, enableLoadingForPages)
+        pdfViewAdapter = PdfViewAdapter(context,pdfRendererCore, this, pageMargin, enableLoadingForPages)
         val v = LayoutInflater.from(context).inflate(R.layout.pdf_rendererview, this, false)
         addView(v)
         recyclerView = findViewById(R.id.recyclerView)
@@ -222,13 +224,14 @@ class PdfRendererView @JvmOverloads constructor(
         private var lastScrollDirection = 0 // 1 = Down, -1 = Up
 
         private val hideRunnable = Runnable {
-            if (pageNo.visibility == VISIBLE) {
+            if (pageNo.isVisible) {
                 pageNo.visibility = GONE
             }
         }
 
         override fun onScrolled(recyclerView: RecyclerView, dx: Int, dy: Int) {
             super.onScrolled(recyclerView, dx, dy)
+            lastDy = dy
             val layoutManager = recyclerView.layoutManager as LinearLayoutManager
 
             val firstVisiblePosition = layoutManager.findFirstVisibleItemPosition()
@@ -280,6 +283,13 @@ class PdfRendererView @JvmOverloads constructor(
             if (newState == RecyclerView.SCROLL_STATE_IDLE) {
                 pageNo.removeCallbacks(hideRunnable)
                 pageNo.postDelayed(hideRunnable, 3000)
+
+                // warm up pages by prefetching on idle
+                val layoutManager = recyclerView.layoutManager as? LinearLayoutManager ?: return
+                val first = layoutManager.findFirstVisibleItemPosition()
+                val last = layoutManager.findLastVisibleItemPosition()
+                val middle = (first + last) / 2
+                pdfRendererCore.schedulePrefetch(middle, recyclerView.width, recyclerView.height, 0)
             } else {
                 pageNo.removeCallbacks(hideRunnable)
             }
@@ -426,6 +436,12 @@ class PdfRendererView @JvmOverloads constructor(
         } else {
             super.onRestoreInstanceState(savedState)
         }
+    }
+
+    fun getScrollDirection(): Int = when {
+        lastDy > 0 -> 1   // down/forward
+        lastDy < 0 -> -1  // up/backward
+        else -> 0         // idle
     }
 
 }

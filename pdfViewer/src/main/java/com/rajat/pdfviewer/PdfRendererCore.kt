@@ -18,6 +18,7 @@ import java.nio.file.Files
 import java.nio.file.Paths
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicInteger
+import kotlin.math.abs
 
 open class PdfRendererCore(
     private val fileDescriptor: ParcelFileDescriptor
@@ -61,6 +62,7 @@ open class PdfRendererCore(
             val manager = CacheManager(context, cacheIdentifier, cacheStrategy)
             manager.initialize()
             core.cacheManager = manager
+            core.preloadPageDimensions()
             core
         }
     }
@@ -100,12 +102,19 @@ open class PdfRendererCore(
     ) {
         val startTime = System.nanoTime()
 
-        if (pageNo >= getPageCount()) {
+        if (pageNo < 0 || pageNo >= getPageCount()) {
+            if (enableDebugMetrics) {
+                Log.w("PdfRendererCore_Metrics", "⚠️ Skipped invalid render for page $pageNo")
+            }
             onBitmapReady?.invoke(false, pageNo, null)
             return
         }
 
         scope.launch {
+            if (enableDebugMetrics) {
+                Log.d("PdfRendererCore_Metrics", "🚀 Prefetching page $pageNo")
+            }
+
             val cachedBitmap = cacheManager.getBitmapFromCache(pageNo)
             if (cachedBitmap != null) {
                 withContext(Dispatchers.Main) {
@@ -133,7 +142,12 @@ open class PdfRendererCore(
                         val width = (height * aspectRatio).toInt()
 
                         val tempBitmap = CommonUtils.Companion.BitmapPool.getBitmap(width, height)
-                        pdfPage.render(tempBitmap, null, null, PdfRenderer.Page.RENDER_MODE_FOR_DISPLAY)
+                        pdfPage.render(
+                            tempBitmap,
+                            null,
+                            null,
+                            PdfRenderer.Page.RENDER_MODE_FOR_DISPLAY
+                        )
 
                         addBitmapToMemoryCache(pageNo, tempBitmap)
                         success = true
@@ -148,7 +162,10 @@ open class PdfRendererCore(
                 if (enableDebugMetrics) {
                     Log.d("PdfRendererCore_Metrics", "Page $pageNo rendered in ${renderTime}ms")
                     if (renderTime > 500) {
-                        Log.w("PdfRendererCore_Metrics", "⚠️ Slow render: Page $pageNo took ${renderTime}ms")
+                        Log.w(
+                            "PdfRendererCore_Metrics",
+                            "Slow render: Page $pageNo took ${renderTime}ms"
+                        )
                     }
                 }
 
@@ -175,6 +192,17 @@ open class PdfRendererCore(
         }
     }
 
+    fun preloadPageDimensions() {
+        scope.launch {
+            for (pageNo in 0 until getPageCount()) {
+                if (!pageDimensionCache.containsKey(pageNo)) {
+                    withPdfPage(pageNo) { page ->
+                        pageDimensionCache[pageNo] = Size(page.width, page.height)
+                    }
+                }
+            }
+        }
+    }
 
     private fun updateAggregateMetrics(page: Int, duration: Long) {
         totalPagesRendered++
@@ -185,20 +213,41 @@ open class PdfRendererCore(
         }
     }
 
-    suspend fun prefetchPagesAround(currentPage: Int, width: Int, height: Int, direction: Int = 0) {
+    suspend fun prefetchPagesAround(
+        currentPage: Int,
+        fallbackWidth: Int,
+        fallbackHeight: Int,
+        direction: Int = 0
+    ) {
         val range = when (direction) {
             1 -> (currentPage + 1)..(currentPage + prefetchDistance)
             -1 -> (currentPage - prefetchDistance)..<currentPage
             else -> (currentPage - prefetchDistance)..(currentPage + prefetchDistance)
         }
+        val sortedPages = range
+            .filter { it in 0 until getPageCount() }
+            .filter {
+                val cached = pageExistInCache(it)
+                !cached
+            }
+            .sortedBy { abs(it - currentPage) } // prioritize nearby pages
 
-        range
-            .filter { it in 0 until getPageCount() && !pageExistInCache(it) }
+        sortedPages
             .forEach { pageNo ->
                 if (renderJobs[pageNo]?.isActive != true) {
                     renderJobs[pageNo]?.cancel()
                     renderJobs[pageNo] = scope.launch {
-                        val bitmap = CommonUtils.Companion.BitmapPool.getBitmap(width, height)
+                        val size = withPdfPage(pageNo) { page ->
+                            Size(page.width, page.height)
+                        } ?: Size(fallbackWidth, fallbackHeight)
+
+                        val aspectRatio = size.width.toFloat() / size.height.toFloat()
+                        val height = (fallbackWidth / aspectRatio).toInt()
+
+                        val bitmap = CommonUtils.Companion.BitmapPool.getBitmap(
+                            fallbackWidth,
+                            maxOf(1, height)
+                        )
                         renderPage(pageNo, bitmap) { success, _, _ ->
                             if (!success) CommonUtils.Companion.BitmapPool.recycleBitmap(bitmap)
                         }
@@ -224,6 +273,22 @@ open class PdfRendererCore(
                 }
             }
         }
+
+    private var prefetchJob: Job? = null
+
+    fun schedulePrefetch(currentPage: Int, width: Int, height: Int, direction: Int) {
+        if (enableDebugMetrics) {
+            Log.d(
+                "PdfRendererCore",
+                "schedulePrefetch() called for page=$currentPage dir=$direction"
+            )
+        }
+        prefetchJob?.cancel()
+        prefetchJob = scope.launch {
+            delay(100) // debounce delay to avoid flings triggering spam
+            prefetchPagesAround(currentPage, width, height, direction)
+        }
+    }
 
     private val pageDimensionCache = mutableMapOf<Int, Size>()
 
