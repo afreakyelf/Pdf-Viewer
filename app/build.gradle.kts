@@ -1,6 +1,7 @@
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
+    id("org.jetbrains.kotlin.plugin.compose")
     id("kotlin-kapt")
     id("kotlin-parcelize")
 }
@@ -29,10 +30,6 @@ android {
 
     kotlin {
         jvmToolchain(17)
-    }
-
-    composeOptions {
-        kotlinCompilerExtensionVersion = "1.5.4"
     }
 
     buildTypes {
@@ -96,7 +93,7 @@ dependencies {
 
     implementation("com.google.android.material:material:1.12.0")
     implementation("androidx.test.espresso:espresso-contrib:3.6.1")
-    val kotlin_version = "1.9.21"
+    val kotlin_version = "2.1.20"
     implementation(kotlin("stdlib"))
     implementation(fileTree(mapOf("dir" to "libs", "include" to listOf("*.jar"))))
     //noinspection GradleDependency
@@ -133,7 +130,7 @@ dependencies {
 
     // Android Studio Preview support
     implementation("androidx.compose.ui:ui-tooling-preview")
-    androidTestImplementation(platform("androidx.compose:compose-bom:2025.03.00"))
+    androidTestImplementation(platform("androidx.compose:compose-bom:2025.04.01"))
     debugImplementation("androidx.compose.ui:ui-tooling")
 
     // UI Tests
