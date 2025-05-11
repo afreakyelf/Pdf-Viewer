@@ -33,9 +33,8 @@ fun PdfRendererViewCompose(
 ) {
     val context = LocalContext.current
     var resolvedFile by remember(source) { mutableStateOf<File?>(null) }
-
-    // Store reference to the view so we can jumpToPage after render
     val pdfViewRef = remember { mutableStateOf<PdfRendererView?>(null) }
+    var initialized by remember(source) { mutableStateOf(false) }
 
     val combinedCallback = remember(statusCallBack, jumpToPage) {
         object : PdfRendererView.StatusCallBack {
@@ -66,27 +65,30 @@ fun PdfRendererViewCompose(
     }
 
     AndroidView(
-        factory = { PdfRendererView(it) },
+        factory = { PdfRendererView(it).also { pdfViewRef.value = it } },
         update = { view ->
-            pdfViewRef.value = view
             view.statusListener = combinedCallback
             view.zoomListener = zoomListener
 
-            when (source) {
-                is PdfSource.Remote -> view.initWithUrl(
-                    url = source.url,
-                    headers = headers,
-                    lifecycleCoroutineScope = lifecycleOwner.lifecycleScope,
-                    lifecycle = lifecycleOwner.lifecycle,
-                    cacheStrategy = cacheStrategy
-                )
-                is PdfSource.LocalFile -> view.initWithFile(source.file, cacheStrategy)
-                is PdfSource.LocalUri -> view.initWithUri(source.uri)
-                is PdfSource.PdfSourceFromAsset -> {
-                    resolvedFile?.let {
-                        view.initWithFile(it, cacheStrategy)
+            if (!initialized) {
+                when (source) {
+                    is PdfSource.Remote -> view.initWithUrl(
+                        url = source.url,
+                        headers = headers,
+                        lifecycleCoroutineScope = lifecycleOwner.lifecycleScope,
+                        lifecycle = lifecycleOwner.lifecycle,
+                        cacheStrategy = cacheStrategy
+                    )
+                    is PdfSource.LocalFile -> view.initWithFile(source.file, cacheStrategy)
+                    is PdfSource.LocalUri -> view.initWithUri(source.uri)
+                    is PdfSource.PdfSourceFromAsset -> {
+                        resolvedFile?.let {
+                            view.initWithFile(it, cacheStrategy)
+                        }
                     }
                 }
+
+                initialized = true
             }
 
             if (jumpToPage == null) {
