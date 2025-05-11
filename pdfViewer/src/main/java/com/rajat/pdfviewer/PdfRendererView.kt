@@ -9,15 +9,12 @@ import android.graphics.drawable.Drawable
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
-import android.os.Handler
-import android.os.Looper
 import android.os.Parcelable
 import android.util.AttributeSet
 import android.view.LayoutInflater
 import android.view.WindowManager
 import android.widget.FrameLayout
 import android.widget.TextView
-import androidx.core.view.isVisible
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleCoroutineScope
 import androidx.lifecycle.LifecycleObserver
@@ -26,6 +23,7 @@ import androidx.recyclerview.widget.DividerItemDecoration
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import androidx.recyclerview.widget.RecyclerView.NO_POSITION
+import com.rajat.pdfviewer.util.CacheManager
 import com.rajat.pdfviewer.util.CacheStrategy
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -34,7 +32,6 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.jetbrains.annotations.TestOnly
 import java.io.File
-import java.io.FileNotFoundException
 
 /**
  * Created by Rajat on 11,July,2020
@@ -89,6 +86,14 @@ class PdfRendererView @JvmOverloads constructor(
         get() {
             return pdfRendererCore.getPageCount()
         }
+
+    /**
+     * Clears the cache directory of the application.
+     * @param context The application context.
+     */
+    suspend fun PdfRendererView.clearCache(context: Context) {
+        CacheManager.clearCacheDir(context)
+    }
     //endregion
 
     init {
@@ -473,5 +478,4 @@ class PdfRendererView @JvmOverloads constructor(
     interface ZoomListener {
         fun onZoomChanged(isZoomedIn: Boolean, scale: Float)
     }
-
 }

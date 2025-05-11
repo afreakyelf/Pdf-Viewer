@@ -64,7 +64,7 @@ object FileUtils {
 
 
     fun getCachedFileName(url: String): String {
-        return url.hashCode().toString() + ".pdf"
+        return CacheHelper.getCacheKey(url) + ".pdf"
     }
 
     fun clearPdfCache(context: Context, exceptFileName: String? = null) {

@@ -22,6 +22,8 @@ class CacheManager(
     private var cacheDir = File(context.cacheDir, "${CACHE_PATH}/$currentOpenedFileName")
 
     suspend fun initialize() = withContext(Dispatchers.IO) {
+        if (cacheStrategy == CacheStrategy.DISABLE_CACHE) return@withContext
+
         cacheDir = File(context.cacheDir, "$CACHE_PATH/$currentOpenedFileName")
         if (!cacheDir.exists()) {
             cacheDir.mkdirs()
@@ -45,7 +47,10 @@ class CacheManager(
     }
 
     suspend fun getBitmapFromCache(pageNo: Int): Bitmap? = withContext(Dispatchers.IO) {
-        memoryCache.get(pageNo) ?: decodeBitmapFromDiskCache(pageNo)?.also {
+        memoryCache.get(pageNo)?.let { return@withContext it }
+        if (cacheStrategy == CacheStrategy.DISABLE_CACHE) return@withContext null
+
+        decodeBitmapFromDiskCache(pageNo)?.also {
             memoryCache.put(pageNo, it)
         }
     }
@@ -57,11 +62,15 @@ class CacheManager(
 
     suspend fun addBitmapToCache(pageNo: Int, bitmap: Bitmap) {
         memoryCache.put(pageNo, bitmap)
-        writeBitmapToCache(pageNo, bitmap)
+        if (cacheStrategy != CacheStrategy.DISABLE_CACHE) {
+            writeBitmapToCache(pageNo, bitmap)
+        }
     }
 
     private suspend fun writeBitmapToCache(pageNo: Int, bitmap: Bitmap) = withContext(Dispatchers.IO) {
+
         runCatching {
+
             cacheDir.mkdirs()
             val savePath = File(cacheDir, cachedFileNameWithFormat(pageNo))
             savePath.parentFile?.mkdirs()
@@ -74,6 +83,7 @@ class CacheManager(
     }
 
     suspend fun pageExistsInCache(pageNo: Int): Boolean = withContext(Dispatchers.IO) {
+        if (cacheStrategy == CacheStrategy.DISABLE_CACHE) return@withContext false
         File(cacheDir, cachedFileNameWithFormat(pageNo)).exists()
     }
 

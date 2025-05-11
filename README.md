@@ -206,6 +206,15 @@ binding.pdfView.statusListener = object : PdfRendererView.StatusCallBack {
     override fun onPageChanged(currentPage: Int, totalPage: Int) {
         Log.i("PDF Status", "Page changed: $currentPage / $totalPage")
     }
+  
+    override fun onPdfRenderStart() {
+      Log.i("PDF Status", "Render started")
+    }
+
+    override fun onPdfRenderSuccess() {
+      Log.i("PDF Status", "Render successful")
+      binding.pdfView.jumpToPage($number)  // Recommend to use `jumpToPage` inside `onPdfRenderSuccess`
+    }
 }
 ```
 

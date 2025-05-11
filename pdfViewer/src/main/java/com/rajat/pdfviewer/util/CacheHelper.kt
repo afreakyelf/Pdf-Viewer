@@ -4,6 +4,7 @@ import android.util.Log
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
+import java.security.MessageDigest
 import kotlin.math.max
 
 object CacheHelper {
@@ -27,6 +28,9 @@ object CacheHelper {
             CacheStrategy.MAXIMIZE_PERFORMANCE -> {
                 updateCacheAccessTime(cacheDir)
                 enforceCacheLimit(origin, cacheDir, maxCachedPdfs)
+            }
+            CacheStrategy.DISABLE_CACHE -> {
+                // no-op
             }
         }
     }
@@ -65,5 +69,16 @@ object CacheHelper {
     // **Update access time**
     private fun updateCacheAccessTime(cacheDir: File) {
         cacheDir.setLastModified(System.currentTimeMillis())
+    }
+
+    fun getCacheKey(source: String): String {
+        val prefix = if (source.startsWith("http")) "url_" else "file_"
+        val hash = sha256(source)
+        return prefix + hash
+    }
+
+    private fun sha256(input: String): String {
+        val bytes = MessageDigest.getInstance("SHA-256").digest(input.toByteArray())
+        return bytes.joinToString("") { "%02x".format(it) }
     }
 }

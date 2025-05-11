@@ -4,14 +4,20 @@ import android.content.Context
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
-import com.rajat.pdfviewer.util.CacheHelper
+import com.rajat.pdfviewer.util.CacheManager
 import com.rajat.pdfviewer.util.CacheStrategy
-import com.rajat.pdfviewer.util.CommonUtils.Companion.MAX_CACHED_PDFS
 import com.rajat.pdfviewer.util.FileUtils.getCachedFileName
 import com.rajat.pdfviewer.util.FileUtils.isValidPdf
 import com.rajat.pdfviewer.util.FileUtils.writeFile
-import kotlinx.coroutines.*
-import okhttp3.*
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import okhttp3.OkHttpClient
+import okhttp3.Protocol
+import okhttp3.Request
+import okhttp3.Response
 import java.io.File
 import java.io.IOException
 
@@ -52,16 +58,19 @@ class PdfDownloader(
 
     private suspend fun checkAndDownload(downloadUrl: String) {
         val cachedFileName = getCachedFileName(downloadUrl)
-        val cacheDir = File(listener.getContext().cacheDir, "___pdf___cache___/$cachedFileName")
-        if (!cacheDir.exists()) {
-            cacheDir.mkdirs()
+
+        if (cacheStrategy != CacheStrategy.DISABLE_CACHE){
+            CacheManager.clearCacheDir(listener.getContext())
         }
+
+        val cacheDir = File(
+            listener.getContext().cacheDir,
+            "___pdf___cache___/$cachedFileName"
+        ).apply { mkdirs() }
 
         val pdfFile = File(cacheDir, cachedFileName)
 
-        CacheHelper.handleCacheStrategy(TAG, cacheDir, cacheStrategy, cachedFileName, MAX_CACHED_PDFS)
-
-        if (pdfFile.exists() && isValidPdf(pdfFile)) {
+        if (cacheStrategy != CacheStrategy.DISABLE_CACHE && pdfFile.exists() && isValidPdf(pdfFile)) {
             withContext(Dispatchers.Main) {
                 listener.onDownloadSuccess(pdfFile)
             }
@@ -95,7 +104,12 @@ class PdfDownloader(
                     delay(RETRY_DELAY)
                 } else {
                     withContext(Dispatchers.Main) {
-                        listener.onDownloadError(DownloadFailedException("Failed after $MAX_RETRIES attempts", e))
+                        listener.onDownloadError(
+                            DownloadFailedException(
+                                "Failed after $MAX_RETRIES attempts",
+                                e
+                            )
+                        )
                     }
                 }
             }
@@ -108,48 +122,49 @@ class PdfDownloader(
                 message.contains("Downloaded file is not a valid PDF", ignoreCase = true)
     }
 
-    private suspend fun downloadFile(downloadUrl: String, pdfFile: File) = withContext(Dispatchers.IO) {
-        val tempFile = File.createTempFile("download_", ".tmp", pdfFile.parentFile)
+    private suspend fun downloadFile(downloadUrl: String, pdfFile: File) =
+        withContext(Dispatchers.IO) {
+            val tempFile = File.createTempFile("download_", ".tmp", pdfFile.parentFile)
 
-        try {
-            if (pdfFile.exists() && !isValidPdf(pdfFile)) {
-                pdfFile.delete()
-            }
+            try {
+                if (pdfFile.exists() && !isValidPdf(pdfFile)) {
+                    pdfFile.delete()
+                }
 
-            val response = makeNetworkRequest(downloadUrl)
-            validateResponse(response)
+                val response = makeNetworkRequest(downloadUrl)
+                validateResponse(response)
 
-            response.body?.use { body ->
-                body.byteStream().use { inputStream ->
-                    writeFile(inputStream, tempFile, body.contentLength()) { progress ->
-                        Handler(Looper.getMainLooper()).post {
-                            listener.onDownloadProgress(progress, body.contentLength())
+                response.body?.use { body ->
+                    body.byteStream().use { inputStream ->
+                        writeFile(inputStream, tempFile, body.contentLength()) { progress ->
+                            Handler(Looper.getMainLooper()).post {
+                                listener.onDownloadProgress(progress, body.contentLength())
+                            }
                         }
                     }
+                } ?: throw IOException("Empty response body received for PDF")
+
+                val renamed = tempFile.renameTo(pdfFile)
+                if (!renamed) {
+                    tempFile.delete()
+                    throw IOException("Failed to rename temp file to final PDF path")
                 }
-            } ?: throw IOException("Empty response body received for PDF")
 
-            val renamed = tempFile.renameTo(pdfFile)
-            if (!renamed) {
+                if (!isValidPdf(pdfFile)) {
+                    pdfFile.delete()
+                    throw InvalidPdfException("Downloaded file is not a valid PDF")
+                }
+
+                Log.d(TAG, "Downloaded PDF to: ${pdfFile.absolutePath}")
+
+                withContext(Dispatchers.Main) {
+                    listener.onDownloadSuccess(pdfFile)
+                }
+            } catch (e: Exception) {
                 tempFile.delete()
-                throw IOException("Failed to rename temp file to final PDF path")
+                throw e
             }
-
-            if (!isValidPdf(pdfFile)) {
-                pdfFile.delete()
-                throw InvalidPdfException("Downloaded file is not a valid PDF")
-            }
-
-            Log.d(TAG, "Downloaded PDF to: ${pdfFile.absolutePath}")
-
-            withContext(Dispatchers.Main) {
-                listener.onDownloadSuccess(pdfFile)
-            }
-        } catch (e: Exception) {
-            tempFile.delete()
-            throw e
         }
-    }
 
     private fun makeNetworkRequest(downloadUrl: String): Response {
         val requestBuilder = Request.Builder().url(downloadUrl)
@@ -164,11 +179,17 @@ class PdfDownloader(
         }
 
         val contentType = response.header("Content-Type", "")
-        if (!contentType.isNullOrEmpty() && !contentType.contains("application/pdf", ignoreCase = true)) {
+        if (!contentType.isNullOrEmpty() && !contentType.contains(
+                "application/pdf",
+                ignoreCase = true
+            )
+        ) {
             throw InvalidPdfException("Invalid content type received: $contentType. Expected a PDF file.")
         }
     }
 }
 
-class DownloadFailedException(message: String, cause: Throwable? = null) : IOException(message, cause)
+class DownloadFailedException(message: String, cause: Throwable? = null) :
+    IOException(message, cause)
+
 class InvalidPdfException(message: String) : IOException(message)
