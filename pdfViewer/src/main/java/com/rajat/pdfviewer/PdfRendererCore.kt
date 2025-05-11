@@ -20,19 +20,50 @@ import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicInteger
 import kotlin.math.abs
 
-open class PdfRendererCore(
-    private val fileDescriptor: ParcelFileDescriptor
+class PdfRendererCore private constructor(
+    private val fileDescriptor: ParcelFileDescriptor,
+    private val cacheManager: CacheManager,
+    private val pdfRenderer: PdfRenderer
 ) {
 
-    private var isRendererOpen = false
-    private lateinit var cacheManager: CacheManager
+    private var isRendererOpen = true
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
     private val renderLock = Mutex()
-    private val pageCount = AtomicInteger(-1)
+    private val pageCount = AtomicInteger(pdfRenderer.pageCount)
+
+    private var totalPagesRendered = 0
+    private var totalRenderTime = 0L
+    private var slowestRenderTime = 0L
+    private var slowestPage: Int? = null
+
+    private val openPages = ConcurrentHashMap<Int, PdfRenderer.Page>()
+    private val renderJobs = ConcurrentHashMap<Int, Job>()
+    private val pageDimensionCache = mutableMapOf<Int, Size>()
+    private var prefetchJob: Job? = null
 
     companion object {
-        var enableDebugMetrics = false
-        var prefetchDistance = 2
+        var enableDebugMetrics: Boolean = true
+        const val prefetchDistance: Int = 2
+
+        suspend fun create(
+            context: Context,
+            fileDescriptor: ParcelFileDescriptor,
+            cacheIdentifier: String,
+            cacheStrategy: CacheStrategy
+        ): PdfRendererCore = withContext(Dispatchers.IO) {
+            val pdfRenderer = PdfRenderer(fileDescriptor)
+            val manager = CacheManager(context, cacheIdentifier, cacheStrategy).apply { initialize() }
+            val core = PdfRendererCore(fileDescriptor, manager, pdfRenderer)
+            core.preloadPageDimensions()
+            return@withContext core
+        }
+
+        fun getFileDescriptor(file: File): ParcelFileDescriptor {
+            val safeFile = File(sanitizeFilePath(file.path))
+            return ParcelFileDescriptor.open(safeFile, ParcelFileDescriptor.MODE_READ_ONLY)
+        }
+
+        fun getCacheIdentifierFromFile(file: File): String = file.name.toString()
 
         private fun sanitizeFilePath(filePath: String): String {
             return try {
@@ -45,55 +76,17 @@ open class PdfRendererCore(
             }
         }
 
-        internal fun getFileDescriptor(file: File): ParcelFileDescriptor {
-            val safeFile = File(sanitizeFilePath(file.path))
-            return ParcelFileDescriptor.open(safeFile, ParcelFileDescriptor.MODE_READ_ONLY)
-        }
-
-        internal fun getCacheIdentifierFromFile(file: File): String = file.name.toString()
-
-        suspend fun create(
-            context: Context,
-            fileDescriptor: ParcelFileDescriptor,
-            cacheIdentifier: String,
-            cacheStrategy: CacheStrategy
-        ): PdfRendererCore = withContext(Dispatchers.IO) {
-            val core = PdfRendererCore(fileDescriptor)
-            val manager = CacheManager(context, cacheIdentifier, cacheStrategy)
-            manager.initialize()
-            core.cacheManager = manager
-            core.preloadPageDimensions()
-            core
-        }
+        private const val LOG_TAG = "PdfRendererCore"
+        private const val METRICS_TAG = "PdfRendererCore_Metrics"
     }
 
-    private var totalPagesRendered = 0
-    private var totalRenderTime = 0L
-    private var slowestRenderTime = 0L
-    private var slowestPage: Int? = null
+    fun getPageCount(): Int = pageCount.get().takeIf { isRendererOpen } ?: 0
 
-    private val openPages = ConcurrentHashMap<Int, PdfRenderer.Page>()
-    private var pdfRenderer: PdfRenderer = PdfRenderer(fileDescriptor).also {
-        isRendererOpen = true
-        pageCount.set(it.pageCount)
-    }
+    suspend fun getBitmapFromCache(pageNo: Int): Bitmap? = cacheManager.getBitmapFromCache(pageNo)
 
-    init {
-        isRendererOpen = true
-    }
+    private fun addBitmapToMemoryCache(pageNo: Int, bitmap: Bitmap) = cacheManager.addBitmapToCache(pageNo, bitmap)
 
-    suspend fun getBitmapFromCache(pageNo: Int): Bitmap? =
-        cacheManager.getBitmapFromCache(pageNo)
-
-    private fun addBitmapToMemoryCache(pageNo: Int, bitmap: Bitmap) =
-        cacheManager.addBitmapToCache(pageNo, bitmap)
-
-    private suspend fun pageExistInCache(pageNo: Int): Boolean =
-        cacheManager.pageExistsInCache(pageNo)
-
-    fun getPageCount(): Int = if (!isRendererOpen) 0 else pageCount.get()
-
-    private val renderJobs = ConcurrentHashMap<Int, Job>()
+    private suspend fun pageExistInCache(pageNo: Int): Boolean = cacheManager.pageExistsInCache(pageNo)
 
     fun renderPage(
         pageNo: Int,
@@ -103,25 +96,17 @@ open class PdfRendererCore(
         val startTime = System.nanoTime()
 
         if (pageNo < 0 || pageNo >= getPageCount()) {
-            if (enableDebugMetrics) {
-                Log.w("PdfRendererCore_Metrics", "⚠️ Skipped invalid render for page $pageNo")
-            }
+            Log.w(METRICS_TAG, "⚠️ Skipped invalid render for page $pageNo")
             onBitmapReady?.invoke(false, pageNo, null)
             return
         }
 
         scope.launch {
-            if (enableDebugMetrics) {
-                Log.d("PdfRendererCore_Metrics", "🚀 Prefetching page $pageNo")
-            }
-
             val cachedBitmap = cacheManager.getBitmapFromCache(pageNo)
             if (cachedBitmap != null) {
                 withContext(Dispatchers.Main) {
                     onBitmapReady?.invoke(true, pageNo, cachedBitmap)
-                    if (enableDebugMetrics) {
-                        Log.d("PdfRendererCore", "Page $pageNo loaded from cache")
-                    }
+                    Log.d(LOG_TAG, "Page $pageNo loaded from cache")
                 }
                 return@launch
             }
@@ -134,42 +119,22 @@ open class PdfRendererCore(
 
                 renderLock.withLock {
                     if (!isRendererOpen) return@withLock
-                    val pdfPage = openPageSafely(pageNo) ?: return@withLock
+                    val pdfPage = openPageSafely(pageNo).takeIf { isRendererOpen } ?: return@withLock
 
                     try {
-                        val aspectRatio = pdfPage.width.toFloat() / pdfPage.height
-                        val height = bitmap.height
-                        val width = (height * aspectRatio).toInt()
-
-                        val tempBitmap = CommonUtils.Companion.BitmapPool.getBitmap(width, height)
                         pdfPage.render(
-                            tempBitmap,
+                            bitmap,
                             null,
                             null,
                             PdfRenderer.Page.RENDER_MODE_FOR_DISPLAY
                         )
-
-                        addBitmapToMemoryCache(pageNo, tempBitmap)
+                        addBitmapToMemoryCache(pageNo, bitmap)
                         success = true
-                        renderedBitmap = tempBitmap
+                        renderedBitmap = bitmap
                     } catch (e: Exception) {
-                        Log.e("PdfRendererCore", "Error rendering page $pageNo: ${e.message}", e)
+                        Log.e(LOG_TAG, "Error rendering page $pageNo: ${e.message}", e)
                     }
                 }
-
-                val renderTime = (System.nanoTime() - startTime) / 1_000_000
-
-                if (enableDebugMetrics) {
-                    Log.d("PdfRendererCore_Metrics", "Page $pageNo rendered in ${renderTime}ms")
-                    if (renderTime > 500) {
-                        Log.w(
-                            "PdfRendererCore_Metrics",
-                            "Slow render: Page $pageNo took ${renderTime}ms"
-                        )
-                    }
-                }
-
-                updateAggregateMetrics(pageNo, renderTime)
 
                 withContext(Dispatchers.Main) {
                     onBitmapReady?.invoke(success, pageNo, renderedBitmap)
@@ -178,19 +143,17 @@ open class PdfRendererCore(
         }
     }
 
-    suspend fun renderPageAsync(pageNo: Int, width: Int, height: Int): Bitmap? {
-        return suspendCancellableCoroutine { continuation ->
+    suspend fun renderPageAsync(pageNo: Int, width: Int, height: Int): Bitmap? =
+        suspendCancellableCoroutine { continuation ->
             val bitmap = CommonUtils.Companion.BitmapPool.getBitmap(width, height)
             renderPage(pageNo, bitmap) { success, _, renderedBitmap ->
-                if (success) {
-                    continuation.resume(renderedBitmap ?: bitmap, null)
-                } else {
+                if (success) continuation.resume(renderedBitmap ?: bitmap, null)
+                else {
                     CommonUtils.Companion.BitmapPool.recycleBitmap(bitmap)
                     continuation.resume(null, null)
                 }
             }
         }
-    }
 
     fun preloadPageDimensions() {
         scope.launch {
@@ -204,21 +167,15 @@ open class PdfRendererCore(
         }
     }
 
-    private fun updateAggregateMetrics(page: Int, duration: Long) {
-        totalPagesRendered++
-        totalRenderTime += duration
-        if (duration > slowestRenderTime) {
-            slowestRenderTime = duration
-            slowestPage = page
+    fun schedulePrefetch(currentPage: Int, width: Int, height: Int, direction: Int) {
+        prefetchJob?.cancel()
+        prefetchJob = scope.launch {
+            delay(100)
+            prefetchPagesAround(currentPage, width, height, direction)
         }
     }
 
-    suspend fun prefetchPagesAround(
-        currentPage: Int,
-        fallbackWidth: Int,
-        fallbackHeight: Int,
-        direction: Int = 0
-    ) {
+    private suspend fun prefetchPagesAround(currentPage: Int, fallbackWidth: Int, fallbackHeight: Int, direction: Int) {
         val range = when (direction) {
             1 -> (currentPage + 1)..(currentPage + prefetchDistance)
             -1 -> (currentPage - prefetchDistance)..<currentPage
@@ -226,71 +183,28 @@ open class PdfRendererCore(
         }
         val sortedPages = range
             .filter { it in 0 until getPageCount() }
-            .filter {
-                val cached = pageExistInCache(it)
-                !cached
-            }
-            .sortedBy { abs(it - currentPage) } // prioritize nearby pages
+            .filter { !pageExistInCache(it) }
+            .sortedBy { abs(it - currentPage) } // prefer pages close to current page
 
-        sortedPages
-            .forEach { pageNo ->
-                if (renderJobs[pageNo]?.isActive != true) {
-                    renderJobs[pageNo]?.cancel()
-                    renderJobs[pageNo] = scope.launch {
-                        val size = withPdfPage(pageNo) { page ->
-                            Size(page.width, page.height)
-                        } ?: Size(fallbackWidth, fallbackHeight)
+        sortedPages.forEach { pageNo ->
+            if (renderJobs[pageNo]?.isActive != true) {
+                renderJobs[pageNo]?.cancel()
+                renderJobs[pageNo] = scope.launch {
+                    val size = withPdfPage(pageNo) { page ->
+                        Size(page.width, page.height)
+                    } ?: Size(fallbackWidth, fallbackHeight)
 
-                        val aspectRatio = size.width.toFloat() / size.height.toFloat()
-                        val height = (fallbackWidth / aspectRatio).toInt()
+                    val aspectRatio = size.width.toFloat() / size.height.toFloat()
+                    val height = (fallbackWidth / aspectRatio).toInt()
 
-                        val bitmap = CommonUtils.Companion.BitmapPool.getBitmap(
-                            fallbackWidth,
-                            maxOf(1, height)
-                        )
-                        renderPage(pageNo, bitmap) { success, _, _ ->
-                            if (!success) CommonUtils.Companion.BitmapPool.recycleBitmap(bitmap)
-                        }
+                    val bitmap = CommonUtils.Companion.BitmapPool.getBitmap(fallbackWidth, maxOf(1, height))
+                    renderPage(pageNo, bitmap) { success, _, _ ->
+                        if (!success) CommonUtils.Companion.BitmapPool.recycleBitmap(bitmap)
                     }
                 }
             }
-    }
-
-    private suspend fun <T> withPdfPage(pageNo: Int, block: (PdfRenderer.Page) -> T): T? =
-        withContext(Dispatchers.IO) {
-            renderLock.withLock {
-                if (!isRendererOpen) return@withContext null
-                if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-                    closeAllOpenPages()
-                }
-                try {
-                    pdfRenderer.openPage(pageNo).use { page ->
-                        block(page)
-                    }
-                } catch (e: Exception) {
-                    Log.e("PdfRendererCore", "withPdfPage error: ${e.message}", e)
-                    null
-                }
-            }
-        }
-
-    private var prefetchJob: Job? = null
-
-    fun schedulePrefetch(currentPage: Int, width: Int, height: Int, direction: Int) {
-        if (enableDebugMetrics) {
-            Log.d(
-                "PdfRendererCore",
-                "schedulePrefetch() called for page=$currentPage dir=$direction"
-            )
-        }
-        prefetchJob?.cancel()
-        prefetchJob = scope.launch {
-            delay(100) // debounce delay to avoid flings triggering spam
-            prefetchPagesAround(currentPage, width, height, direction)
         }
     }
-
-    private val pageDimensionCache = mutableMapOf<Int, Size>()
 
     fun getPageDimensionsAsync(pageNo: Int, callback: (Size) -> Unit) {
         pageDimensionCache[pageNo]?.let {
@@ -309,11 +223,29 @@ open class PdfRendererCore(
         }
     }
 
+    fun averageRenderTime(): Long = if (totalPagesRendered == 0) 0 else totalRenderTime / totalPagesRendered
+
+    fun slowestPageInfo(): Pair<Int, Long>? = slowestPage?.let { it to slowestRenderTime }
+
+    private suspend fun <T> withPdfPage(pageNo: Int, block: (PdfRenderer.Page) -> T): T? =
+        withContext(Dispatchers.IO) {
+            renderLock.withLock {
+                if (!isRendererOpen) return@withContext null
+                if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                    closeAllOpenPages()
+                }
+                try {
+                    pdfRenderer.openPage(pageNo).use(block)
+                } catch (e: Exception) {
+                    Log.e(LOG_TAG, "withPdfPage error: ${e.message}", e)
+                    null
+                }
+            }
+        }
+
     private fun openPageSafely(pageNo: Int): PdfRenderer.Page? {
         if (!isRendererOpen) return null
-        if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-            closeAllOpenPages()
-        }
+        if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) closeAllOpenPages()
 
         openPages[pageNo]?.let { return it }
 
@@ -321,14 +253,22 @@ open class PdfRendererCore(
             val page = pdfRenderer.openPage(pageNo)
             openPages[pageNo] = page
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE && openPages.size > 5) {
-                val oldest = openPages.keys.minOrNull()
-                oldest?.let { openPages.remove(it)?.close() }
+                openPages.keys.minOrNull()?.let { openPages.remove(it)?.close() }
             }
             page
         } catch (e: Exception) {
             Log.e("PDF_OPEN_TRACKER", "Error opening page $pageNo: ${e.message}", e)
             null
         }
+    }
+
+    fun cancelRender(pageNo: Int) {
+        renderJobs[pageNo]?.cancel()
+        renderJobs.remove(pageNo)
+    }
+
+    fun cancelPrefetch() {
+        prefetchJob?.cancel()
     }
 
     private fun closeAllOpenPages() {
@@ -338,7 +278,7 @@ open class PdfRendererCore(
             try {
                 entry.value.close()
             } catch (e: IllegalStateException) {
-                Log.e("PdfRendererCore", "Page ${entry.key} was already closed", e)
+                Log.e(LOG_TAG, "Page ${entry.key} was already closed", e)
             } finally {
                 iterator.remove()
             }
@@ -346,22 +286,19 @@ open class PdfRendererCore(
     }
 
     fun closePdfRender() {
-        Log.d("PdfRendererCore", "Closing PdfRenderer and releasing resources.")
+        if (!isRendererOpen) return
+
+        Log.d(LOG_TAG, "Closing PdfRenderer and releasing resources.")
+
         scope.coroutineContext.cancelChildren()
         closeAllOpenPages()
-        if (isRendererOpen) {
-            try {
-                pdfRenderer.close()
-            } catch (e: Exception) {
-                Log.e("PdfRendererCore", "Error closing PdfRenderer: ${e.message}", e)
-            } finally {
-                isRendererOpen = false
-            }
-        }
-        try {
-            fileDescriptor.close()
-        } catch (e: Exception) {
-            Log.e("PdfRendererCore", "Error closing file descriptor: ${e.message}", e)
-        }
+
+        runCatching { pdfRenderer.close() }
+            .onFailure { Log.e(LOG_TAG, "Error closing PdfRenderer: ${it.message}", it) }
+
+        runCatching { fileDescriptor.close() }
+            .onFailure { Log.e(LOG_TAG, "Error closing file descriptor: ${it.message}", it) }
+
+        isRendererOpen = false
     }
 }
