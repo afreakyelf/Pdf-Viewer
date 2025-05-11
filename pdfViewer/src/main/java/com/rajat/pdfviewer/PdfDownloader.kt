@@ -27,7 +27,7 @@ class PdfDownloader(
         fun onDownloadStart()
         fun onDownloadProgress(currentBytes: Long, totalBytes: Long)
         fun onDownloadSuccess(downloadedFile: File)
-        fun onError(error: Throwable)
+        fun onDownloadError(error: Throwable)
     }
 
     fun start() {
@@ -79,7 +79,7 @@ class PdfDownloader(
                 return
             } catch (e: IOException) {
                 if (isInvalidFileError(e)) {
-                    listener.onError(e)
+                    listener.onDownloadError(e)
                     return
                 }
 
@@ -90,7 +90,7 @@ class PdfDownloader(
                     delay(RETRY_DELAY)
                 } else {
                     withContext(Dispatchers.Main) {
-                        listener.onError(
+                        listener.onDownloadError(
                             IOException("Failed to download after $MAX_RETRIES attempts: $downloadUrl", e)
                         )
                     }

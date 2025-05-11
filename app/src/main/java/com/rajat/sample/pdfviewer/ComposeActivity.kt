@@ -44,6 +44,7 @@ private fun MyPdfScreenFromUrl(url: String, modifier: Modifier = Modifier) {
     PdfRendererViewCompose(
         source = remember(url) { PdfSource.Remote(url) },
         modifier = modifier,
+        jumpToPage = 4,
         statusCallBack = remember {
             object : PdfRendererView.StatusCallBack {
                 override fun onPdfLoadStart() {
@@ -85,9 +86,6 @@ private fun MyPdfScreenFromUrl(url: String, modifier: Modifier = Modifier) {
                     Log.i("PDF Zoom", "Zoomed in: $isZoomedIn, Scale: $scale")
                 }
             }
-        },
-        onReady = {
-            it.jumpToPage(4)
         }
     )
 }

@@ -26,6 +26,7 @@ fun PdfRendererViewCompose(
     headers: HeaderData = HeaderData(),
     cacheStrategy: CacheStrategy = CacheStrategy.MAXIMIZE_PERFORMANCE,
     lifecycleOwner: LifecycleOwner = LocalLifecycleOwner.current,
+    jumpToPage: Int? = null,
     statusCallBack: PdfRendererView.StatusCallBack? = null,
     zoomListener: PdfRendererView.ZoomListener? = null,
     onReady: ((PdfRendererView) -> Unit)? = null,
@@ -33,7 +34,31 @@ fun PdfRendererViewCompose(
     val context = LocalContext.current
     var resolvedFile by remember(source) { mutableStateOf<File?>(null) }
 
-    // Asset support
+    // Store reference to the view so we can jumpToPage after render
+    val pdfViewRef = remember { mutableStateOf<PdfRendererView?>(null) }
+
+    val combinedCallback = remember(statusCallBack, jumpToPage) {
+        object : PdfRendererView.StatusCallBack {
+            override fun onPdfRenderSuccess() {
+                statusCallBack?.onPdfRenderSuccess()
+                pdfViewRef.value?.let { view ->
+                    jumpToPage?.let { view.jumpToPage(it) }
+                    onReady?.invoke(view)
+                }
+            }
+            override fun onPdfLoadStart() = statusCallBack?.onPdfLoadStart() ?: Unit
+            override fun onPdfLoadProgress(progress: Int, downloadedBytes: Long, totalBytes: Long?) =
+                statusCallBack?.onPdfLoadProgress(progress, downloadedBytes, totalBytes) ?: Unit
+            override fun onPdfLoadSuccess(absolutePath: String) =
+                statusCallBack?.onPdfLoadSuccess(absolutePath) ?: Unit
+            override fun onError(error: Throwable) =
+                statusCallBack?.onError(error) ?: Unit
+            override fun onPageChanged(currentPage: Int, totalPage: Int) =
+                statusCallBack?.onPageChanged(currentPage, totalPage) ?: Unit
+            override fun onPdfRenderStart() = statusCallBack?.onPdfRenderStart() ?: Unit
+        }
+    }
+
     if (source is PdfSource.PdfSourceFromAsset) {
         LaunchedEffect(source.assetFileName) {
             resolvedFile = fileFromAsset(context, source.assetFileName)
@@ -42,35 +67,33 @@ fun PdfRendererViewCompose(
 
     AndroidView(
         factory = { PdfRendererView(it) },
-        update = { pdfRendererView ->
-            statusCallBack?.let { pdfRendererView.statusListener = it }
-            zoomListener?.let { pdfRendererView.zoomListener = it }
+        update = { view ->
+            pdfViewRef.value = view
+            view.statusListener = combinedCallback
+            view.zoomListener = zoomListener
 
             when (source) {
-                is PdfSource.Remote -> pdfRendererView.initWithUrl(
+                is PdfSource.Remote -> view.initWithUrl(
                     url = source.url,
                     headers = headers,
                     lifecycleCoroutineScope = lifecycleOwner.lifecycleScope,
                     lifecycle = lifecycleOwner.lifecycle,
                     cacheStrategy = cacheStrategy
                 )
-
-                is PdfSource.LocalFile -> pdfRendererView.initWithFile(
-                    file = source.file,
-                    cacheStrategy = cacheStrategy
-                )
-
-                is PdfSource.LocalUri -> pdfRendererView.initWithUri(source.uri)
-
+                is PdfSource.LocalFile -> view.initWithFile(source.file, cacheStrategy)
+                is PdfSource.LocalUri -> view.initWithUri(source.uri)
                 is PdfSource.PdfSourceFromAsset -> {
                     resolvedFile?.let {
-                        pdfRendererView.initWithFile(it, cacheStrategy)
+                        view.initWithFile(it, cacheStrategy)
                     }
                 }
             }
 
-            onReady?.invoke(pdfRendererView)
+            if (jumpToPage == null) {
+                onReady?.invoke(view)
+            }
         },
         modifier = modifier,
     )
 }
+
