@@ -8,9 +8,7 @@ import android.util.LruCache
 import com.rajat.pdfviewer.util.CacheHelper.handleCacheStrategy
 import com.rajat.pdfviewer.util.CommonUtils.Companion.MAX_CACHED_PDFS
 import com.rajat.pdfviewer.util.FileUtils.cachedFileNameWithFormat
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.FileOutputStream
@@ -57,32 +55,21 @@ class CacheManager(
         return if (file.exists()) BitmapFactory.decodeFile(file.absolutePath) else null
     }
 
-    fun addBitmapToCache(pageNo: Int, bitmap: Bitmap) {
+    suspend fun addBitmapToCache(pageNo: Int, bitmap: Bitmap) {
         memoryCache.put(pageNo, bitmap)
         writeBitmapToCache(pageNo, bitmap)
     }
 
-    private fun writeBitmapToCache(pageNo: Int, bitmap: Bitmap) {
-        CoroutineScope(Dispatchers.IO).launch {
-            try {
-                if (!cacheDir.exists()) {
-                    cacheDir.mkdirs()
-                }
-
-                val savePath = File(cacheDir, cachedFileNameWithFormat(pageNo))
-
-                savePath.parentFile?.let {
-                    if (!it.exists()) {
-                        it.mkdirs()
-                    }
-                }
-
-                FileOutputStream(savePath).use { fos ->
-                    bitmap.compress(Bitmap.CompressFormat.PNG, 100, fos)
-                }
-            } catch (e: Exception) {
-                Log.e("CacheManager", "Error writing bitmap to cache", e)
+    private suspend fun writeBitmapToCache(pageNo: Int, bitmap: Bitmap) = withContext(Dispatchers.IO) {
+        runCatching {
+            cacheDir.mkdirs()
+            val savePath = File(cacheDir, cachedFileNameWithFormat(pageNo))
+            savePath.parentFile?.mkdirs()
+            FileOutputStream(savePath).use { fos ->
+                bitmap.compress(Bitmap.CompressFormat.PNG, 100, fos)
             }
+        }.onFailure {
+            Log.e("CacheManager", "Error writing bitmap to cache (Page $pageNo)", it)
         }
     }
 

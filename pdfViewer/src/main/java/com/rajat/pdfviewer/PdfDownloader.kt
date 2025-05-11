@@ -1,6 +1,8 @@
 package com.rajat.pdfviewer
 
 import android.content.Context
+import android.os.Handler
+import android.os.Looper
 import android.util.Log
 import com.rajat.pdfviewer.util.CacheHelper
 import com.rajat.pdfviewer.util.CacheStrategy
@@ -37,6 +39,7 @@ class PdfDownloader(
     }
 
     companion object {
+        private const val TAG = "PdfDownloader"
         private const val MAX_RETRIES = 2
         private const val RETRY_DELAY = 2000L
 
@@ -56,7 +59,7 @@ class PdfDownloader(
 
         val pdfFile = File(cacheDir, cachedFileName)
 
-        CacheHelper.handleCacheStrategy("Downloader", cacheDir, cacheStrategy, cachedFileName, MAX_CACHED_PDFS)
+        CacheHelper.handleCacheStrategy(TAG, cacheDir, cacheStrategy, cachedFileName, MAX_CACHED_PDFS)
 
         if (pdfFile.exists() && isValidPdf(pdfFile)) {
             withContext(Dispatchers.Main) {
@@ -68,7 +71,7 @@ class PdfDownloader(
     }
 
     private suspend fun retryDownload(downloadUrl: String, pdfFile: File) {
-        Log.d("PdfDownloader", "Retrying download for: $downloadUrl")
+        Log.d(TAG, "Retrying download for: $downloadUrl")
         withContext(Dispatchers.Main) {
             listener.onDownloadStart()
         }
@@ -79,20 +82,20 @@ class PdfDownloader(
                 return
             } catch (e: IOException) {
                 if (isInvalidFileError(e)) {
-                    listener.onDownloadError(e)
+                    withContext(Dispatchers.Main) {
+                        listener.onDownloadError(InvalidPdfException(e.message ?: "Invalid PDF"))
+                    }
                     return
                 }
 
                 attempt++
-                Log.e("PdfDownloader", "Attempt $attempt failed: $downloadUrl", e)
+                Log.e(TAG, "Attempt $attempt failed: $downloadUrl", e)
 
                 if (attempt < MAX_RETRIES) {
                     delay(RETRY_DELAY)
                 } else {
                     withContext(Dispatchers.Main) {
-                        listener.onDownloadError(
-                            IOException("Failed to download after $MAX_RETRIES attempts: $downloadUrl", e)
-                        )
+                        listener.onDownloadError(DownloadFailedException("Failed after $MAX_RETRIES attempts", e))
                     }
                 }
             }
@@ -119,7 +122,7 @@ class PdfDownloader(
             response.body?.use { body ->
                 body.byteStream().use { inputStream ->
                     writeFile(inputStream, tempFile, body.contentLength()) { progress ->
-                        coroutineScope.launch(Dispatchers.Main) {
+                        Handler(Looper.getMainLooper()).post {
                             listener.onDownloadProgress(progress, body.contentLength())
                         }
                     }
@@ -134,16 +137,16 @@ class PdfDownloader(
 
             if (!isValidPdf(pdfFile)) {
                 pdfFile.delete()
-                throw IOException("Downloaded file is not a valid PDF")
+                throw InvalidPdfException("Downloaded file is not a valid PDF")
             }
 
-            Log.d("PdfDownloader", "Downloaded PDF to: ${pdfFile.absolutePath}")
+            Log.d(TAG, "Downloaded PDF to: ${pdfFile.absolutePath}")
 
-            coroutineScope.launch(Dispatchers.Main) {
+            withContext(Dispatchers.Main) {
                 listener.onDownloadSuccess(pdfFile)
             }
         } catch (e: Exception) {
-            tempFile.delete() // Clean up temp on failure
+            tempFile.delete()
             throw e
         }
     }
@@ -157,16 +160,15 @@ class PdfDownloader(
 
     private fun validateResponse(response: Response) {
         if (!response.isSuccessful) {
-            throw IOException("Failed to download PDF, HTTP Status: ${response.code}")
+            throw DownloadFailedException("Failed to download PDF, HTTP Status: ${response.code}")
         }
 
         val contentType = response.header("Content-Type", "")
-        if (!contentType.isNullOrEmpty() && !contentType.contains(
-                "application/pdf",
-                ignoreCase = true
-            )
-        ) {
-            throw IOException("Invalid content type received: $contentType. Expected a PDF file.")
+        if (!contentType.isNullOrEmpty() && !contentType.contains("application/pdf", ignoreCase = true)) {
+            throw InvalidPdfException("Invalid content type received: $contentType. Expected a PDF file.")
         }
     }
 }
+
+class DownloadFailedException(message: String, cause: Throwable? = null) : IOException(message, cause)
+class InvalidPdfException(message: String) : IOException(message)
