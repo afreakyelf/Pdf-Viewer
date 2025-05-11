@@ -31,9 +31,6 @@ class PdfDownloader(
     }
 
     fun start() {
-        coroutineScope.launch(Dispatchers.Main) {
-            listener.onDownloadStart()
-        }
         coroutineScope.launch(Dispatchers.IO) {
             checkAndDownload(url)
         }

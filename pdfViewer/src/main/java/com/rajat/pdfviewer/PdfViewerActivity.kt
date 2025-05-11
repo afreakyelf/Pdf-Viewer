@@ -256,6 +256,14 @@ class PdfViewerActivity : AppCompatActivity() {
                 updateDownloadButtonState(false)
             }
 
+            override fun onPdfRenderSuccess() {
+//                super.onPdfRenderSuccess()
+            }
+
+            override fun onPdfRenderStart() {
+                // no-op
+            }
+
             override fun onPdfLoadProgress(
                 progress: Int, downloadedBytes: Long, totalBytes: Long?
             ) {

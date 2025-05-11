@@ -69,6 +69,14 @@ private fun MyPdfScreenFromUrl(url: String, modifier: Modifier = Modifier) {
                 override fun onPageChanged(currentPage: Int, totalPage: Int) {
                     Log.i("statusCallBack", "onPageChanged: $currentPage / $totalPage")
                 }
+
+                override fun onPdfRenderStart() {
+                    Log.i("statusCallBack", "onPdfRenderStart")
+                }
+
+                override fun onPdfRenderSuccess() {
+                    Log.i("statusCallBack", "onPdfRenderSuccess")
+                }
             }
         },
         zoomListener = remember {
