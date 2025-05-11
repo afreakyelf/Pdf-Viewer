@@ -103,6 +103,14 @@ class MainActivity : AppCompatActivity() {
             override fun onPageChanged(currentPage: Int, totalPage: Int) {
                 Log.i("PDF Status", "Page changed: $currentPage / $totalPage")
             }
+
+            override fun onPdfRenderStart() {
+                Log.d("PDF Status", "Render started")
+            }
+
+            override fun onPdfRenderSuccess() {
+                Log.d("PDF Status", "Render successful")
+            }
         }
 
         binding.pdfView.zoomListener = object : PdfRendererView.ZoomListener {
