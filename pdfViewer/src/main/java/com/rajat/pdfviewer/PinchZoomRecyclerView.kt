@@ -66,6 +66,8 @@ class PinchZoomRecyclerView @JvmOverloads constructor(
             return true // Block RecyclerView scroll during zoom
         }
 
+        val superHandled = super.onTouchEvent(ev)
+
         when (ev.actionMasked) {
             MotionEvent.ACTION_DOWN -> {
                 lastTouchX = ev.x
@@ -105,14 +107,14 @@ class PinchZoomRecyclerView @JvmOverloads constructor(
             }
         }
 
-        return if (scaleFactor > 1f) true else super.onTouchEvent(ev)
+        return superHandled || scaleFactor > 1f
     }
 
     /**
      * Intercepts vertical scroll only during pinch-to-zoom.
      */
     override fun onInterceptTouchEvent(ev: MotionEvent): Boolean {
-        return if (scaleFactor > 1f || isZoomingInProgress) true else super.onInterceptTouchEvent(ev)
+        return if (isZoomingInProgress) true else super.onInterceptTouchEvent(ev)
     }
 
     /**
