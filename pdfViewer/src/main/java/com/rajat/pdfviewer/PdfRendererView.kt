@@ -471,7 +471,7 @@ class PdfRendererView @JvmOverloads constructor(
         fun onPdfLoadSuccess(absolutePath: String) {}
         fun onError(error: Throwable) {}
         fun onPageChanged(currentPage: Int, totalPage: Int) {}
-        fun onPdfRenderStart()
+        fun onPdfRenderStart() {}
         fun onPdfRenderSuccess() {}
     }
 
