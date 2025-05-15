@@ -12,7 +12,7 @@ plugins {
 
 android {
     namespace = "com.rajat.pdfviewer"
-    compileSdk = 35
+    compileSdk = 36
 
     defaultConfig {
         minSdk = 23
