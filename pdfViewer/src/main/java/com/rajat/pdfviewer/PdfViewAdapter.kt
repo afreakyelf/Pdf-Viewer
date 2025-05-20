@@ -25,7 +25,8 @@ internal class PdfViewAdapter(
     private val renderer: PdfRendererCore,
     private val parentView: PdfRendererView,
     private val pageSpacing: Rect,
-    private val enableLoadingForPages: Boolean
+    private val enableLoadingForPages: Boolean,
+    private val renderQuality: RenderQuality,
 ) : RecyclerView.Adapter<PdfViewAdapter.PdfPageViewHolder>() {
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): PdfPageViewHolder =
@@ -75,6 +76,11 @@ internal class PdfViewAdapter(
 
                 if (cached != null && currentBoundPage == position) {
                     if (DEBUG_LOGS_ENABLED) Log.d("PdfViewAdapter", "✅ Loaded page $position from cache")
+                    val aspectRatio = runCatching {
+                        cached.width.toFloat() / cached.height.toFloat()
+                    }.getOrElse { 1f }
+                    val height = (displayWidth / aspectRatio).toInt()
+                    itemBinding.updateLayoutParams(height)
                     itemBinding.pageView.setImageBitmap(cached)
                     hasRealBitmap = true
                     applyFadeInAnimation(itemBinding.pageView)
@@ -85,11 +91,15 @@ internal class PdfViewAdapter(
                 renderer.getPageDimensionsAsync(position) { size ->
                     if (currentBoundPage != position) return@getPageDimensionsAsync
 
-                    val aspectRatio = size.width.toFloat() / size.height.toFloat()
+                    val aspectRatio = runCatching {
+                        size.width.toFloat() / size.height.toFloat()
+                    }.getOrElse { 1f }
                     val height = (displayWidth / aspectRatio).toInt()
                     itemBinding.updateLayoutParams(height)
 
-                    renderAndApplyBitmap(position, displayWidth, height)
+                    val bitmapWidth = (displayWidth * renderQuality.qualityMultiplier).toInt()
+                    val bitmapHeight = (height * renderQuality.qualityMultiplier).toInt()
+                    renderAndApplyBitmap(position, bitmapWidth, bitmapHeight)
                 }
             }
 
@@ -127,7 +137,7 @@ internal class PdfViewAdapter(
         }
 
         private fun retryRenderOnce(page: Int, width: Int, height: Int) {
-            val retryBitmap = CommonUtils.Companion.BitmapPool.getBitmap(width, height)
+            val retryBitmap = CommonUtils.Companion.BitmapPool.getBitmap(width, maxOf(1, height))
             renderer.renderPage(page, retryBitmap) { success, retryPageNo, rendered ->
                 scope.launch {
                     if (success && retryPageNo == currentBoundPage && !hasRealBitmap) {

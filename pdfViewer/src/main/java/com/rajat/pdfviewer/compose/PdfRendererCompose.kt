@@ -14,6 +14,7 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.lifecycleScope
 import com.rajat.pdfviewer.HeaderData
 import com.rajat.pdfviewer.PdfRendererView
+import com.rajat.pdfviewer.RenderQuality
 import com.rajat.pdfviewer.util.CacheStrategy
 import com.rajat.pdfviewer.util.FileUtils.fileFromAsset
 import com.rajat.pdfviewer.util.PdfSource
@@ -23,12 +24,14 @@ import java.io.File
 fun PdfRendererViewCompose(
     source: PdfSource,
     modifier: Modifier = Modifier,
+    renderQuality: RenderQuality = RenderQuality.NORMAL,
     headers: HeaderData = HeaderData(),
     cacheStrategy: CacheStrategy = CacheStrategy.MAXIMIZE_PERFORMANCE,
     lifecycleOwner: LifecycleOwner = LocalLifecycleOwner.current,
     jumpToPage: Int? = null,
     statusCallBack: PdfRendererView.StatusCallBack? = null,
     zoomListener: PdfRendererView.ZoomListener? = null,
+    scrollListener: PdfRendererView.ScrollListener? = null,
     onReady: ((PdfRendererView) -> Unit)? = null,
 ) {
     val context = LocalContext.current
@@ -69,6 +72,8 @@ fun PdfRendererViewCompose(
         update = { view ->
             view.statusListener = combinedCallback
             view.zoomListener = zoomListener
+            view.scrollListener = scrollListener
+            view.renderQuality = renderQuality
 
             if (!initialized) {
                 when (source) {
