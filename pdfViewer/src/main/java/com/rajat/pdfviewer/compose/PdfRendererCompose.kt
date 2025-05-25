@@ -32,70 +32,91 @@ fun PdfRendererViewCompose(
     onReady: ((PdfRendererView) -> Unit)? = null,
 ) {
     val context = LocalContext.current
-    var resolvedFile by remember(source) { mutableStateOf<File?>(null) }
     val pdfViewRef = remember { mutableStateOf<PdfRendererView?>(null) }
-    var initialized by remember(source) { mutableStateOf(false) }
 
-    val combinedCallback = remember(statusCallBack, jumpToPage) {
+    // Async resolve asset file
+    var resolvedFile by remember(source) { mutableStateOf<File?>(null) }
+    LaunchedEffect(source) {
+        if (source is PdfSource.PdfSourceFromAsset) {
+            resolvedFile = fileFromAsset(context, source.assetFileName)
+        }
+    }
+
+    // Ensure initialization only once
+    var hasInit by remember(source) { mutableStateOf(false) }
+
+    // Combine user callback with internal jump logic
+    val combinedCallback = remember(statusCallBack, jumpToPage, onReady) {
         object : PdfRendererView.StatusCallBack {
-            override fun onPdfRenderSuccess() {
-                statusCallBack?.onPdfRenderSuccess()
+            override fun onPdfLoadStart() {
+                statusCallBack?.onPdfLoadStart()
+            }
+
+            override fun onPdfLoadProgress(progress: Int, downloadedBytes: Long, totalBytes: Long?) {
+                statusCallBack?.onPdfLoadProgress(progress, downloadedBytes, totalBytes)
+            }
+
+            override fun onPdfLoadSuccess(absolutePath: String) {
+                statusCallBack?.onPdfLoadSuccess(absolutePath)
                 pdfViewRef.value?.let { view ->
                     jumpToPage?.let { view.jumpToPage(it) }
                     onReady?.invoke(view)
                 }
             }
-            override fun onPdfLoadStart() = statusCallBack?.onPdfLoadStart() ?: Unit
-            override fun onPdfLoadProgress(progress: Int, downloadedBytes: Long, totalBytes: Long?) =
-                statusCallBack?.onPdfLoadProgress(progress, downloadedBytes, totalBytes) ?: Unit
-            override fun onPdfLoadSuccess(absolutePath: String) =
-                statusCallBack?.onPdfLoadSuccess(absolutePath) ?: Unit
-            override fun onError(error: Throwable) =
-                statusCallBack?.onError(error) ?: Unit
-            override fun onPageChanged(currentPage: Int, totalPage: Int) =
-                statusCallBack?.onPageChanged(currentPage, totalPage) ?: Unit
-            override fun onPdfRenderStart() = statusCallBack?.onPdfRenderStart() ?: Unit
-        }
-    }
 
-    if (source is PdfSource.PdfSourceFromAsset) {
-        LaunchedEffect(source.assetFileName) {
-            resolvedFile = fileFromAsset(context, source.assetFileName)
+            override fun onError(error: Throwable) {
+                statusCallBack?.onError(error)
+            }
+
+            override fun onPageChanged(currentPage: Int, totalPage: Int) {
+                statusCallBack?.onPageChanged(currentPage, totalPage)
+            }
+
+            override fun onPdfRenderSuccess() {
+                statusCallBack?.onPdfRenderSuccess()
+            }
         }
     }
 
     AndroidView(
-        factory = { PdfRendererView(it).also { pdfViewRef.value = it } },
+        factory = { ctx ->
+            PdfRendererView(ctx).also { view ->
+                view.statusListener = combinedCallback
+                view.zoomListener = zoomListener
+                pdfViewRef.value = view
+            }
+        },
         update = { view ->
             view.statusListener = combinedCallback
             view.zoomListener = zoomListener
 
-            if (!initialized) {
-                when (source) {
-                    is PdfSource.Remote -> view.initWithUrl(
-                        url = source.url,
-                        headers = headers,
-                        lifecycleCoroutineScope = lifecycleOwner.lifecycleScope,
-                        lifecycle = lifecycleOwner.lifecycle,
-                        cacheStrategy = cacheStrategy
-                    )
-                    is PdfSource.LocalFile -> view.initWithFile(source.file, cacheStrategy)
-                    is PdfSource.LocalUri -> view.initWithUri(source.uri)
-                    is PdfSource.PdfSourceFromAsset -> {
-                        resolvedFile?.let {
-                            view.initWithFile(it, cacheStrategy)
-                        }
+            if (!hasInit) {
+                when {
+                    source is PdfSource.Remote -> {
+                        view.initWithUrl(
+                            url = source.url,
+                            headers = headers,
+                            lifecycleCoroutineScope = lifecycleOwner.lifecycleScope,
+                            lifecycle = lifecycleOwner.lifecycle,
+                            cacheStrategy = cacheStrategy
+                        )
+                        hasInit = true
+                    }
+                    source is PdfSource.LocalFile -> {
+                        view.initWithFile(source.file, cacheStrategy)
+                        hasInit = true
+                    }
+                    source is PdfSource.LocalUri -> {
+                        view.initWithUri(source.uri)
+                        hasInit = true
+                    }
+                    source is PdfSource.PdfSourceFromAsset && resolvedFile != null -> {
+                        view.initWithFile(resolvedFile!!, cacheStrategy)
+                        hasInit = true
                     }
                 }
-
-                initialized = true
-            }
-
-            if (jumpToPage == null) {
-                onReady?.invoke(view)
             }
         },
-        modifier = modifier,
+        modifier = modifier
     )
 }
-
