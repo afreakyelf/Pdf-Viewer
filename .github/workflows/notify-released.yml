@@ -21,31 +21,21 @@ jobs:
           script: |
             const { owner, repo } = context.repo;
             const issue_number = context.payload.issue.number;
-            const reporter = context.payload.issue.user.login;
 
-            // 1) fetch the latest release
+            // fetch the latest release
             const { data: latest } = await github.rest.repos.getLatestRelease({ owner, repo });
             const tag = latest.tag_name;
             const url = latest.html_url;
-            const notes = latest.body?.trim() || '*No release notes provided.*';
 
-            // 2) build our comment
+            // build our comment
             const header = `🎉 This issue has been **Resolved** in [**${tag}**](${url})!`;
-            const prompt = `@${reporter}, please verify the fix in the latest release.`;
-            const details = `
-              <details>
-                <summary>Release notes for ${tag}</summary>
-              
-                ${notes}
-              </details>
-            `.trim();
+            const prompt = `Please verify the fix in this release and let me know if the issue still persists!`;
+            const body = [header, prompt].join("\n\n");
 
-            const body = [header, prompt, details].join("\n\n");
-
-            // 3) look for an existing bot comment on this issue
+            // look for an existing bot comment on this issue
             const { data: comments } = await github.rest.issues.listComments({ owner, repo, issue_number });
             const existing = comments.find(c =>
-              c.user.type === 'Bot' && c.body.includes(`release notes for ${tag}`)
+              c.user.type === 'Bot' && c.body.includes(`**${tag}**`)
             );
 
             if (existing) {
