@@ -199,6 +199,15 @@ class PdfRendererView @JvmOverloads constructor(
     }
 
     private fun initializeRenderer(renderer: PdfRendererCore) {
+        // If re-initializing, clear old views & adapter
+        if (pdfRendererCoreInitialised) {
+            viewJob.cancel()
+            removeAllViews()
+            if (this::recyclerView.isInitialized) {
+                recyclerView.adapter = null
+            }
+        }
+
         PdfRendererCore.enableDebugMetrics = true
         pdfRendererCore = renderer
         pdfRendererCoreInitialised = true
@@ -423,7 +432,10 @@ class PdfRendererView @JvmOverloads constructor(
 
     override fun onDetachedFromWindow() {
         super.onDetachedFromWindow()
-        viewJob.cancel()
+        // Clear adapter to release ViewHolders
+        if (this::recyclerView.isInitialized) {
+            recyclerView.adapter = null
+        }
         closePdfRender()
     }
 

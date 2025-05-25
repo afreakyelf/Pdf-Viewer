@@ -71,7 +71,6 @@ class MainActivity : AppCompatActivity() {
                 lifecycle = lifecycle,
                 cacheStrategy = CacheStrategy.MINIMIZE_CACHE
             )
-            binding.pdfView.jumpToPage(3)
         }
 
         binding.openInCompose.setOnClickListener {
@@ -110,6 +109,7 @@ class MainActivity : AppCompatActivity() {
 
             override fun onPdfRenderSuccess() {
                 Log.d("PDF Status", "Render successful")
+                binding.pdfView.jumpToPage(2)
             }
         }
 
@@ -128,7 +128,7 @@ class MainActivity : AppCompatActivity() {
         startActivity(
             PdfViewerActivity.launchPdfFromUrl(
                 context = this,
-                pdfUrl = "https://api.printnode.com/static/test/pdf/multipage.pdf",
+                pdfUrl = largePdf1,
                 pdfTitle = "PDF Title",
                 saveTo = saveTo.DOWNLOADS,
                 enableDownload = true,
