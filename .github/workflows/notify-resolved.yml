@@ -1,0 +1,40 @@
+name: Notify on Resolved Label
+
+on:
+  issues:
+    types: [labeled]
+
+jobs:
+  notify-resolved:
+    if: ${{ github.event.label.name == 'Resolved' }}
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Comment with latest release info
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const { owner, repo } = context.repo;
+            const issue_number = context.payload.issue.number;
+
+            // Fetch the latest release via GitHub REST API
+            const { data: release } = await github.rest.repos.getLatestRelease({
+              owner,
+              repo
+            });
+
+            const version = release.tag_name;
+            const url = release.html_url;
+
+            const body = [
+              `🎉 This issue has been marked as **Resolved** in version **${version}**!`,
+              `Please verify the fix in the [release ${version}](${url}).`,
+              "If you still see a problem, just reply here and we’ll reopen it."
+            ].join("\n\n");
+
+            await github.issues.createComment({
+              owner,
+              repo,
+              issue_number,
+              body
+            });
