@@ -1,4 +1,4 @@
-name: Notify on Resolved Label
+name: Notify on Released Label
 
 on:
   issues:
@@ -6,7 +6,7 @@ on:
 
 jobs:
   notify-resolved:
-    if: ${{ github.event.label.name == 'Resolved' }}
+    if: ${{ github.event.label.name == 'Released' }}
     runs-on: ubuntu-latest
 
     steps:
@@ -27,9 +27,9 @@ jobs:
             const url = release.html_url;
 
             const body = [
-              `🎉 This issue has been marked as **Resolved** in version **${version}**!`,
+              `Hi! This issue has been **Resolved** as part of **${version}**!`,
               `Please verify the fix in the [release ${version}](${url}).`,
-              "If you still see a problem, just reply here and we’ll reopen it."
+              "If you still see a problem, please let me know."
             ].join("\n\n");
 
             await github.issues.createComment({
