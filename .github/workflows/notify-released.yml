@@ -4,8 +4,12 @@ on:
   issues:
     types: [labeled]
 
+permissions:
+  contents: read       # needed for getLatestRelease
+  issues: write        # needed for createComment
+
 jobs:
-  notify-resolved:
+  notify-released:
     if: ${{ github.event.label.name == 'Released' }}
     runs-on: ubuntu-latest
 
@@ -13,11 +17,12 @@ jobs:
       - name: Comment with latest release info
         uses: actions/github-script@v6
         with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
             const { owner, repo } = context.repo;
             const issue_number = context.payload.issue.number;
 
-            // Fetch the latest release via GitHub REST API
+            // Fetch the latest release via REST API
             const { data: release } = await github.rest.repos.getLatestRelease({
               owner,
               repo
@@ -32,7 +37,8 @@ jobs:
               "If you still see a problem, please let me know."
             ].join("\n\n");
 
-            await github.issues.createComment({
+            // Post comment on the issue
+            await github.rest.issues.createComment({
               owner,
               repo,
               issue_number,
