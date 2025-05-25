@@ -93,7 +93,7 @@ mavenPublishing {
     publishToMavenCentral(SonatypeHost.CENTRAL_PORTAL)
     signAllPublications()
 
-    coordinates("io.github.afreakyelf", "Pdf-Viewer", "2.3.6")
+    coordinates("io.github.afreakyelf", "Pdf-Viewer", "2.3.7")
 
     pom {
         name.set("PDF Viewer")
