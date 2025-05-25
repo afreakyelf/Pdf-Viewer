@@ -11,6 +11,7 @@ import android.view.animation.AccelerateDecelerateInterpolator
 import androidx.core.graphics.withTranslation
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import kotlin.math.roundToInt
 
 class PinchZoomRecyclerView @JvmOverloads constructor(
     context: Context,
@@ -37,6 +38,11 @@ class PinchZoomRecyclerView @JvmOverloads constructor(
     private var posY = 0f
 
     private var zoomChangeListener: ((Boolean, Float) -> Unit)? = null
+
+    private var anchorScale = 1f
+    private var anchorFocusY = 0f
+    private var anchorContentY = 0f
+    private var anchorItemHeight = 0
 
     init {
         setWillNotDraw(false)
@@ -76,6 +82,7 @@ class PinchZoomRecyclerView @JvmOverloads constructor(
                 lastTouchY = ev.y
                 activePointerId = ev.getPointerId(0)
             }
+
             MotionEvent.ACTION_MOVE -> {
                 if (!scaleDetector.isInProgress && scaleFactor > 1f) {
                     val pointerIndex = ev.findPointerIndex(activePointerId)
@@ -93,6 +100,7 @@ class PinchZoomRecyclerView @JvmOverloads constructor(
                     }
                 }
             }
+
             MotionEvent.ACTION_POINTER_UP -> {
                 val pointerIndex = ev.actionIndex
                 val pointerId = ev.getPointerId(pointerIndex)
@@ -103,6 +111,7 @@ class PinchZoomRecyclerView @JvmOverloads constructor(
                     activePointerId = ev.getPointerId(newPointerIndex)
                 }
             }
+
             MotionEvent.ACTION_CANCEL -> {
                 activePointerId = INVALID_POINTER_ID
             }
@@ -179,6 +188,25 @@ class PinchZoomRecyclerView @JvmOverloads constructor(
         override fun onScaleBegin(detector: ScaleGestureDetector): Boolean {
             isZoomingInProgress = true
             suppressLayout(true)
+
+
+            // 1️⃣ record the old scale & where on screen they touched
+            anchorScale  = scaleFactor
+            anchorFocusY = detector.focusY
+
+            // 2️⃣ convert current scroll into UN‑SCALED content‑pixels
+            val offsetDevicePx = computeVerticalScrollOffset()
+            val offsetContentPx = offsetDevicePx / anchorScale
+
+            // 3️⃣ record which page height to use
+            (layoutManager as? LinearLayoutManager)?.let { lm ->
+                val first = lm.findFirstVisibleItemPosition()
+                anchorItemHeight = lm.findViewByPosition(first)?.height ?: height
+            }
+
+            // 4️⃣ now we have content‑pixel under fingers:
+            anchorContentY = offsetContentPx + anchorFocusY / anchorScale
+
             return true
         }
 
@@ -208,7 +236,28 @@ class PinchZoomRecyclerView @JvmOverloads constructor(
 
         override fun onScaleEnd(detector: ScaleGestureDetector) {
             isZoomingInProgress = false
+
             suppressLayout(false)
+
+
+            post {
+                // compute the NEW scroll offset (un‑scaled) so that
+                //    newOffsetContent + focusY/newScale == anchorContentY
+                val newScale = scaleFactor
+                val newOffsetContent = anchorContentY - anchorFocusY / newScale
+
+                // figure out which page & exact pixel
+                val page = (newOffsetContent / anchorItemHeight)
+                    .toInt()
+                    .coerceIn(0, (adapter?.itemCount ?: 1) - 1)
+                val offsetInPage = (newOffsetContent - page * anchorItemHeight).roundToInt()
+
+                // jump there exactly, then clear posY
+                (layoutManager as? LinearLayoutManager)
+                    ?.scrollToPositionWithOffset(page, -offsetInPage)
+                posY = 0f
+                invalidate()
+            }
         }
 
 
@@ -228,15 +277,15 @@ class PinchZoomRecyclerView @JvmOverloads constructor(
      * Clamps the panning translation to avoid over-scrolling beyond the content bounds.
      */
     private fun clampPosition() {
+        // horizontal clamp (unchanged)
         val contentWidth = width * scaleFactor
+        posX = posX.coerceIn(-(contentWidth - width).coerceAtLeast(0f), 0f)
+
+        // ▼ add vertical clamp ▼
         val contentHeight = height * scaleFactor
-
-        val maxPosX = if (contentWidth > width) contentWidth - width else 0f
-        val maxPosY = if (contentHeight > height) contentHeight - height else 0f
-
-        posX = posX.coerceIn(-maxPosX, maxPosX)
-        posY = posY.coerceIn(-maxPosY, maxPosY)
+        posY = posY.coerceIn(-(contentHeight - height).coerceAtLeast(0f), 0f)
     }
+
 
     /**
      * GestureListener handles double-tap zoom.
