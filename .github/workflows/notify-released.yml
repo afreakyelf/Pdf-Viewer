@@ -5,8 +5,8 @@ on:
     types: [labeled]
 
 permissions:
-  contents: read       # needed for getLatestRelease
-  issues: write        # needed for createComment
+  contents: read    # for getLatestRelease
+  issues: write     # for listComments, createComment, updateComment
 
 jobs:
   notify-released:
@@ -14,33 +14,54 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Comment with latest release info
+      - name: Comment (or update) with latest release info
         uses: actions/github-script@v6
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
             const { owner, repo } = context.repo;
             const issue_number = context.payload.issue.number;
+            const reporter = context.payload.issue.user.login;
 
-            // Fetch the latest release via REST API
-            const { data: release } = await github.rest.repos.getLatestRelease({
-              owner,
-              repo
-            });
+            // 1) fetch the latest release
+            const { data: latest } = await github.rest.repos.getLatestRelease({ owner, repo });
+            const tag = latest.tag_name;
+            const url = latest.html_url;
+            const notes = latest.body?.trim() || '*No release notes provided.*';
 
-            const version = release.tag_name;
-            const url = release.html_url;
+            // 2) build our comment
+            const header = `🎉 This issue has been **Resolved** in [**${tag}**](${url})!`;
+            const prompt = `@${reporter}, please verify the fix in the latest release.`;
+            const details = `
+              <details>
+                <summary>Release notes for ${tag}</summary>
+              
+                ${notes}
+              </details>
+            `.trim();
 
-            const body = [
-              `Hi! This issue has been **Resolved** as part of **${version}**!`,
-              `Please verify the fix in the [release ${version}](${url}).`,
-              "If you still see a problem, please let me know."
-            ].join("\n\n");
+            const body = [header, prompt, details].join("\n\n");
 
-            // Post comment on the issue
-            await github.rest.issues.createComment({
-              owner,
-              repo,
-              issue_number,
-              body
-            });
+            // 3) look for an existing bot comment on this issue
+            const { data: comments } = await github.rest.issues.listComments({ owner, repo, issue_number });
+            const existing = comments.find(c =>
+              c.user.type === 'Bot' && c.body.includes(`release notes for ${tag}`)
+            );
+
+            if (existing) {
+              // update it
+              await github.rest.issues.updateComment({
+                owner,
+                repo,
+                comment_id: existing.id,
+                body
+              });
+            } else {
+              // or create a new one
+              await github.rest.issues.createComment({
+                owner,
+                repo,
+                issue_number,
+                body
+              });
+            }
