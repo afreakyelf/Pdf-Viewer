@@ -8,6 +8,7 @@ import android.view.GestureDetector
 import android.view.MotionEvent
 import android.view.ScaleGestureDetector
 import android.view.animation.AccelerateDecelerateInterpolator
+import androidx.core.graphics.withTranslation
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 
@@ -39,6 +40,7 @@ class PinchZoomRecyclerView @JvmOverloads constructor(
 
     init {
         setWillNotDraw(false)
+        layoutManager = ZoomableLinearLayoutManager(context) { getZoomScale() }
     }
 
     fun setZoomEnabled(enabled: Boolean) {
@@ -81,9 +83,8 @@ class PinchZoomRecyclerView @JvmOverloads constructor(
                         val x = ev.getX(pointerIndex)
                         val y = ev.getY(pointerIndex)
                         val dx = x - lastTouchX
-                        val dy = y - lastTouchY
                         posX += dx
-                        posY += dy
+//                        posY += dy
                         clampPosition()
                         invalidate()
 
@@ -121,19 +122,17 @@ class PinchZoomRecyclerView @JvmOverloads constructor(
      * Transforms canvas for zoom + pan before drawing children.
      */
     override fun onDraw(canvas: Canvas) {
-        canvas.save()
-        canvas.translate(posX, posY)
-        canvas.scale(scaleFactor, scaleFactor)
-        super.onDraw(canvas)
-        canvas.restore()
+        canvas.withTranslation(posX, posY) {
+            scale(scaleFactor, scaleFactor)
+            super.onDraw(this)
+        }
     }
 
     override fun dispatchDraw(canvas: Canvas) {
-        canvas.save()
-        canvas.translate(posX, posY)
-        canvas.scale(scaleFactor, scaleFactor)
-        super.dispatchDraw(canvas)
-        canvas.restore()
+        canvas.withTranslation(posX, posY) {
+            scale(scaleFactor, scaleFactor)
+            super.dispatchDraw(this)
+        }
     }
 
     /**
