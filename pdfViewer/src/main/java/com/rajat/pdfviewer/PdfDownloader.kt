@@ -40,6 +40,15 @@ class PdfDownloader(
 
     fun start() {
         coroutineScope.launch(Dispatchers.IO) {
+            // Validate URL scheme before proceeding
+            if (!url.startsWith("http://", ignoreCase = true) && !url.startsWith("https://", ignoreCase = true)) {
+                withContext(Dispatchers.Main) {
+                    listener.onDownloadError(
+                        IllegalArgumentException("Invalid URL scheme: $url. Expected HTTP or HTTPS.")
+                    )
+                }
+                return@launch
+            }
             checkAndDownload(url)
         }
     }
