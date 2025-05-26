@@ -164,16 +164,18 @@ For Jetpack Compose, utilize PdfRendererViewCompose:
 ```kotlin
 PdfRendererViewCompose(
     source = PdfSource.Remote("your_pdf_url_here"),
-    lifecycleOwner = LocalLifecycleOwner.current
+    lifecycleOwner = LocalLifecycleOwner.current,
     modifier = Modifier,
     headers = HeaderData(mapOf("Authorization" to "123456789")),
-    lifecycleOwner = LocalLifecycleOwner.current,
     statusCallBack = object : PdfRendererView.StatusCallBack {
-        // Override functions here
+                // Override functions here
     },
     zoomListener = object : PdfRendererView.ZoomListener {
-      // Override functions here
-  }
+                // Override functions here
+        override fun onZoomChanged(isZoomedIn: Boolean, scale: Float) {
+                    TODO("Not yet implemented")
+         }
+     }
 )
 ```
 
