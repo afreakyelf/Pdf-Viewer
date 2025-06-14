@@ -77,6 +77,7 @@ class PdfRendererView @JvmOverloads constructor(
 
     var zoomListener: ZoomListener? = null
     var statusListener: StatusCallBack? = null
+    var tapListener: TapListener? = null
 
     //region Public APIs
     fun isZoomedIn(): Boolean = this::recyclerView.isInitialized && recyclerView.isZoomedIn()
@@ -260,6 +261,10 @@ class PdfRendererView @JvmOverloads constructor(
 
         recyclerView.setOnZoomChangeListener { isZoomedIn, scale ->
             zoomListener?.onZoomChanged(isZoomedIn, scale)
+        }
+
+        recyclerView.setOnTapListener {
+            tapListener?.onTap()
         }
 
         recyclerView.post {
@@ -488,5 +493,9 @@ class PdfRendererView @JvmOverloads constructor(
 
     interface ZoomListener {
         fun onZoomChanged(isZoomedIn: Boolean, scale: Float)
+    }
+
+    fun interface TapListener {
+        fun onTap()
     }
 }

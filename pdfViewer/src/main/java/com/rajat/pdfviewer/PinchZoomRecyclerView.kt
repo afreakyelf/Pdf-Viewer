@@ -38,6 +38,7 @@ class PinchZoomRecyclerView @JvmOverloads constructor(
     private var posY = 0f
 
     private var zoomChangeListener: ((Boolean, Float) -> Unit)? = null
+    private var tapListener: PdfRendererView.TapListener? = null
 
     private var anchorScale = 1f
     private var anchorFocusY = 0f
@@ -59,6 +60,10 @@ class PinchZoomRecyclerView @JvmOverloads constructor(
 
     fun setOnZoomChangeListener(listener: (isZoomedIn: Boolean, scale: Float) -> Unit) {
         zoomChangeListener = listener
+    }
+
+    fun setOnTapListener(listener: PdfRendererView.TapListener) {
+        tapListener = listener
     }
 
     /**
@@ -291,6 +296,10 @@ class PinchZoomRecyclerView @JvmOverloads constructor(
      * GestureListener handles double-tap zoom.
      */
     private inner class GestureListener : GestureDetector.SimpleOnGestureListener() {
+        override fun onSingleTapUp(e: MotionEvent): Boolean {
+            tapListener?.onTap()
+            return true
+        }
         override fun onDoubleTap(e: MotionEvent): Boolean {
             if (!isZoomEnabled) return false
 
