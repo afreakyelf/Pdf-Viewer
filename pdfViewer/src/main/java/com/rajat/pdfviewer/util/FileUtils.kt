@@ -11,6 +11,8 @@ import android.os.ParcelFileDescriptor
 import android.provider.MediaStore
 import android.util.Log
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
 import java.io.*
 
@@ -73,23 +75,25 @@ object FileUtils {
             ?.forEach { it.delete() }
     }
 
-    fun writeFile(inputStream: InputStream, file: File, totalLength: Long, onProgress: (Long) -> Unit) {
-        FileOutputStream(file).use { outputStream ->
-            val data = ByteArray(8192)
-            var totalBytesRead = 0L
-            var bytesRead: Int
-            while (inputStream.read(data).also { bytesRead = it } != -1) {
-                outputStream.write(data, 0, bytesRead)
-                totalBytesRead += bytesRead
-                try {
-                    onProgress(totalBytesRead)
-                } catch (e: Exception) {
-                    Log.w(TAG, "Progress callback failed: ${e.message}", e)
+    suspend fun writeFile(inputStream: InputStream, file: File, totalLength: Long, onProgress: (Long) -> Unit) =
+        coroutineScope {
+            FileOutputStream(file).use { outputStream ->
+                val data = ByteArray(8192)
+                var totalBytesRead = 0L
+                var bytesRead: Int
+                while (inputStream.read(data).also { bytesRead = it } != -1) {
+                    ensureActive()
+                    outputStream.write(data, 0, bytesRead)
+                    totalBytesRead += bytesRead
+                    try {
+                        onProgress(totalBytesRead)
+                    } catch (e: Exception) {
+                        Log.w(TAG, "Progress callback failed: ${e.message}", e)
+                    }
                 }
+                outputStream.flush()
             }
-            outputStream.flush()
         }
-    }
 
     suspend fun isValidPdf(file: File?): Boolean = withContext(Dispatchers.IO) {
         if (file == null || !file.exists() || file.length() < 4) {

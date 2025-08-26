@@ -13,13 +13,18 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
+import okhttp3.Call
+import okhttp3.Callback
 import okhttp3.OkHttpClient
 import okhttp3.Protocol
 import okhttp3.Request
 import okhttp3.Response
 import java.io.File
 import java.io.IOException
+import kotlin.coroutines.resume
+import kotlin.coroutines.resumeWithException
 
 class PdfDownloader(
     private val coroutineScope: CoroutineScope,
@@ -175,12 +180,31 @@ class PdfDownloader(
             }
         }
 
-    private fun makeNetworkRequest(downloadUrl: String): Response {
+    private suspend fun makeNetworkRequest(downloadUrl: String): Response {
         val requestBuilder = Request.Builder().url(downloadUrl)
         headers.headers.forEach { (key, value) -> requestBuilder.addHeader(key, value) }
 
-        return httpClient.newCall(requestBuilder.build()).execute()
+        return httpClient.awaitCall(requestBuilder.build())
     }
+
+    private suspend fun OkHttpClient.awaitCall(request: Request): Response =
+        suspendCancellableCoroutine { cont ->
+            val call = newCall(request)
+
+            cont.invokeOnCancellation {
+                call.cancel()
+            }
+
+            call.enqueue(object : Callback {
+                override fun onFailure(call: Call, e: IOException) {
+                    if (cont.isActive) cont.resumeWithException(e)
+                }
+
+                override fun onResponse(call: Call, response: Response) {
+                    if (cont.isActive) cont.resume(response)
+                }
+            })
+        }
 
     private fun validateResponse(response: Response) {
         if (!response.isSuccessful) {
