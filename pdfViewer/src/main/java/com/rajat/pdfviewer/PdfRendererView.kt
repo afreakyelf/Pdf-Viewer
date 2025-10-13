@@ -151,7 +151,9 @@ class PdfRendererView @JvmOverloads constructor(
      */
     fun initWithFile(file: File, cacheStrategy: CacheStrategy = CacheStrategy.MAXIMIZE_PERFORMANCE) {
         this.cacheStrategy = cacheStrategy
-        val cacheIdentifier = file.name
+        val fileSize = runCatching { file.length() }.getOrElse { -1L }
+        val lastModified = runCatching { file.lastModified() }.getOrElse { -1L }
+        val cacheIdentifier = file.name + "_$fileSize" + "_$lastModified"
 
         // Notify loading started
         statusListener?.onPdfRenderStart()
