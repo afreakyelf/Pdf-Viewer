@@ -65,6 +65,10 @@ internal class PdfViewAdapter(
 
             itemBinding.pageView.setImageBitmap(null)
 
+            itemBinding.root.layoutParams = itemBinding.root.layoutParams.apply {
+                this.height = ViewGroup.LayoutParams.WRAP_CONTENT
+            }
+
             itemBinding.pageLoadingLayout.pdfViewPageLoadingProgress.visibility =
                 if (enableLoadingForPages) View.VISIBLE else View.GONE
 
