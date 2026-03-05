@@ -60,9 +60,6 @@ internal class PdfViewAdapter(
             hasRealBitmap = false
             scope = MainScope()
 
-            val displayWidth = itemBinding.pageView.width.takeIf { it > 0 }
-                ?: context.resources.displayMetrics.widthPixels
-
             itemBinding.pageView.setImageBitmap(null)
 
             itemBinding.pageLoadingLayout.pdfViewPageLoadingProgress.visibility =
@@ -83,6 +80,9 @@ internal class PdfViewAdapter(
                 }
 
                 renderer.getPageDimensionsAsync(position) { size ->
+                    val displayWidth = itemBinding.pageView.width.takeIf { it > 0 }
+                        ?: context.resources.displayMetrics.widthPixels
+
                     if (currentBoundPage != position) return@getPageDimensionsAsync
 
                     val aspectRatio = size.width.toFloat() / size.height.toFloat()
