@@ -219,7 +219,9 @@ class PdfViewerActivity : AppCompatActivity() {
         enableDownload = intent.getBooleanExtra(ENABLE_FILE_DOWNLOAD, false)
         isFromAssets = intent.getBooleanExtra(FROM_ASSETS, false)
 
-        headers = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+        // Use deprecated getParcelableExtra on Android 13 (API 33) as the new method generates
+        // throws a NPE. See: https://github.com/afreakyelf/Pdf-Viewer/issues/244
+        headers = if (Build.VERSION.SDK_INT > Build.VERSION_CODES.TIRAMISU) {
             intent.getParcelableExtra("headers", HeaderData::class.java)
         } else {
             intent.getParcelableExtra("headers")
