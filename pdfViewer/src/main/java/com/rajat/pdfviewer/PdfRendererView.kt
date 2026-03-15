@@ -15,9 +15,13 @@ import android.view.LayoutInflater
 import android.view.WindowManager
 import android.widget.FrameLayout
 import android.widget.TextView
+import androidx.fragment.app.Fragment
+import androidx.lifecycle.DefaultLifecycleObserver
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleCoroutineScope
 import androidx.lifecycle.LifecycleObserver
+import androidx.lifecycle.LifecycleOwner
+import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.DefaultItemAnimator
 import androidx.recyclerview.widget.DividerItemDecoration
 import androidx.recyclerview.widget.LinearLayoutManager
@@ -139,6 +143,60 @@ class PdfRendererView @JvmOverloads constructor(
                 },
                 onError = { statusListener?.onError(it) }
             )).start()
+    }
+
+    /**
+     * Initializes the PDF view with a remote URL. Downloads and renders the PDF.
+     *
+     * @param url The URL of the PDF file.
+     * @param headers Optional HTTP headers.
+     * @param lifecycleOwner The LifecycleOwner to bind the download lifecycle.
+     * @param cacheStrategy Cache strategy to apply.
+     */
+    fun initWithUrl(
+        url: String,
+        headers: HeaderData = HeaderData(),
+        lifecycleOwner: LifecycleOwner,
+        cacheStrategy: CacheStrategy = CacheStrategy.MAXIMIZE_PERFORMANCE
+    ) {
+
+        lifecycleOwner.lifecycle.addObserver(object : DefaultLifecycleObserver {
+            override fun onCreate(owner: LifecycleOwner) {
+                super.onCreate(owner)
+                val lifecycleScope = lifecycleOwner.lifecycleScope
+                this@PdfRendererView.cacheStrategy = cacheStrategy
+                PdfDownloader(
+                    lifecycleScope,
+                    headers,
+                    url,
+                    cacheStrategy,
+                    PdfDownloadCallback(
+                        context,
+                        onStart = {
+                            statusListener?.onPdfLoadStart()
+                        },
+                        onProgress = { progress, current, total ->
+                            statusListener?.onPdfLoadProgress(progress, current, total)
+                        },
+                        onSuccess = {
+                            try {
+                                initWithFile(it, cacheStrategy)
+                                statusListener?.onPdfLoadSuccess(it.absolutePath)
+                            } catch (e: Exception) {
+                                statusListener?.onError(e)
+                            }
+                        },
+                        onError = {
+                            statusListener?.onError(it)
+                        }
+                    )).start()
+            }
+
+            override fun onDestroy(owner: LifecycleOwner) {
+                super.onDestroy(owner)
+                lifecycleOwner.lifecycle.removeObserver(this)
+            }
+        })
     }
 
     /**
