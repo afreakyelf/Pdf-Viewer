@@ -49,9 +49,11 @@ class PdfRendererCore private constructor(
         /**
          * Creates a [PdfRendererCore] instance from an already-opened [fileDescriptor].
          *
-         * **FD ownership contract**: on success the returned [PdfRendererCore] owns the
-         * [fileDescriptor] and will close it when [closePdfRender] is called. On failure
-         * (i.e. this function throws) the [fileDescriptor] is *not* closed — the caller is
+         * **Ownership contract**: on success the returned [PdfRendererCore] owns both the
+         * [fileDescriptor] and the native [PdfRenderer], closing them when [closePdfRender]
+         * is called. On failure (i.e. this function throws) all partially-initialised
+         * resources — including the native [PdfRenderer] — are closed before the exception
+         * propagates. The [fileDescriptor] is *not* closed on failure; the caller is
          * responsible for closing it in its error path.
          */
         suspend fun create(
@@ -61,10 +63,16 @@ class PdfRendererCore private constructor(
             cacheStrategy: CacheStrategy
         ): PdfRendererCore = withContext(Dispatchers.IO) {
             val pdfRenderer = PdfRenderer(fileDescriptor)
-            val manager = CacheManager(context, cacheIdentifier, cacheStrategy).apply { initialize() }
-            val core = PdfRendererCore(fileDescriptor, manager, pdfRenderer)
-            core.preloadPageDimensions()
-            return@withContext core
+            try {
+                val manager = CacheManager(context, cacheIdentifier, cacheStrategy).apply { initialize() }
+                val core = PdfRendererCore(fileDescriptor, manager, pdfRenderer)
+                core.preloadPageDimensions()
+                return@withContext core
+            } catch (e: Exception) {
+                runCatching { pdfRenderer.close() }
+                    .onFailure { Log.e(LOG_TAG, "Error closing PdfRenderer during cleanup: ${it.message}", it) }
+                throw e
+            }
         }
 
         fun getFileDescriptor(file: File): ParcelFileDescriptor {
