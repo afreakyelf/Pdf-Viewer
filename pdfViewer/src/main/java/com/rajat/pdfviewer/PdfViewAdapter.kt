@@ -82,15 +82,31 @@ internal class PdfViewAdapter(
             bindGeneration++
             scope = MainScope()
 
-            val zoomScale = parentView.getZoomScale()
             // Resolve the actual container width — prefer the measured pageView width,
             // then the ViewHolder root (== RecyclerView width), then the PdfRendererView
-            // container. Only fall back to full-display width as a last resort so that
-            // narrow containers / split-screen panes get correctly-sized pages (#229).
+            // container. Do NOT fall back to displayMetrics.widthPixels; instead, defer
+            // rendering until a real measurement exists so narrow containers and
+            // split-screen panes get correctly-sized pages (#229).
             val baseWidth = itemBinding.pageView.width.takeIf { it > 0 }
                 ?: itemView.width.takeIf { it > 0 }
                 ?: parentView.width.takeIf { it > 0 }
-                ?: context.resources.displayMetrics.widthPixels
+
+            if (baseWidth == null) {
+                // No container is measured yet — defer bind until after layout.
+                // Once the view has been laid out, at least itemView.width (the
+                // RecyclerView item width) will be > 0, so the deferred bind will
+                // proceed normally.
+                val expectedGeneration = bindGeneration
+                scope.cancel()
+                itemView.post {
+                    if (currentBoundPage == position && bindGeneration == expectedGeneration) {
+                        bind(position)
+                    }
+                }
+                return
+            }
+
+            val zoomScale = parentView.getZoomScale()
             val displayWidth = (baseWidth * zoomScale).toInt()
 
             itemBinding.pageView.setImageBitmap(null)
