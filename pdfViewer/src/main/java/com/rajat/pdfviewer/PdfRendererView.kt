@@ -293,11 +293,15 @@ class PdfRendererView @JvmOverloads constructor(
         if (firstVisiblePosition == NO_POSITION) return
         val firstView = layoutManager.findViewByPosition(firstVisiblePosition) ?: return
         // PinchZoomRecyclerView scales via canvas; layout coords are unscaled.
-        // Divide the device-pixel viewport height by the current zoom to get the
-        // equivalent unscaled threshold, then compare against the decorated bottom.
-        val unscaledViewportHeight = recyclerView.height / recyclerView.getZoomScale()
-        if (layoutManager.getDecoratedBottom(firstView) > unscaledViewportHeight) {
-            recyclerView.smoothScrollBy(0, recyclerView.height)
+        // Derive the viewport height in unscaled layout-px so both the boundary
+        // check and the scroll delta operate in the same coordinate space.
+        val scale = recyclerView.getZoomScale()
+        val unscaledViewportHeight = (recyclerView.height / scale).toInt()
+        val remaining = layoutManager.getDecoratedBottom(firstView) - unscaledViewportHeight
+        if (remaining > 0) {
+            // Clamp to the remaining distance so we never scroll past the page bottom.
+            val delta = minOf(unscaledViewportHeight, remaining)
+            recyclerView.smoothScrollBy(0, delta)
         } else {
             jumpToPage(firstVisiblePosition + 1)
         }
@@ -318,11 +322,16 @@ class PdfRendererView @JvmOverloads constructor(
         val firstVisiblePosition = layoutManager.findFirstVisibleItemPosition()
         if (firstVisiblePosition == NO_POSITION) return
         val firstView = layoutManager.findViewByPosition(firstVisiblePosition) ?: return
-        // getDecoratedTop < 0 means content is scrolled above the viewport.
-        // Comparing against 0 is zoom-invariant: a negative layout-px value is
-        // still negative on screen regardless of the canvas scale factor.
-        if (layoutManager.getDecoratedTop(firstView) < 0) {
-            recyclerView.smoothScrollBy(0, -recyclerView.height)
+        // getDecoratedTop is negative when content is scrolled above the viewport.
+        // Derive an unscaled viewport height so the scroll delta matches the
+        // zoom-adjusted coordinate space used by the layout manager.
+        val scale = recyclerView.getZoomScale()
+        val unscaledViewportHeight = (recyclerView.height / scale).toInt()
+        val hiddenAbove = -layoutManager.getDecoratedTop(firstView)
+        if (hiddenAbove > 0) {
+            // Clamp to the hidden distance so we never scroll past the page top.
+            val delta = minOf(unscaledViewportHeight, hiddenAbove)
+            recyclerView.smoothScrollBy(0, -delta)
         } else {
             jumpToPage(firstVisiblePosition - 1)
         }
