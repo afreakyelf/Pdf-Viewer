@@ -71,6 +71,53 @@ dependencies {
 - Minimum SDK version: 21
 - Compile & Target SDK version: 35 (updated since version 2.2.0)
 
+### Java App Integration
+
+If your Android app is written in **Java** (not Kotlin) and you encounter a crash at startup with:
+
+> `java.lang.NoClassDefFoundError: Failed resolution of: Landroidx/lifecycle/ProcessLifecycleOwner$initializationListener$1`
+
+**The recommended fix is to update to the latest version of Pdf-Viewer**, which adds version
+constraints for `lifecycle-process` and `lifecycle-runtime-ktx` (requiring a minimum of 2.8.7
+during dependency resolution) and includes consumer ProGuard rules to prevent minifiers from
+stripping these classes.
+
+If you still see this crash after updating to the latest version of Pdf-Viewer, there are two possible causes with different remedies:
+
+- **Dependency misresolution** (wrong `lifecycle-process` version resolved): Force the correct version in your `build.gradle`:
+
+#### Groovy DSL
+```gradle
+dependencies {
+    implementation 'io.github.afreakyelf:Pdf-Viewer:latest-version'
+
+    // Force the correct lifecycle-process version if your dependency graph resolves an older one.
+    implementation 'androidx.lifecycle:lifecycle-process:2.8.7'
+    implementation 'androidx.lifecycle:lifecycle-runtime-ktx:2.8.7'
+}
+```
+
+#### Kotlin DSL
+```gradle
+dependencies {
+    implementation("io.github.afreakyelf:Pdf-Viewer:latest-version")
+
+    // Force the correct lifecycle-process version if your dependency graph resolves an older one.
+    implementation("androidx.lifecycle:lifecycle-process:2.8.7")
+    implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.8.7")
+}
+```
+
+- **R8/minifier stripping** (classes removed during shrinking): The library ships consumer rules in `consumer-rules.pro` that AGP/R8 automatically merges into your build. These rules will not take effect if `minifyEnabled false` is set for your release build type, if you are using a non-AGP shrinker pipeline, or if shrinker warnings are treated as errors and abort the build. In those cases, add the rules manually to your app's `proguard-rules.pro`:
+
+```proguard
+-keep,allowobfuscation class androidx.lifecycle.ProcessLifecycleOwner { *; }
+-keep,allowobfuscation class androidx.lifecycle.ProcessLifecycleOwner$* { *; }
+```
+
+> **Note:** `kotlin-stdlib` and the lifecycle artifacts are included as transitive dependencies
+> by the library and do not need to be declared separately in most cases.
+
 ## How to use the library?
 Now you have integrated the library in your project but **how do you use it**? Well it's really easy. Just launch the intent with in following way: (Refer to [MainActivity.kt](https://github.com/afreakyelf/Pdf-Viewer/blob/master/app/src/main/java/com/rajat/sample/pdfviewer/MainActivity.kt) for more details.)
 

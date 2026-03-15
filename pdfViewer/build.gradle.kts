@@ -65,6 +65,22 @@ dependencies {
     androidTestImplementation("androidx.test.espresso:espresso-core:3.6.1")
     // ViewModel
     implementation("androidx.lifecycle:lifecycle-viewmodel-ktx:2.8.7")
+    constraints {
+        // Require lifecycle-process and lifecycle-runtime-ktx at minimum 2.8.7 so that
+        // when these artifacts appear in the consumer dependency graph, Gradle selects
+        // a version that contains the Kotlin-compiled ProcessLifecycleOwner anonymous
+        // classes. lifecycle-process 2.7+ was rewritten in Kotlin and the new
+        // anonymous-class naming ($initializationListener$1) causes NoClassDefFoundError
+        // at startup for Java consumer apps if an older version is resolved instead.
+        implementation("androidx.lifecycle:lifecycle-process") {
+            version { require("2.8.7") }
+            because("lifecycle-process 2.7+ Kotlin rewrite: anonymous class names changed; older versions cause NoClassDefFoundError in Java consumer apps")
+        }
+        implementation("androidx.lifecycle:lifecycle-runtime-ktx") {
+            version { require("2.8.7") }
+            because("align lifecycle-runtime-ktx version with lifecycle-process constraint")
+        }
+    }
     implementation("androidx.activity:activity-ktx:1.10.0")
     // compose
     implementation(platform("androidx.compose:compose-bom:2025.04.01"))
