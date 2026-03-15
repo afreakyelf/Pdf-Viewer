@@ -13,6 +13,7 @@ import android.view.animation.AccelerateDecelerateInterpolator
 import androidx.core.graphics.withTranslation
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import kotlin.math.absoluteValue
 import kotlin.math.roundToInt
 
 class PinchZoomRecyclerView @JvmOverloads constructor(
@@ -41,6 +42,9 @@ class PinchZoomRecyclerView @JvmOverloads constructor(
 
     private var zoomChangeListener: ((Boolean, Float) -> Unit)? = null
     private var zoomSettledListener: ((Float) -> Unit)? = null
+
+    /** True if the scale actually changed during the current pinch gesture; reset on each new gesture. */
+    private var scaleChangedDuringGesture = false
 
     private var anchorScale = 1f
     private var anchorFocusY = 0f
@@ -198,6 +202,7 @@ class PinchZoomRecyclerView @JvmOverloads constructor(
     private inner class ScaleListener : ScaleGestureDetector.SimpleOnScaleGestureListener() {
         override fun onScaleBegin(detector: ScaleGestureDetector): Boolean {
             isZoomingInProgress = true
+            scaleChangedDuringGesture = false  // reset for each new pinch gesture
             suppressLayout(true)
 
 
@@ -227,6 +232,7 @@ class PinchZoomRecyclerView @JvmOverloads constructor(
 
             val newScale = (scaleFactor * scaleFactorChange).coerceIn(1f, maxZoom)
             if (newScale != scaleFactor) {
+                scaleChangedDuringGesture = true
                 val focusXInContent = (detector.focusX - posX) / scaleFactor
                 val focusYInContent = (detector.focusY - posY) / scaleFactor
 
@@ -269,9 +275,11 @@ class PinchZoomRecyclerView @JvmOverloads constructor(
                 posY = 0f
                 invalidate()
 
-                // Notify after scroll is settled so visible pages can be re-rendered at the
-                // new zoom resolution.
-                zoomSettledListener?.invoke(scaleFactor)
+                // Only notify if the scale actually changed during this gesture to avoid
+                // unnecessary re-renders when the user lifts fingers without zooming.
+                if (scaleChangedDuringGesture) {
+                    zoomSettledListener?.invoke(scaleFactor)
+                }
             }
         }
 
@@ -351,6 +359,10 @@ class PinchZoomRecyclerView @JvmOverloads constructor(
      */
     private fun zoomTo(targetScale: Float, focusX: Float, focusY: Float, duration: Long) {
         val startScale = scaleFactor
+        // Skip the animation and callback when there is no effective scale change (e.g., already
+        // at max zoom when double-tapping, or already reset when resetZoom() is called). Use an
+        // epsilon to avoid spurious animations from floating-point rounding.
+        if ((targetScale - startScale).absoluteValue < 0.001f) return
         val focusXInContent = (focusX - posX) / scaleFactor
         val focusYInContent = (focusY - posY) / scaleFactor
 

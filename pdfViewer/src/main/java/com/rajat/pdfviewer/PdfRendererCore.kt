@@ -120,36 +120,55 @@ class PdfRendererCore private constructor(
 
             // Always cancel any in-progress render and start a fresh one. This is especially
             // important for zoom-triggered rebinds where the new request may be at a higher
-            // resolution than the currently running job.
-            // Safety: Kotlin coroutines guarantee that withContext(Dispatchers.Main) on a
-            // cancelled coroutine throws CancellationException without executing its block, so
-            // the cancelled job's onBitmapReady callback will never fire after cancellation.
+            // resolution than the currently running job. The cancelled job's finally block will
+            // invoke onBitmapReady(false, ...) via NonCancellable so its caller can recycle
+            // its bitmap — callers must handle success=false by recycling the pool bitmap.
             renderJobs[pageNo]?.cancel()
             renderJobs[pageNo] = launch {
                 var success = false
                 var renderedBitmap: Bitmap? = null
+                var callbackDelivered = false
 
-                renderLock.withLock {
-                    if (!isRendererOpen) return@withLock
-                    val pdfPage = openPageSafely(pageNo).takeIf { isRendererOpen } ?: return@withLock
+                try {
+                    renderLock.withLock {
+                        if (!isRendererOpen) return@withLock
+                        val pdfPage = openPageSafely(pageNo).takeIf { isRendererOpen } ?: return@withLock
 
-                    try {
-                        pdfPage.render(
-                            bitmap,
-                            null,
-                            null,
-                            PdfRenderer.Page.RENDER_MODE_FOR_DISPLAY
-                        )
-                        addBitmapToMemoryCache(pageNo, bitmap)
-                        success = true
-                        renderedBitmap = bitmap
-                    } catch (e: Exception) {
-                        Log.e(LOG_TAG, "Error rendering page $pageNo: ${e.message}", e)
+                        try {
+                            pdfPage.render(
+                                bitmap,
+                                null,
+                                null,
+                                PdfRenderer.Page.RENDER_MODE_FOR_DISPLAY
+                            )
+                            addBitmapToMemoryCache(pageNo, bitmap)
+                            success = true
+                            renderedBitmap = bitmap
+                        } catch (e: Exception) {
+                            Log.e(LOG_TAG, "Error rendering page $pageNo: ${e.message}", e)
+                        }
                     }
-                }
 
-                withContext(Dispatchers.Main) {
-                    onBitmapReady?.invoke(success, pageNo, renderedBitmap)
+                    withContext(Dispatchers.Main) {
+                        onBitmapReady?.invoke(success, pageNo, renderedBitmap)
+                    }
+                    // Mark as delivered only after withContext returns, meaning the Main-thread
+                    // block ran to completion. In a coroutine, no cancellation can sneak in
+                    // between this line and the withContext above since there is no suspension
+                    // point between them.
+                    callbackDelivered = true
+                } finally {
+                    // If this job was cancelled before the callback could fire (e.g., because a
+                    // newer render request replaced it), deliver a terminal failure callback from
+                    // a NonCancellable context so the caller can always recycle its bitmap.
+                    // This is safe even after lifecycle end: the adapter's callback only calls
+                    // BitmapPool.recycleBitmap() (always safe) and optionally updates a view
+                    // which is a no-op on an already-detached view.
+                    if (!callbackDelivered && onBitmapReady != null) {
+                        withContext(NonCancellable + Dispatchers.Main) {
+                            onBitmapReady.invoke(false, pageNo, null)
+                        }
+                    }
                 }
             }
         }
