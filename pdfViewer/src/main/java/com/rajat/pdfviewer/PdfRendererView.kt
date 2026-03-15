@@ -270,6 +270,13 @@ class PdfRendererView @JvmOverloads constructor(
             zoomListener?.onZoomChanged(isZoomedIn, scale)
         }
 
+        recyclerView.setOnZoomSettledListener {
+            // Re-bind visible items so pages are re-rendered at the new zoom resolution.
+            if (pdfRendererCoreInitialised) {
+                pdfViewAdapter.rebindVisiblePages(recyclerView)
+            }
+        }
+
         recyclerView.post {
             postInitializationAction?.invoke()
             statusListener?.onPdfRenderSuccess()
