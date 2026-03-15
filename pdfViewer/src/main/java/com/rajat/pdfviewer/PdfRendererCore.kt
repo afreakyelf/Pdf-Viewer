@@ -102,10 +102,16 @@ class PdfRendererCore private constructor(
         }
 
         scope.launch {
-            val cachedBitmap = cacheManager.getBitmapFromCache(pageNo)
-            if (cachedBitmap != null && cachedBitmap.width >= bitmap.width && cachedBitmap.height >= bitmap.height) {
-                // Cache hit with adequate resolution — return cached bitmap and recycle the unused one
-                CommonUtils.Companion.BitmapPool.recycleBitmap(bitmap)
+            // Atomically check size and fetch the cached bitmap in one call.
+            // Returns null when the page is not cached or the cached resolution is too low for
+            // the current zoom, avoiding a full bitmap decode for undersized disk entries.
+            val cachedBitmap = cacheManager.getBitmapFromCacheIfAdequate(pageNo, bitmap.width, bitmap.height)
+            if (cachedBitmap != null) {
+                // Only recycle the pre-allocated bitmap when it is a distinct instance from
+                // the cached one, so we never recycle a bitmap that is still in use.
+                if (bitmap !== cachedBitmap) {
+                    CommonUtils.Companion.BitmapPool.recycleBitmap(bitmap)
+                }
                 withContext(Dispatchers.Main) {
                     onBitmapReady?.invoke(true, pageNo, cachedBitmap)
                     Log.d(LOG_TAG, "Page $pageNo loaded from cache")

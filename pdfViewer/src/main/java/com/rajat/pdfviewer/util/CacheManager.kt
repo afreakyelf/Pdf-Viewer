@@ -9,6 +9,7 @@ import com.rajat.pdfviewer.util.CacheHelper.handleCacheStrategy
 import com.rajat.pdfviewer.util.CommonUtils.Companion.MAX_CACHED_PDFS
 import com.rajat.pdfviewer.util.FileUtils.cachedFileNameWithFormat
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.FileOutputStream
@@ -54,6 +55,36 @@ class CacheManager(
             memoryCache.put(pageNo, it)
         }
     }
+
+    /**
+     * Returns the cached [Bitmap] for [pageNo] if it exists **and** its dimensions are at least
+     * [minWidth] × [minHeight]; otherwise returns `null`. The check and fetch are performed
+     * atomically within the same coroutine context to avoid TOCTOU races. For disk-only entries
+     * a bounds-only decode is attempted first so that no pixel data is allocated for entries that
+     * are too small for the current zoom level.
+     */
+    suspend fun getBitmapFromCacheIfAdequate(pageNo: Int, minWidth: Int, minHeight: Int): Bitmap? =
+        withContext(Dispatchers.IO) {
+            // Memory cache: size check directly on the live bitmap — no decode needed.
+            memoryCache.get(pageNo)?.let { cached ->
+                if (cached.width >= minWidth && cached.height >= minHeight) return@withContext cached
+                else return@withContext null
+            }
+            if (cacheStrategy == CacheStrategy.DISABLE_CACHE) return@withContext null
+
+            // Disk cache: check bounds first to avoid a full decode for undersized entries.
+            ensureActive()
+            val file = File(cacheDir, cachedFileNameWithFormat(pageNo))
+            if (!file.exists()) return@withContext null
+
+            val opts = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+            BitmapFactory.decodeFile(file.absolutePath, opts)
+            if (opts.outWidth < minWidth || opts.outHeight < minHeight) return@withContext null
+
+            // Dimensions are adequate — do the full decode.
+            ensureActive()
+            decodeBitmapFromDiskCache(pageNo)?.also { memoryCache.put(pageNo, it) }
+        }
 
     private fun decodeBitmapFromDiskCache(pageNo: Int): Bitmap? {
         val file = File(cacheDir, cachedFileNameWithFormat(pageNo))
