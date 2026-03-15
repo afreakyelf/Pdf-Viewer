@@ -60,8 +60,10 @@ internal class PdfViewAdapter(
             hasRealBitmap = false
             scope = MainScope()
 
-            val displayWidth = itemBinding.pageView.width.takeIf { it > 0 }
+            val zoomScale = parentView.getZoomScale()
+            val baseWidth = itemBinding.pageView.width.takeIf { it > 0 }
                 ?: context.resources.displayMetrics.widthPixels
+            val displayWidth = (baseWidth * zoomScale).toInt()
 
             itemBinding.pageView.setImageBitmap(null)
 
@@ -77,7 +79,12 @@ internal class PdfViewAdapter(
                     renderer.getBitmapFromCache(position)
                 }
 
-                if (cached != null && currentBoundPage == position) {
+                // Use the cached bitmap if its width is adequate for the current zoom level.
+                // Height is not checked here because renderHeight is computed asynchronously
+                // (inside getPageDimensionsAsync) and is not yet known; for any given PDF page
+                // the aspect ratio is fixed, so width alone determines whether the cached
+                // resolution is sufficient for the requested zoom.
+                if (cached != null && cached.width >= displayWidth && currentBoundPage == position) {
                     if (DEBUG_LOGS_ENABLED) Log.d("PdfViewAdapter", "✅ Loaded page $position from cache")
                     itemBinding.pageView.setImageBitmap(cached)
                     hasRealBitmap = true
@@ -90,10 +97,11 @@ internal class PdfViewAdapter(
                     if (currentBoundPage != position) return@getPageDimensionsAsync
 
                     val aspectRatio = size.width.toFloat() / size.height.toFloat()
-                    val height = (displayWidth / aspectRatio).toInt()
-                    itemBinding.updateLayoutParams(height)
+                    val layoutHeight = (baseWidth / aspectRatio).toInt()
+                    itemBinding.updateLayoutParams(layoutHeight)
 
-                    renderAndApplyBitmap(position, displayWidth, height)
+                    val renderHeight = (displayWidth / aspectRatio).toInt()
+                    renderAndApplyBitmap(position, displayWidth, renderHeight)
                 }
             }
 
