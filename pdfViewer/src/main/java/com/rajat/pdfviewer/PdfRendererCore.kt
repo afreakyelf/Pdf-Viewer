@@ -46,6 +46,14 @@ class PdfRendererCore private constructor(
         var enableDebugMetrics: Boolean = true
         const val prefetchDistance: Int = 2
 
+        /**
+         * Creates a [PdfRendererCore] instance from an already-opened [fileDescriptor].
+         *
+         * **FD ownership contract**: on success the returned [PdfRendererCore] owns the
+         * [fileDescriptor] and will close it when [closePdfRender] is called. On failure
+         * (i.e. this function throws) the [fileDescriptor] is *not* closed — the caller is
+         * responsible for closing it in its error path.
+         */
         suspend fun create(
             context: Context,
             fileDescriptor: ParcelFileDescriptor,

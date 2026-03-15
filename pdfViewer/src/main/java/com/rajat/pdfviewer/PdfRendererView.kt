@@ -155,15 +155,18 @@ class PdfRendererView @JvmOverloads constructor(
         // Notify loading started
         statusListener?.onPdfRenderStart()
         viewScope.launch {
+            var fileDescriptor: ParcelFileDescriptor? = null
             try {
-                val fileDescriptor = PdfRendererCore.getFileDescriptor(file)
+                fileDescriptor = PdfRendererCore.getFileDescriptor(file)
                 val renderer =
                     PdfRendererCore.create(context, fileDescriptor, cacheIdentifier, cacheStrategy)
+                fileDescriptor = null // ownership transferred to PdfRendererCore
                 withContext(Dispatchers.Main) {
                     initializeRenderer(renderer)
                     statusListener?.onPdfLoadSuccess(file.absolutePath)
                 }
             } catch (e: Exception) {
+                fileDescriptor?.close()
                 withContext(Dispatchers.Main) {
                     statusListener?.onError(e)
                 }
@@ -182,16 +185,19 @@ class PdfRendererView @JvmOverloads constructor(
         statusListener?.onPdfRenderStart()
 
         viewScope.launch {
+            var fileDescriptor: ParcelFileDescriptor? = null
             try {
-                val fileDescriptor = context.contentResolver.openFileDescriptor(uri, "r")
+                fileDescriptor = context.contentResolver.openFileDescriptor(uri, "r")
                     ?: throw IllegalArgumentException("Failed to open file descriptor — verify URI is valid and app has read permission")
                 val renderer =
                     PdfRendererCore.create(context, fileDescriptor, cacheIdentifier, cacheStrategy)
+                fileDescriptor = null // ownership transferred to PdfRendererCore
                 withContext(Dispatchers.Main) {
                     initializeRenderer(renderer)
                     statusListener?.onPdfLoadSuccess("uri:$uri")
                 }
             } catch (e: Exception) {
+                fileDescriptor?.close()
                 withContext(Dispatchers.Main) {
                     statusListener?.onError(e)
                 }
