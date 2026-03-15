@@ -71,6 +71,52 @@ dependencies {
 - Minimum SDK version: 21
 - Compile & Target SDK version: 35 (updated since version 2.2.0)
 
+### Java App Integration
+
+If your Android app is written in **Java** (not Kotlin), you must add the following additional
+dependencies to avoid a `NoClassDefFoundError` crash at startup caused by Kotlin-compiled
+AndroidX lifecycle classes:
+
+#### Groovy DSL
+```gradle
+dependencies {
+    implementation 'io.github.afreakyelf:Pdf-Viewer:latest-version'
+
+    // Required for Java apps — lifecycle-process 2.7+ is rewritten in Kotlin and
+    // generates anonymous classes (e.g. ProcessLifecycleOwner$initializationListener$1)
+    // that must be explicitly available at runtime.
+    implementation 'androidx.lifecycle:lifecycle-process:2.8.7'
+    implementation 'androidx.lifecycle:lifecycle-runtime-ktx:2.8.7'
+
+    // Kotlin standard library — required as a transitive runtime dependency
+    // when using Kotlin-based libraries from a Java project.
+    implementation 'org.jetbrains.kotlin:kotlin-stdlib:2.1.20'
+}
+```
+
+#### Kotlin DSL
+```gradle
+dependencies {
+    implementation("io.github.afreakyelf:Pdf-Viewer:latest-version")
+
+    // Required for Java apps — lifecycle-process 2.7+ is rewritten in Kotlin and
+    // generates anonymous classes (e.g. ProcessLifecycleOwner$initializationListener$1)
+    // that must be explicitly available at runtime.
+    implementation("androidx.lifecycle:lifecycle-process:2.8.7")
+    implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.8.7")
+
+    // Kotlin standard library — required as a transitive runtime dependency
+    // when using Kotlin-based libraries from a Java project.
+    implementation("org.jetbrains.kotlin:kotlin-stdlib:2.1.20")
+}
+```
+
+> **Note:** If you are seeing the error
+> `java.lang.NoClassDefFoundError: Failed resolution of: Landroidx/lifecycle/ProcessLifecycleOwner$initializationListener$1`
+> in your Java app after adding this library, ensure the above dependencies are present in your
+> `build.gradle`. This is a known compatibility requirement when using Kotlin lifecycle libraries
+> from Java projects.
+
 ## How to use the library?
 Now you have integrated the library in your project but **how do you use it**? Well it's really easy. Just launch the intent with in following way: (Refer to [MainActivity.kt](https://github.com/afreakyelf/Pdf-Viewer/blob/master/app/src/main/java/com/rajat/sample/pdfviewer/MainActivity.kt) for more details.)
 

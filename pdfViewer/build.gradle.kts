@@ -65,6 +65,11 @@ dependencies {
     androidTestImplementation("androidx.test.espresso:espresso-core:3.6.1")
     // ViewModel
     implementation("androidx.lifecycle:lifecycle-viewmodel-ktx:2.8.7")
+    // Explicitly depend on lifecycle-process to ensure the Kotlin-compiled
+    // ProcessLifecycleOwner (and its anonymous classes) are included in the
+    // consumer APK, fixing NoClassDefFoundError on startup for Java-based apps.
+    implementation("androidx.lifecycle:lifecycle-process:2.8.7")
+    implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.8.7")
     implementation("androidx.activity:activity-ktx:1.10.0")
     // compose
     implementation(platform("androidx.compose:compose-bom:2025.04.01"))
