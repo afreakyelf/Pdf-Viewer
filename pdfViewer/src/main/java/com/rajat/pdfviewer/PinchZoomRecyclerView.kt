@@ -303,34 +303,60 @@ class PinchZoomRecyclerView @JvmOverloads constructor(
             zoomTo(targetScale, e.x, e.y, zoomDuration)
             return true
         }
+    }
 
-        /**
-         * Animates a zoom operation centered on the provided focus point.
-         */
-        private fun zoomTo(targetScale: Float, focusX: Float, focusY: Float, duration: Long) {
-            val startScale = scaleFactor
-            val focusXInContent = (focusX - posX) / scaleFactor
-            val focusYInContent = (focusY - posY) / scaleFactor
+    /**
+     * Zooms in on the current content.
+     */
+    fun zoomIn() {
+        if (!isZoomEnabled) return
+        val targetScale = (scaleFactor + 0.5f).coerceAtMost(maxZoom)
+        zoomTo(targetScale, width / 2f, height / 2f, zoomDuration)
+    }
 
-            ValueAnimator.ofFloat(0f, 1f).apply {
-                this.duration = duration
-                interpolator = AccelerateDecelerateInterpolator()
-                addUpdateListener { animator ->
-                    val fraction = animator.animatedValue as Float
-                    val scale = startScale + (targetScale - startScale) * fraction
-                    scaleFactor = scale
+    /**
+     * Zooms out on the current content.
+     */
+    fun zoomOut() {
+        if (!isZoomEnabled) return
+        val targetScale = (scaleFactor - 0.5f).coerceAtLeast(1f)
+        zoomTo(targetScale, width / 2f, height / 2f, zoomDuration)
+    }
 
-                    posX = focusX - focusXInContent * scaleFactor
-                    posY = focusY - focusYInContent * scaleFactor
+    /**
+     * Resets the zoom level to 1.0.
+     */
+    fun resetZoom() {
+        if (!isZoomEnabled) return
+        zoomTo(1f, width / 2f, height / 2f, zoomDuration)
+    }
 
-                    clampPosition()
-                    invalidate()
-                    awakenScrollBars()
+    /**
+     * Animates a zoom operation centered on the provided focus point.
+     */
+    private fun zoomTo(targetScale: Float, focusX: Float, focusY: Float, duration: Long) {
+        val startScale = scaleFactor
+        val focusXInContent = (focusX - posX) / scaleFactor
+        val focusYInContent = (focusY - posY) / scaleFactor
 
-                    zoomChangeListener?.invoke(isZoomedIn(), scaleFactor)
-                }
-                start()
+        ValueAnimator.ofFloat(0f, 1f).apply {
+            this.duration = duration
+            interpolator = AccelerateDecelerateInterpolator()
+            addUpdateListener { animator ->
+                val fraction = animator.animatedValue as Float
+                val scale = startScale + (targetScale - startScale) * fraction
+                scaleFactor = scale
+
+                posX = focusX - focusXInContent * scaleFactor
+                posY = focusY - focusYInContent * scaleFactor
+
+                clampPosition()
+                invalidate()
+                awakenScrollBars()
+
+                zoomChangeListener?.invoke(isZoomedIn(), scaleFactor)
             }
+            start()
         }
     }
 

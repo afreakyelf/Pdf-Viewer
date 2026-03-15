@@ -420,6 +420,33 @@ class PdfRendererView @JvmOverloads constructor(
         return isZoomEnabled
     }
 
+    /**
+     * Zooms in on the current content.
+     */
+    fun zoomIn() {
+        if (this::recyclerView.isInitialized) {
+            recyclerView.zoomIn()
+        }
+    }
+
+    /**
+     * Zooms out on the current content.
+     */
+    fun zoomOut() {
+        if (this::recyclerView.isInitialized) {
+            recyclerView.zoomOut()
+        }
+    }
+
+    /**
+     * Resets the zoom level to 1.0.
+     */
+    fun resetZoom() {
+        if (this::recyclerView.isInitialized) {
+            recyclerView.resetZoom()
+        }
+    }
+
     private fun preloadCacheIntoMemory() {
         viewScope.launch {
             pdfRendererCore.let { renderer ->
