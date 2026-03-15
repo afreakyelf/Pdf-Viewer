@@ -77,6 +77,19 @@
         android:layout_marginHorizontal="16dp"
         android:layout_marginTop="8dp"/>
 
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/openBottomSheetCompose"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:text="Compose Bottom Sheet"
+        style="@style/Widget.Material3.Button"
+        app:cornerRadius="12dp"
+        app:layout_constraintTop_toBottomOf="@id/showInView"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        android:layout_marginHorizontal="16dp"
+        android:layout_marginTop="8dp"/>
+
     <!-- PDF Viewer Section -->
     <com.rajat.pdfviewer.PdfRendererView
         android:id="@+id/pdfView"
@@ -84,7 +97,7 @@
         android:layout_height="0dp"
         app:pdfView_showDivider="true"
         app:pdfView_enableZoom="true"
-        app:layout_constraintTop_toBottomOf="@id/showInView"
+        app:layout_constraintTop_toBottomOf="@id/openBottomSheetCompose"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintBottom_toBottomOf="parent"

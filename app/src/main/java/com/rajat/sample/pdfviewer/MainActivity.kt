@@ -76,6 +76,10 @@ class MainActivity : AppCompatActivity() {
         binding.openInCompose.setOnClickListener {
             startActivity(Intent(this, ComposeActivity::class.java))
         }
+
+        binding.openBottomSheetCompose.setOnClickListener {
+            startActivity(Intent(this, BottomSheetComposeActivity::class.java))
+        }
     }
 
     /**

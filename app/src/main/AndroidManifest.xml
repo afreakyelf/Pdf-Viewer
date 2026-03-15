@@ -17,6 +17,10 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.MyApp">
         <activity
+            android:name=".BottomSheetComposeActivity"
+            android:exported="false"
+            android:theme="@style/Theme.MyApp" />
+        <activity
             android:name=".ComposeActivity"
             android:exported="false"
             android:label="@string/title_activity_compose"

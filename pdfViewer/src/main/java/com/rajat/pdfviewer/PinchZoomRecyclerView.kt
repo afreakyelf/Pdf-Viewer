@@ -104,12 +104,18 @@ class PinchZoomRecyclerView @JvmOverloads constructor(
 
         when (ev.actionMasked) {
             MotionEvent.ACTION_DOWN -> {
+                if (isVerticallyScrollable() || scaleFactor > 1f) {
+                    parent?.requestDisallowInterceptTouchEvent(true)
+                }
                 lastTouchX = ev.x
                 lastTouchY = ev.y
                 activePointerId = ev.getPointerId(0)
             }
 
             MotionEvent.ACTION_MOVE -> {
+                if (isVerticallyScrollable() || scaleFactor > 1f) {
+                    parent?.requestDisallowInterceptTouchEvent(true)
+                }
                 if (!scaleDetector.isInProgress && scaleFactor > 1f) {
                     val pointerIndex = ev.findPointerIndex(activePointerId)
                     if (pointerIndex != -1) {
@@ -139,6 +145,12 @@ class PinchZoomRecyclerView @JvmOverloads constructor(
             }
 
             MotionEvent.ACTION_CANCEL -> {
+                parent?.requestDisallowInterceptTouchEvent(false)
+                activePointerId = INVALID_POINTER_ID
+            }
+
+            MotionEvent.ACTION_UP -> {
+                parent?.requestDisallowInterceptTouchEvent(false)
                 activePointerId = INVALID_POINTER_ID
             }
         }
@@ -171,10 +183,15 @@ class PinchZoomRecyclerView @JvmOverloads constructor(
     }
 
     /**
-     * Allow vertical scroll only when zoomed in.
+     * Report vertical scrollability whenever the underlying document can move.
+     * Nested-scroll parents such as Compose bottom sheets rely on this signal to
+     * decide whether the PDF view should consume drag gestures.
      */
     override fun canScrollVertically(direction: Int): Boolean {
-        return scaleFactor > 1f && super.canScrollVertically(direction)
+        if (scaleFactor > 1f) {
+            return super.canScrollVertically(direction)
+        }
+        return !isSinglePage() && super.canScrollVertically(direction)
     }
 
     /**

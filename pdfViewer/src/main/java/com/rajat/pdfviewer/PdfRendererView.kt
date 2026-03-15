@@ -549,6 +549,14 @@ class PdfRendererView @JvmOverloads constructor(
         }
     }
 
+    override fun canScrollVertically(direction: Int): Boolean {
+        return if (this::recyclerView.isInitialized) {
+            recyclerView.canScrollVertically(direction)
+        } else {
+            super.canScrollVertically(direction)
+        }
+    }
+
     override fun onDetachedFromWindow() {
         super.onDetachedFromWindow()
         // Temporary detaches happen inside ViewPager/ViewPager2 tabs.
