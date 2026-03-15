@@ -75,7 +75,7 @@ class PdfRendererView @JvmOverloads constructor(
     // region Lifecycle + Async
     private var postInitializationAction: (() -> Unit)? = null
     private var viewJob = SupervisorJob()
-    private val viewScope = CoroutineScope(viewJob + Dispatchers.IO)
+    private var viewScope = CoroutineScope(viewJob + Dispatchers.IO)
     // endregion
 
     var zoomListener: ZoomListener? = null
@@ -210,7 +210,7 @@ class PdfRendererView @JvmOverloads constructor(
     private fun initializeRenderer(renderer: PdfRendererCore) {
         // If re-initializing, clear old views & adapter
         if (pdfRendererCoreInitialised) {
-            viewJob.cancel()
+            resetViewScope()
             removeAllViews()
             if (this::recyclerView.isInitialized) {
                 recyclerView.adapter = null
@@ -468,6 +468,7 @@ class PdfRendererView @JvmOverloads constructor(
             pdfRendererCore.closePdfRender()
             pdfRendererCoreInitialised = false
         }
+        resetViewScope()
     }
 
     private suspend fun getBitmapByPage(page: Int): Bitmap? {
@@ -550,12 +551,14 @@ class PdfRendererView @JvmOverloads constructor(
 
     override fun onDetachedFromWindow() {
         super.onDetachedFromWindow()
+        // Temporary detaches happen inside ViewPager/ViewPager2 tabs.
+        // Keep the renderer and adapter intact so the view can display again when reattached.
+    }
+
+    private fun resetViewScope() {
         viewJob.cancel()
-        // Clear adapter to release ViewHolders
-        if (this::recyclerView.isInitialized) {
-            recyclerView.adapter = null
-        }
-        closePdfRender()
+        viewJob = SupervisorJob()
+        viewScope = CoroutineScope(viewJob + Dispatchers.IO)
     }
 
     override fun onSaveInstanceState(): Parcelable {

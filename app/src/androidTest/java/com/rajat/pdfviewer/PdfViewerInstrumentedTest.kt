@@ -5,6 +5,7 @@ import android.view.View
 import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.RecyclerView
 import androidx.test.core.app.ActivityScenario
+import androidx.test.platform.app.InstrumentationRegistry
 import androidx.test.espresso.Espresso.onView
 import androidx.test.espresso.action.ViewActions.click
 import androidx.test.espresso.assertion.ViewAssertions.matches
@@ -15,8 +16,10 @@ import androidx.test.espresso.matcher.ViewMatchers.withText
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.filters.LargeTest
 import com.rajat.pdfviewer.util.saveTo
+import com.rajat.sample.pdfviewer.ViewPagerPdfTestActivity
 import junit.framework.TestCase.assertEquals
 import kotlinx.coroutines.runBlocking
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -224,5 +227,56 @@ class PdfViewerInstrumentedTest : BasePdfViewerTest() {
 
             onView(withId(R.id.progressBar)).check(matches(isDisplayed()))
         }
+    }
+
+    @Test
+    fun test_pdf_renderer_view_survives_view_pager_detach_and_reattach() {
+        ActivityScenario.launch(ViewPagerPdfTestActivity::class.java).use { scenario ->
+            waitForCondition {
+                var rendered = false
+                scenario.onActivity { activity ->
+                    rendered = activity.renderSucceeded && activity.hasAttachedPdfContent()
+                }
+                rendered
+            }
+
+            scenario.onActivity { activity ->
+                activity.viewPager.currentItem = 2
+            }
+            InstrumentationRegistry.getInstrumentation().waitForIdleSync()
+
+            scenario.onActivity { activity ->
+                activity.viewPager.currentItem = 0
+            }
+            InstrumentationRegistry.getInstrumentation().waitForIdleSync()
+
+            waitForCondition {
+                var hasContent = false
+                scenario.onActivity { activity ->
+                    hasContent = activity.hasAttachedPdfContent()
+                }
+                hasContent
+            }
+
+            scenario.onActivity { activity ->
+                assertTrue("PDF render should still be marked successful", activity.renderSucceeded)
+                assertNotNull("RecyclerView adapter should remain attached after reattach", activity.pdfView.recyclerView.adapter)
+                assertTrue("PDF view should keep child content after reattach", activity.hasAttachedPdfContent())
+            }
+        }
+    }
+
+    private fun waitForCondition(
+        timeoutMs: Long = 10_000,
+        intervalMs: Long = 100,
+        condition: () -> Boolean
+    ) {
+        val deadline = System.currentTimeMillis() + timeoutMs
+        while (System.currentTimeMillis() < deadline) {
+            InstrumentationRegistry.getInstrumentation().waitForIdleSync()
+            if (condition()) return
+            Thread.sleep(intervalMs)
+        }
+        assertTrue("Condition not met within ${timeoutMs}ms", condition())
     }
 }
