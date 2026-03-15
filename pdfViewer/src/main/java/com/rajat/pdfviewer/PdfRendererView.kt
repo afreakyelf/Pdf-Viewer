@@ -534,6 +534,7 @@ class PdfRendererView @JvmOverloads constructor(
 
     override fun onDetachedFromWindow() {
         super.onDetachedFromWindow()
+        viewJob.cancel()
         // Clear adapter to release ViewHolders
         if (this::recyclerView.isInitialized) {
             recyclerView.adapter = null

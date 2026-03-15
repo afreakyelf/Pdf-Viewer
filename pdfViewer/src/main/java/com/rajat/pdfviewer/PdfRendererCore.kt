@@ -12,6 +12,8 @@ import com.rajat.pdfviewer.util.CacheManager
 import com.rajat.pdfviewer.util.CacheStrategy
 import com.rajat.pdfviewer.util.CommonUtils
 import kotlinx.coroutines.*
+import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import java.io.File
@@ -292,6 +294,7 @@ class PdfRendererCore private constructor(
     private suspend fun <T> withPdfPage(pageNo: Int, block: (PdfRenderer.Page) -> T): T? =
         withContext(Dispatchers.IO) {
             renderLock.withLock {
+                coroutineContext.ensureActive()
                 if (!isRendererOpen) return@withContext null
                 if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
                     closeAllOpenPages()
@@ -353,14 +356,21 @@ class PdfRendererCore private constructor(
         Log.d(LOG_TAG, "Closing PdfRenderer and releasing resources.")
 
         scope.coroutineContext.cancelChildren()
-        closeAllOpenPages()
 
-        runCatching { pdfRenderer.close() }
-            .onFailure { Log.e(LOG_TAG, "Error closing PdfRenderer: ${it.message}", it) }
+        runBlocking {
+            renderLock.withLock {
+                if (!isRendererOpen) return@withLock
 
-        runCatching { fileDescriptor.close() }
-            .onFailure { Log.e(LOG_TAG, "Error closing file descriptor: ${it.message}", it) }
+                // Flip the guard before closing native objects so any pending work bails out.
+                isRendererOpen = false
+                closeAllOpenPages()
 
-        isRendererOpen = false
+                runCatching { pdfRenderer.close() }
+                    .onFailure { Log.e(LOG_TAG, "Error closing PdfRenderer: ${it.message}", it) }
+
+                runCatching { fileDescriptor.close() }
+                    .onFailure { Log.e(LOG_TAG, "Error closing file descriptor: ${it.message}", it) }
+            }
+        }
     }
 }
