@@ -267,6 +267,17 @@ binding.pdfView.statusListener = object : PdfRendererView.StatusCallBack {
 }
 ```
 
+#### Page-level Navigation
+Use `jumpToPage(pageNumber)` to go directly to a specific page (0-based index). For floating "Next"/"Previous" buttons — especially in landscape mode where a page can be taller than the screen — prefer the smart scroll helpers that scroll within the current page first and only advance to the next page once the bottom (or top) of the current page is reached:
+
+```kotlin
+// Scroll down within the current page; go to next page when at the bottom.
+nextButton.setOnClickListener { binding.pdfView.scrollToNextPage() }
+
+// Scroll up within the current page; go to previous page when at the top.
+prevButton.setOnClickListener { binding.pdfView.scrollToPreviousPage() }
+```
+
 #### Zoom Change Listener
 You can also monitor when the user zooms in or out using `zoomListener`:
 

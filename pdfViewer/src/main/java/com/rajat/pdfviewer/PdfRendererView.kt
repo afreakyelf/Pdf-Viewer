@@ -293,6 +293,66 @@ class PdfRendererView @JvmOverloads constructor(
     }
 
     /**
+     * Scrolls down by one viewport height if the current page extends below the visible area,
+     * otherwise jumps to the next page.
+     *
+     * This is especially useful in landscape mode where a page may be taller than the screen,
+     * allowing the user to scroll through the current page before advancing to the next one.
+     *
+     * Must be called on the main thread, after the PDF has been loaded and the view is attached.
+     */
+    fun scrollToNextPage() {
+        if (!::recyclerView.isInitialized) return
+        val layoutManager = recyclerView.layoutManager as? LinearLayoutManager ?: return
+        val firstVisiblePosition = layoutManager.findFirstVisibleItemPosition()
+        if (firstVisiblePosition == NO_POSITION) return
+        val firstView = layoutManager.findViewByPosition(firstVisiblePosition) ?: return
+        // PinchZoomRecyclerView scales via canvas; layout coords are unscaled.
+        // Derive the viewport height in unscaled layout-px so both the boundary
+        // check and the scroll delta operate in the same coordinate space.
+        val scale = recyclerView.getZoomScale()
+        val unscaledViewportHeight = (recyclerView.height / scale).toInt()
+        val remaining = layoutManager.getDecoratedBottom(firstView) - unscaledViewportHeight
+        if (remaining > 0) {
+            // Clamp to the remaining distance so we never scroll past the page bottom.
+            val delta = minOf(unscaledViewportHeight, remaining)
+            recyclerView.smoothScrollBy(0, delta)
+        } else {
+            jumpToPage(firstVisiblePosition + 1)
+        }
+    }
+
+    /**
+     * Scrolls up by one viewport height if there is content above the current scroll position,
+     * otherwise jumps to the previous page.
+     *
+     * This is especially useful in landscape mode where a page may be taller than the screen,
+     * allowing the user to scroll back through the current page before going to the previous one.
+     *
+     * Must be called on the main thread, after the PDF has been loaded and the view is attached.
+     */
+    fun scrollToPreviousPage() {
+        if (!::recyclerView.isInitialized) return
+        val layoutManager = recyclerView.layoutManager as? LinearLayoutManager ?: return
+        val firstVisiblePosition = layoutManager.findFirstVisibleItemPosition()
+        if (firstVisiblePosition == NO_POSITION) return
+        val firstView = layoutManager.findViewByPosition(firstVisiblePosition) ?: return
+        // getDecoratedTop is negative when content is scrolled above the viewport.
+        // Derive an unscaled viewport height so the scroll delta matches the
+        // zoom-adjusted coordinate space used by the layout manager.
+        val scale = recyclerView.getZoomScale()
+        val unscaledViewportHeight = (recyclerView.height / scale).toInt()
+        val hiddenAbove = -layoutManager.getDecoratedTop(firstView)
+        if (hiddenAbove > 0) {
+            // Clamp to the hidden distance so we never scroll past the page top.
+            val delta = minOf(unscaledViewportHeight, hiddenAbove)
+            recyclerView.smoothScrollBy(0, -delta)
+        } else {
+            jumpToPage(firstVisiblePosition - 1)
+        }
+    }
+
+    /**
      * Scrolls the RecyclerView to the specified PDF page.
      *
      * @param pageNumber The page number to scroll to (0-based).
