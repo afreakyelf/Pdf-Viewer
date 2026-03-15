@@ -67,6 +67,7 @@ class PdfRendererView @JvmOverloads constructor(
     // region Flags
     private var showDivider = true
     private var isZoomEnabled = true
+    private var maxZoomScale = DEFAULT_MAX_ZOOM
     private var enableLoadingForPages = false
     private var disableScreenshots = false
     // endregion
@@ -246,6 +247,7 @@ class PdfRendererView @JvmOverloads constructor(
                 }.let { addItemDecoration(it) }
             }
             setZoomEnabled(isZoomEnabled)
+            setMaxZoomScale(maxZoomScale)
         }
 
         recyclerView.addOnScrollListener(
@@ -422,6 +424,8 @@ class PdfRendererView @JvmOverloads constructor(
         disableScreenshots =
             typedArray.getBoolean(R.styleable.PdfRendererView_pdfView_disableScreenshots, false)
         isZoomEnabled = typedArray.getBoolean(R.styleable.PdfRendererView_pdfView_enableZoom, true)
+        maxZoomScale = typedArray.getFloat(R.styleable.PdfRendererView_pdfView_maxZoom, DEFAULT_MAX_ZOOM)
+            .coerceIn(1f, MAX_ALLOWED_ZOOM)
 
         // Fetch all margin values efficiently
         val marginDim =
@@ -488,7 +492,19 @@ class PdfRendererView @JvmOverloads constructor(
      */
     fun setZoomEnabled(zoomEnabled: Boolean) {
         isZoomEnabled = zoomEnabled
+        if (this::recyclerView.isInitialized) {
+            recyclerView.setZoomEnabled(zoomEnabled)
+        }
     }
+
+    fun setMaxZoomScale(maxZoomScale: Float) {
+        this.maxZoomScale = maxZoomScale.coerceIn(1f, MAX_ALLOWED_ZOOM)
+        if (this::recyclerView.isInitialized) {
+            recyclerView.setMaxZoomScale(this.maxZoomScale)
+        }
+    }
+
+    fun getMaxZoomScale(): Float = maxZoomScale
 
     @TestOnly
     fun getZoomEnabled(): Boolean {
@@ -591,5 +607,10 @@ class PdfRendererView @JvmOverloads constructor(
 
     interface ZoomListener {
         fun onZoomChanged(isZoomedIn: Boolean, scale: Float)
+    }
+
+    companion object {
+        private const val DEFAULT_MAX_ZOOM = 3.0f
+        private const val MAX_ALLOWED_ZOOM = 5.0f
     }
 }

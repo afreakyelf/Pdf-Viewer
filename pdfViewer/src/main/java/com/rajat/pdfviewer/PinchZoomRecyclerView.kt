@@ -64,6 +64,17 @@ class PinchZoomRecyclerView @JvmOverloads constructor(
 
     fun getZoomScale(): Float = scaleFactor
 
+    fun getMaxZoomScale(): Float = maxZoom
+
+    fun setMaxZoomScale(maxZoomScale: Float) {
+        maxZoom = maxZoomScale.coerceIn(1f, HARD_MAX_ZOOM)
+        if (scaleFactor > maxZoom) {
+            scaleFactor = maxZoom
+            clampPosition()
+            invalidate()
+            zoomChangeListener?.invoke(isZoomedIn(), scaleFactor)
+        }
+    }
     fun setOnZoomChangeListener(listener: (isZoomedIn: Boolean, scale: Float) -> Unit) {
         zoomChangeListener = listener
     }
@@ -395,6 +406,7 @@ class PinchZoomRecyclerView @JvmOverloads constructor(
     companion object {
         private const val INVALID_POINTER_ID = -1
         private const val MAX_ZOOM = 3.0f
+        private const val HARD_MAX_ZOOM = 5.0f
         private const val ZOOM_DURATION = 300L
     }
 }

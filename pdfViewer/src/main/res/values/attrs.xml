@@ -18,6 +18,7 @@
         <attr name="pdfView_progressBar" format="reference"/>
         <attr name="pdfView_backgroundColor" format="reference|color"/>
         <attr name="pdfView_enableZoom" format="boolean" />
+        <attr name="pdfView_maxZoom" format="float" />
     </declare-styleable>
 
     <declare-styleable name="PdfRendererView_Strings">

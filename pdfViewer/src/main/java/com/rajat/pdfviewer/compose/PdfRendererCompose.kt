@@ -25,6 +25,7 @@ fun PdfRendererViewCompose(
     modifier: Modifier = Modifier,
     headers: HeaderData = HeaderData(),
     cacheStrategy: CacheStrategy = CacheStrategy.MAXIMIZE_PERFORMANCE,
+    maxZoomScale: Float = 3.0f,
     lifecycleOwner: LifecycleOwner = LocalLifecycleOwner.current,
     jumpToPage: Int? = null,
     statusCallBack: PdfRendererView.StatusCallBack? = null,
@@ -83,12 +84,14 @@ fun PdfRendererViewCompose(
             PdfRendererView(ctx).also { view ->
                 view.statusListener = combinedCallback
                 view.zoomListener = zoomListener
+                view.setMaxZoomScale(maxZoomScale)
                 pdfViewRef.value = view
             }
         },
         update = { view ->
             view.statusListener = combinedCallback
             view.zoomListener = zoomListener
+            view.setMaxZoomScale(maxZoomScale)
 
             if (!hasInit) {
                 when {
