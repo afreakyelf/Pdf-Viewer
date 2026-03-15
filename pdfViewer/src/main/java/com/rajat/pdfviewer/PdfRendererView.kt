@@ -23,6 +23,7 @@ import androidx.recyclerview.widget.DividerItemDecoration
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import androidx.recyclerview.widget.RecyclerView.NO_POSITION
+import com.rajat.pdfviewer.util.CacheHelper
 import com.rajat.pdfviewer.util.CacheManager
 import com.rajat.pdfviewer.util.CacheStrategy
 import kotlinx.coroutines.CoroutineScope
@@ -149,7 +150,7 @@ class PdfRendererView @JvmOverloads constructor(
      */
     fun initWithFile(file: File, cacheStrategy: CacheStrategy = CacheStrategy.MAXIMIZE_PERFORMANCE) {
         this.cacheStrategy = cacheStrategy
-        val cacheIdentifier = file.name
+        val cacheIdentifier = CacheHelper.getCacheKey(file.absolutePath)
 
         // Notify loading started
         statusListener?.onPdfRenderStart()
@@ -176,7 +177,7 @@ class PdfRendererView @JvmOverloads constructor(
      * @param uri The Uri to the PDF file.
      */
     fun initWithUri(uri: Uri) {
-        val cacheIdentifier = uri.toString().hashCode().toString()
+        val cacheIdentifier = CacheHelper.getCacheKey(uri.toString())
 
         statusListener?.onPdfRenderStart()
 

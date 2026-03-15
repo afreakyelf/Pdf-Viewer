@@ -7,6 +7,7 @@ import android.os.Build
 import android.os.ParcelFileDescriptor
 import android.util.Log
 import android.util.Size
+import com.rajat.pdfviewer.util.CacheHelper
 import com.rajat.pdfviewer.util.CacheManager
 import com.rajat.pdfviewer.util.CacheStrategy
 import com.rajat.pdfviewer.util.CommonUtils
@@ -63,7 +64,14 @@ class PdfRendererCore private constructor(
             return ParcelFileDescriptor.open(safeFile, ParcelFileDescriptor.MODE_READ_ONLY)
         }
 
-        fun getCacheIdentifierFromFile(file: File): String = file.name.toString()
+        @Deprecated(
+            message = "Use CacheHelper.getCacheKey(file.absolutePath) directly.",
+            replaceWith = ReplaceWith(
+                "CacheHelper.getCacheKey(file.absolutePath)",
+                "com.rajat.pdfviewer.util.CacheHelper"
+            )
+        )
+        fun getCacheIdentifierFromFile(file: File): String = CacheHelper.getCacheKey(file.absolutePath)
 
         private fun sanitizeFilePath(filePath: String): String {
             return try {
