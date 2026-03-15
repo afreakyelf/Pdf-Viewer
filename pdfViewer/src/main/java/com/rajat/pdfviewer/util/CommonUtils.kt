@@ -28,6 +28,7 @@ class CommonUtils {
                         val bitmap = iterator.next()
                         if (!bitmap.isRecycled && bitmap.width == width && bitmap.height == height && bitmap.config == config) {
                             iterator.remove()
+                            bitmap.eraseColor(0)
                             return bitmap
                         }
                     }

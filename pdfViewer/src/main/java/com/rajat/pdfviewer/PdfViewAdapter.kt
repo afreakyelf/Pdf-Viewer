@@ -49,6 +49,8 @@ internal class PdfViewAdapter(
 
         private var currentBoundPage: Int = -1
         private var hasRealBitmap: Boolean = false
+        private var hasRetried: Boolean = false
+        private var bindGeneration: Int = 0
         private val fallbackHandler = Handler(Looper.getMainLooper())
         private var scope = MainScope()
 
@@ -58,6 +60,8 @@ internal class PdfViewAdapter(
             cancelJobs()
             currentBoundPage = position
             hasRealBitmap = false
+            hasRetried = false
+            bindGeneration++
             scope = MainScope()
 
             val displayWidth = itemBinding.pageView.width.takeIf { it > 0 }
@@ -102,47 +106,83 @@ internal class PdfViewAdapter(
 
         private fun renderAndApplyBitmap(page: Int, width: Int, height: Int) {
             val bitmap = CommonUtils.Companion.BitmapPool.getBitmap(width, maxOf(1, height))
+            val expectedGeneration = bindGeneration
 
             renderer.renderPage(page, bitmap) { success, pageNo, rendered ->
-                scope.launch {
-                    if (success && currentBoundPage == pageNo) {
-                        if (DEBUG_LOGS_ENABLED) Log.d("PdfViewAdapter", "✅ Render complete for page $pageNo")
-                        itemBinding.pageView.setImageBitmap(rendered ?: bitmap)
-                        hasRealBitmap = true
-                        applyFadeInAnimation(itemBinding.pageView)
-                        itemBinding.pageLoadingLayout.pdfViewPageLoadingProgress.visibility = View.GONE
+                var bitmapConsumed = false
 
-                        val fallbackHeight = itemBinding.pageView.height.takeIf { it > 0 }
-                            ?: context.resources.displayMetrics.heightPixels
+                if (rendered != null && rendered !== bitmap) {
+                    CommonUtils.Companion.BitmapPool.recycleBitmap(bitmap)
+                    bitmapConsumed = true
+                }
 
-                        renderer.schedulePrefetch(
-                            currentPage = pageNo,
-                            width = width,
-                            height = fallbackHeight,
-                            direction = parentView.getScrollDirection()
-                        )
-                    } else {
-                        if (DEBUG_LOGS_ENABLED) Log.w("PdfViewAdapter", "🚫 Skipping render for page $pageNo — ViewHolder now bound to $currentBoundPage")
+                if (expectedGeneration != bindGeneration) {
+                    if (!bitmapConsumed) {
                         CommonUtils.Companion.BitmapPool.recycleBitmap(bitmap)
+                    }
+                    return@renderPage
+                }
+
+                if (success && currentBoundPage == pageNo) {
+                    if (DEBUG_LOGS_ENABLED) Log.d("PdfViewAdapter", "✅ Render complete for page $pageNo")
+                    itemBinding.pageView.setImageBitmap(rendered ?: bitmap)
+                    hasRealBitmap = true
+                    applyFadeInAnimation(itemBinding.pageView)
+                    itemBinding.pageLoadingLayout.pdfViewPageLoadingProgress.visibility = View.GONE
+                    bitmapConsumed = true
+
+                    val fallbackHeight = itemBinding.pageView.height.takeIf { it > 0 }
+                        ?: context.resources.displayMetrics.heightPixels
+
+                    renderer.schedulePrefetch(
+                        currentPage = pageNo,
+                        width = width,
+                        height = fallbackHeight,
+                        direction = parentView.getScrollDirection()
+                    )
+                } else {
+                    if (DEBUG_LOGS_ENABLED) Log.w("PdfViewAdapter", "🚫 Skipping render for page $pageNo — ViewHolder now bound to $currentBoundPage")
+                    if (currentBoundPage == page && !hasRetried) {
+                        hasRetried = true
                         retryRenderOnce(page, width, height)
                     }
+                }
+
+                if (!bitmapConsumed) {
+                    CommonUtils.Companion.BitmapPool.recycleBitmap(bitmap)
                 }
             }
         }
 
         private fun retryRenderOnce(page: Int, width: Int, height: Int) {
             val retryBitmap = CommonUtils.Companion.BitmapPool.getBitmap(width, height)
+            val expectedGeneration = bindGeneration
             renderer.renderPage(page, retryBitmap) { success, retryPageNo, rendered ->
-                scope.launch {
-                    if (success && retryPageNo == currentBoundPage && !hasRealBitmap) {
-                        if (DEBUG_LOGS_ENABLED) Log.d("PdfViewAdapter", "🔁 Retry success for page $retryPageNo")
-                        itemBinding.pageView.setImageBitmap(rendered ?: retryBitmap)
-                        hasRealBitmap = true
-                        applyFadeInAnimation(itemBinding.pageView)
-                        itemBinding.pageLoadingLayout.pdfViewPageLoadingProgress.visibility = View.GONE
-                    } else {
+                var bitmapConsumed = false
+
+                if (rendered != null && rendered !== retryBitmap) {
+                    CommonUtils.Companion.BitmapPool.recycleBitmap(retryBitmap)
+                    bitmapConsumed = true
+                }
+
+                if (expectedGeneration != bindGeneration) {
+                    if (!bitmapConsumed) {
                         CommonUtils.Companion.BitmapPool.recycleBitmap(retryBitmap)
                     }
+                    return@renderPage
+                }
+
+                if (success && retryPageNo == currentBoundPage && !hasRealBitmap) {
+                    if (DEBUG_LOGS_ENABLED) Log.d("PdfViewAdapter", "🔁 Retry success for page $retryPageNo")
+                    itemBinding.pageView.setImageBitmap(rendered ?: retryBitmap)
+                    hasRealBitmap = true
+                    applyFadeInAnimation(itemBinding.pageView)
+                    itemBinding.pageLoadingLayout.pdfViewPageLoadingProgress.visibility = View.GONE
+                    bitmapConsumed = true
+                }
+
+                if (!bitmapConsumed) {
+                    CommonUtils.Companion.BitmapPool.recycleBitmap(retryBitmap)
                 }
             }
         }
@@ -194,6 +234,7 @@ internal class PdfViewAdapter(
 
         fun cancelJobs() {
             scope.cancel()
+            fallbackHandler.removeCallbacksAndMessages(null)
         }
 
         private fun applyFadeInAnimation(view: View) {
