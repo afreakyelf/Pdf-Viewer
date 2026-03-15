@@ -77,9 +77,10 @@ If your Android app is written in **Java** (not Kotlin) and you encounter a cras
 
 > `java.lang.NoClassDefFoundError: Failed resolution of: Landroidx/lifecycle/ProcessLifecycleOwner$initializationListener$1`
 
-**The recommended fix is to update to the latest version of Pdf-Viewer**, which explicitly bundles
-the correct `lifecycle-process` and `lifecycle-runtime-ktx` versions and includes consumer ProGuard
-rules to prevent minifiers from stripping these classes.
+**The recommended fix is to update to the latest version of Pdf-Viewer**, which adds version
+constraints for `lifecycle-process` and `lifecycle-runtime-ktx` (requiring a minimum of 2.8.7
+during dependency resolution) and includes consumer ProGuard rules to prevent minifiers from
+stripping these classes.
 
 If you still see this crash after updating to the latest version of Pdf-Viewer, there are two possible causes with different remedies:
 
