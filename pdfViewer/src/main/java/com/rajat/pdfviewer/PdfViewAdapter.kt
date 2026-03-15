@@ -83,7 +83,13 @@ internal class PdfViewAdapter(
             scope = MainScope()
 
             val zoomScale = parentView.getZoomScale()
+            // Resolve the actual container width — prefer the measured pageView width,
+            // then the ViewHolder root (== RecyclerView width), then the PdfRendererView
+            // container. Only fall back to full-display width as a last resort so that
+            // narrow containers / split-screen panes get correctly-sized pages (#229).
             val baseWidth = itemBinding.pageView.width.takeIf { it > 0 }
+                ?: itemView.width.takeIf { it > 0 }
+                ?: parentView.width.takeIf { it > 0 }
                 ?: context.resources.displayMetrics.widthPixels
             val displayWidth = (baseWidth * zoomScale).toInt()
 
