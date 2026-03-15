@@ -1,5 +1,7 @@
 package com.rajat.pdfviewer
 
+import android.animation.Animator
+import android.animation.AnimatorListenerAdapter
 import android.animation.ValueAnimator
 import android.content.Context
 import android.graphics.Canvas
@@ -38,6 +40,7 @@ class PinchZoomRecyclerView @JvmOverloads constructor(
     private var posY = 0f
 
     private var zoomChangeListener: ((Boolean, Float) -> Unit)? = null
+    private var zoomSettledListener: ((Float) -> Unit)? = null
 
     private var anchorScale = 1f
     private var anchorFocusY = 0f
@@ -59,6 +62,14 @@ class PinchZoomRecyclerView @JvmOverloads constructor(
 
     fun setOnZoomChangeListener(listener: (isZoomedIn: Boolean, scale: Float) -> Unit) {
         zoomChangeListener = listener
+    }
+
+    /**
+     * Registers a callback that fires once after each zoom gesture (pinch or double-tap/programmatic)
+     * settles at its final scale. Use this to trigger higher-resolution re-renders of visible pages.
+     */
+    fun setOnZoomSettledListener(listener: (scale: Float) -> Unit) {
+        zoomSettledListener = listener
     }
 
     /**
@@ -257,6 +268,10 @@ class PinchZoomRecyclerView @JvmOverloads constructor(
                     ?.scrollToPositionWithOffset(page, -offsetInPage)
                 posY = 0f
                 invalidate()
+
+                // Notify after scroll is settled so visible pages can be re-rendered at the
+                // new zoom resolution.
+                zoomSettledListener?.invoke(scaleFactor)
             }
         }
 
@@ -356,6 +371,11 @@ class PinchZoomRecyclerView @JvmOverloads constructor(
 
                 zoomChangeListener?.invoke(isZoomedIn(), scaleFactor)
             }
+            addListener(object : AnimatorListenerAdapter() {
+                override fun onAnimationEnd(animation: Animator) {
+                    zoomSettledListener?.invoke(scaleFactor)
+                }
+            })
             start()
         }
     }

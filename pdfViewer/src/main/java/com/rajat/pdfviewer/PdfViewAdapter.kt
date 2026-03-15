@@ -10,6 +10,7 @@ import android.view.View
 import android.view.ViewGroup
 import android.view.animation.AlphaAnimation
 import android.view.animation.LinearInterpolator
+import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.rajat.pdfviewer.databinding.ListItemPdfPageBinding
 import com.rajat.pdfviewer.util.CommonUtils
@@ -44,6 +45,20 @@ internal class PdfViewAdapter(
         holder.cancelJobs()
     }
 
+    /**
+     * Re-binds all currently visible pages so they are re-rendered at the current zoom scale.
+     * Call this after a zoom gesture completes to replace low-resolution cached bitmaps with
+     * higher-resolution ones.
+     */
+    fun rebindVisiblePages(recyclerView: RecyclerView) {
+        val lm = recyclerView.layoutManager as? LinearLayoutManager ?: return
+        val first = lm.findFirstVisibleItemPosition()
+        val last = lm.findLastVisibleItemPosition()
+        if (first >= 0 && last >= first) {
+            notifyItemRangeChanged(first, last - first + 1)
+        }
+    }
+
     inner class PdfPageViewHolder(private val itemBinding: ListItemPdfPageBinding) :
         RecyclerView.ViewHolder(itemBinding.root) {
 
@@ -76,15 +91,17 @@ internal class PdfViewAdapter(
 
             scope.launch {
                 val cached = withContext(Dispatchers.IO) {
-                    renderer.getBitmapFromCache(position)
+                    // Use the size-aware call to avoid a full disk decode when the cached
+                    // resolution is smaller than what the current zoom level requires.
+                    // minHeight = 1: height is not checked here because the render height is
+                    // computed asynchronously inside getPageDimensionsAsync and is not yet known;
+                    // for any PDF page the aspect ratio is fixed, so width alone determines
+                    // whether the cached resolution is sufficient for the requested zoom.
+                    renderer.getBitmapFromCacheIfAdequate(position, displayWidth, 1)
                 }
 
-                // Use the cached bitmap if its width is adequate for the current zoom level.
-                // Height is not checked here because renderHeight is computed asynchronously
-                // (inside getPageDimensionsAsync) and is not yet known; for any given PDF page
-                // the aspect ratio is fixed, so width alone determines whether the cached
-                // resolution is sufficient for the requested zoom.
-                if (cached != null && cached.width >= displayWidth && currentBoundPage == position) {
+                // The cached bitmap meets or exceeds the required zoom resolution.
+                if (cached != null && currentBoundPage == position) {
                     if (DEBUG_LOGS_ENABLED) Log.d("PdfViewAdapter", "✅ Loaded page $position from cache")
                     itemBinding.pageView.setImageBitmap(cached)
                     hasRealBitmap = true
@@ -112,6 +129,13 @@ internal class PdfViewAdapter(
             val bitmap = CommonUtils.Companion.BitmapPool.getBitmap(width, maxOf(1, height))
 
             renderer.renderPage(page, bitmap) { success, pageNo, rendered ->
+                // Recycle the pool-allocated bitmap outside scope.launch so this runs even if
+                // the ViewHolder has been recycled and its scope cancelled between the render
+                // request and this callback.  The callback already fires on the Main thread.
+                if (rendered != null && rendered !== bitmap) {
+                    CommonUtils.Companion.BitmapPool.recycleBitmap(bitmap)
+                }
+
                 scope.launch {
                     if (success && currentBoundPage == pageNo) {
                         if (DEBUG_LOGS_ENABLED) Log.d("PdfViewAdapter", "✅ Render complete for page $pageNo")
@@ -131,7 +155,11 @@ internal class PdfViewAdapter(
                         )
                     } else {
                         if (DEBUG_LOGS_ENABLED) Log.w("PdfViewAdapter", "🚫 Skipping render for page $pageNo — ViewHolder now bound to $currentBoundPage")
-                        CommonUtils.Companion.BitmapPool.recycleBitmap(bitmap)
+                        // Only recycle if the renderer didn't return a different cached instance
+                        // (that was already recycled above, outside this scope).
+                        if (rendered == null || rendered === bitmap) {
+                            CommonUtils.Companion.BitmapPool.recycleBitmap(bitmap)
+                        }
                         retryRenderOnce(page, width, height)
                     }
                 }

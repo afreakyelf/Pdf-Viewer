@@ -84,6 +84,9 @@ class PdfRendererCore private constructor(
 
     suspend fun getBitmapFromCache(pageNo: Int): Bitmap? = cacheManager.getBitmapFromCache(pageNo)
 
+    internal suspend fun getBitmapFromCacheIfAdequate(pageNo: Int, minWidth: Int, minHeight: Int): Bitmap? =
+        cacheManager.getBitmapFromCacheIfAdequate(pageNo, minWidth, minHeight)
+
     private suspend fun addBitmapToMemoryCache(pageNo: Int, bitmap: Bitmap) = cacheManager.addBitmapToCache(pageNo, bitmap)
 
     private suspend fun pageExistInCache(pageNo: Int): Boolean = cacheManager.pageExistsInCache(pageNo)
@@ -107,11 +110,10 @@ class PdfRendererCore private constructor(
             // the current zoom, avoiding a full bitmap decode for undersized disk entries.
             val cachedBitmap = cacheManager.getBitmapFromCacheIfAdequate(pageNo, bitmap.width, bitmap.height)
             if (cachedBitmap != null) {
-                // Only recycle the pre-allocated bitmap when it is a distinct instance from
-                // the cached one, so we never recycle a bitmap that is still in use.
-                if (bitmap !== cachedBitmap) {
-                    CommonUtils.Companion.BitmapPool.recycleBitmap(bitmap)
-                }
+                // Do NOT recycle the caller-provided bitmap here — renderPage() is public API
+                // and the allocation site (e.g. the adapter or an external caller) owns its
+                // lifecycle.  The adapter recycles it in renderAndApplyBitmap() when it detects
+                // that a different (cached) bitmap was returned.
                 withContext(Dispatchers.Main) {
                     onBitmapReady?.invoke(true, pageNo, cachedBitmap)
                     Log.d(LOG_TAG, "Page $pageNo loaded from cache")

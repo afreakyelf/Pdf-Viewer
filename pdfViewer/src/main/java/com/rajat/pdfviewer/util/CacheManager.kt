@@ -58,10 +58,13 @@ class CacheManager(
 
     /**
      * Returns the cached [Bitmap] for [pageNo] if it exists **and** its dimensions are at least
-     * [minWidth] × [minHeight]; otherwise returns `null`. The check and fetch are performed
-     * atomically within the same coroutine context to avoid TOCTOU races. For disk-only entries
-     * a bounds-only decode is attempted first so that no pixel data is allocated for entries that
-     * are too small for the current zoom level.
+     * [minWidth] × [minHeight]; otherwise returns `null`. The size check and full decode are
+     * performed in a single suspend call — for disk-only entries a bounds-only decode is done
+     * first so that no pixel data is allocated when the cached resolution is too small for the
+     * current zoom level. Note: while individual [LruCache] operations are thread-safe, the
+     * compound check-then-fetch sequence is not atomic; a concurrent put by another coroutine
+     * between the bounds check and the full decode is benign (the higher-resolution entry would
+     * simply replace the one being decoded here).
      */
     suspend fun getBitmapFromCacheIfAdequate(pageNo: Int, minWidth: Int, minHeight: Int): Bitmap? =
         withContext(Dispatchers.IO) {
