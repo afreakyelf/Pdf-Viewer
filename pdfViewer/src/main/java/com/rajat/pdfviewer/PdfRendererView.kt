@@ -183,8 +183,8 @@ class PdfRendererView @JvmOverloads constructor(
 
         viewScope.launch {
             try {
-                val fileDescriptor =
-                    context.contentResolver.openFileDescriptor(uri, "r") ?: return@launch
+                val fileDescriptor = context.contentResolver.openFileDescriptor(uri, "r")
+                    ?: throw IllegalArgumentException("Failed to open file descriptor — verify URI is valid and app has read permission")
                 val renderer =
                     PdfRendererCore.create(context, fileDescriptor, cacheIdentifier, cacheStrategy)
                 withContext(Dispatchers.Main) {
