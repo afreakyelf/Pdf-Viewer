@@ -60,6 +60,7 @@ class PdfRendererView @JvmOverloads constructor(
     // region State
     private var positionToUseForState: Int = NO_POSITION
     private var restoredScrollPosition: Int = NO_POSITION
+    private var restoredScrollOffset: Int = 0
     private var lastDy: Int = 0
     private var pendingJumpPage: Int? = null
     // endregion
@@ -263,8 +264,12 @@ class PdfRendererView @JvmOverloads constructor(
 
         recyclerView.postDelayed({
             if (restoredScrollPosition != NO_POSITION) {
-                recyclerView.scrollToPosition(restoredScrollPosition)
-                restoredScrollPosition = NO_POSITION  // Reset after applying
+                (recyclerView.layoutManager as? LinearLayoutManager)?.scrollToPositionWithOffset(
+                    restoredScrollPosition,
+                    restoredScrollOffset
+                )
+                restoredScrollPosition = NO_POSITION
+                restoredScrollOffset = 0
             }
         }, 500) // Adjust delay as needed
 
@@ -397,6 +402,15 @@ class PdfRendererView @JvmOverloads constructor(
             ?: firstVisiblePosition
         positionToUseForState = positionToUse
         updatePageNumberDisplay(positionToUse)
+    }
+
+    private fun captureCurrentScrollState(): Pair<Int, Int>? {
+        if (!this::recyclerView.isInitialized) return null
+        val layoutManager = recyclerView.layoutManager as? LinearLayoutManager ?: return null
+        val firstVisiblePosition = layoutManager.findFirstVisibleItemPosition()
+        if (firstVisiblePosition == NO_POSITION) return null
+        val firstVisibleView = layoutManager.findViewByPosition(firstVisiblePosition) ?: return null
+        return firstVisiblePosition to layoutManager.getDecoratedTop(firstVisibleView)
     }
 
     private fun updatePageNumberDisplay(position: Int) {
@@ -573,8 +587,14 @@ class PdfRendererView @JvmOverloads constructor(
         val superState = super.onSaveInstanceState()
         val savedState = Bundle()
         savedState.putParcelable("superState", superState)
-        if (this::recyclerView.isInitialized) {
-            savedState.putInt("scrollPosition", positionToUseForState)
+        val scrollState = captureCurrentScrollState()
+        if (scrollState != null) {
+            val (position, offset) = scrollState
+            savedState.putInt(KEY_SCROLL_POSITION, position)
+            savedState.putInt(KEY_SCROLL_OFFSET, offset)
+        } else if (positionToUseForState != NO_POSITION) {
+            savedState.putInt(KEY_SCROLL_POSITION, positionToUseForState)
+            savedState.putInt(KEY_SCROLL_OFFSET, 0)
         }
         return savedState
     }
@@ -588,7 +608,8 @@ class PdfRendererView @JvmOverloads constructor(
                 savedState.getParcelable("superState")
             }
             super.onRestoreInstanceState(superState)
-            restoredScrollPosition = savedState.getInt("scrollPosition", positionToUseForState)
+            restoredScrollPosition = savedState.getInt(KEY_SCROLL_POSITION, positionToUseForState)
+            restoredScrollOffset = savedState.getInt(KEY_SCROLL_OFFSET, 0)
         } else {
             super.onRestoreInstanceState(savedState)
         }
@@ -623,5 +644,7 @@ class PdfRendererView @JvmOverloads constructor(
     companion object {
         private const val DEFAULT_MAX_ZOOM = 3.0f
         private const val MAX_ALLOWED_ZOOM = 5.0f
+        private const val KEY_SCROLL_POSITION = "scrollPosition"
+        private const val KEY_SCROLL_OFFSET = "scrollOffset"
     }
 }
