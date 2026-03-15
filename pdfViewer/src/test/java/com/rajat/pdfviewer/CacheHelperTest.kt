@@ -28,9 +28,11 @@ class CacheHelperTest {
     }
 
     @Test
-    fun `url prefix is applied to http urls`() {
-        val key = CacheHelper.getCacheKey("https://example.com/document.pdf")
-        assertTrue("Expected key to start with 'url_' but was: $key", key.startsWith("url_"))
+    fun `url prefix is applied to http and https urls`() {
+        val httpsKey = CacheHelper.getCacheKey("https://example.com/document.pdf")
+        val httpKey = CacheHelper.getCacheKey("http://example.com/document.pdf")
+        assertTrue("Expected https key to start with 'url_' but was: $httpsKey", httpsKey.startsWith("url_"))
+        assertTrue("Expected http key to start with 'url_' but was: $httpKey", httpKey.startsWith("url_"))
     }
 
     @Test
