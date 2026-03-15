@@ -30,6 +30,7 @@ fun PdfRendererViewCompose(
     statusCallBack: PdfRendererView.StatusCallBack? = null,
     zoomListener: PdfRendererView.ZoomListener? = null,
     onReady: ((PdfRendererView) -> Unit)? = null,
+    tapListener: PdfRendererView.TapListener? = null
 ) {
     val context = LocalContext.current
     val pdfViewRef = remember { mutableStateOf<PdfRendererView?>(null) }
@@ -83,12 +84,14 @@ fun PdfRendererViewCompose(
             PdfRendererView(ctx).also { view ->
                 view.statusListener = combinedCallback
                 view.zoomListener = zoomListener
+                view.tapListener = tapListener
                 pdfViewRef.value = view
             }
         },
         update = { view ->
             view.statusListener = combinedCallback
             view.zoomListener = zoomListener
+            view.tapListener = tapListener
 
             if (!hasInit) {
                 when {
