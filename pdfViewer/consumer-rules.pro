@@ -3,5 +3,5 @@
 # Kotlin 2.0 naming (e.g. ProcessLifecycleOwner$initializationListener$1).
 # Without these rules, R8 minification in consumer apps can strip these classes,
 # causing NoClassDefFoundError at startup when AppStartup initializes the lifecycle.
--keep class androidx.lifecycle.ProcessLifecycleOwner { *; }
--keep class androidx.lifecycle.ProcessLifecycleOwner$* { *; }
+-keep,allowobfuscation class androidx.lifecycle.ProcessLifecycleOwner { *; }
+-keep,allowobfuscation class androidx.lifecycle.ProcessLifecycleOwner$* { *; }

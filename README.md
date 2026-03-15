@@ -81,16 +81,16 @@ If your Android app is written in **Java** (not Kotlin) and you encounter a cras
 the correct `lifecycle-process` and `lifecycle-runtime-ktx` versions and includes consumer ProGuard
 rules to prevent minifiers from stripping these classes.
 
-If you are on an older version of Pdf-Viewer, or your build's dependency resolution or minifier
-still strips these classes, you can force the correct versions explicitly:
+If you still see this crash after updating to the latest version of Pdf-Viewer, there are two possible causes with different remedies:
+
+- **Dependency misresolution** (wrong `lifecycle-process` version resolved): Force the correct version in your `build.gradle`:
 
 #### Groovy DSL
 ```gradle
 dependencies {
     implementation 'io.github.afreakyelf:Pdf-Viewer:latest-version'
 
-    // Only needed if your build still resolves an older lifecycle-process version
-    // or your minifier strips these classes despite updating the library.
+    // Force the correct lifecycle-process version if your dependency graph resolves an older one.
     implementation 'androidx.lifecycle:lifecycle-process:2.8.7'
     implementation 'androidx.lifecycle:lifecycle-runtime-ktx:2.8.7'
 }
@@ -101,11 +101,17 @@ dependencies {
 dependencies {
     implementation("io.github.afreakyelf:Pdf-Viewer:latest-version")
 
-    // Only needed if your build still resolves an older lifecycle-process version
-    // or your minifier strips these classes despite updating the library.
+    // Force the correct lifecycle-process version if your dependency graph resolves an older one.
     implementation("androidx.lifecycle:lifecycle-process:2.8.7")
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.8.7")
 }
+```
+
+- **R8/minifier stripping** (classes removed during shrinking): The library ships consumer rules in `consumer-rules.pro` that are automatically merged into your build. If they are not being applied (e.g. due to a custom ProGuard configuration), add them manually to your app's `proguard-rules.pro`:
+
+```proguard
+-keep,allowobfuscation class androidx.lifecycle.ProcessLifecycleOwner { *; }
+-keep,allowobfuscation class androidx.lifecycle.ProcessLifecycleOwner$* { *; }
 ```
 
 > **Note:** `kotlin-stdlib` and the lifecycle artifacts are included as transitive dependencies
