@@ -85,6 +85,10 @@ class PinchZoomRecyclerView @JvmOverloads constructor(
         zoomEndListener = listener
     }
 
+    fun setOnZoomSettledListener(listener: (scale: Float) -> Unit) {
+        zoomEndListener = listener
+    }
+
     /**
      * Handles touch interactions — zoom, pan, and scroll.
      */
