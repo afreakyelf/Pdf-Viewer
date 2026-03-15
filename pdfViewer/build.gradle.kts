@@ -109,7 +109,9 @@ mavenPublishing {
     publishToMavenCentral(SonatypeHost.CENTRAL_PORTAL)
     signAllPublications()
 
-    coordinates("io.github.afreakyelf", "Pdf-Viewer", "2.3.7")
+    val publishVersion = providers.gradleProperty("PUBLISH_VERSION")
+        .orElse("2.3.8")
+    coordinates("io.github.afreakyelf", "Pdf-Viewer", publishVersion.get())
 
     pom {
         name.set("PDF Viewer")
