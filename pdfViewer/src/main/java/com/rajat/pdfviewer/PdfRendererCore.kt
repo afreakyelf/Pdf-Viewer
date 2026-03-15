@@ -109,6 +109,13 @@ class PdfRendererCore private constructor(
             // low for the current zoom, avoiding a full bitmap decode for undersized disk entries.
             val cachedBitmap = cacheManager.getBitmapFromCacheIfAdequate(pageNo, bitmap.width, bitmap.height)
             if (cachedBitmap != null) {
+                // Cancel any in-progress render for this page so a stale lower-resolution
+                // result doesn't overwrite the adequate cached bitmap after it is shown.
+                // The cancelled job's finally block will deliver a terminal failure callback;
+                // callers (e.g. PdfViewAdapter) must detect and discard stale callbacks to
+                // avoid retrying with outdated dimensions that would cancel newer renders.
+                renderJobs[pageNo]?.cancel()
+                renderJobs.remove(pageNo)
                 // Do NOT recycle the caller-provided bitmap here — renderPage() is public API
                 // and the allocation site owns the lifecycle.
                 withContext(Dispatchers.Main) {

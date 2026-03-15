@@ -65,6 +65,10 @@ internal class PdfViewAdapter(
         private var currentBoundPage: Int = -1
         private var hasRealBitmap: Boolean = false
         private var hasRetried: Boolean = false
+        /** Monotonically increasing counter; incremented on every [bind] call so that
+         *  stale render callbacks (from cancelled / replaced jobs) can be detected and
+         *  ignored instead of triggering retries with outdated dimensions. */
+        private var bindGeneration: Int = 0
         private val fallbackHandler = Handler(Looper.getMainLooper())
         private var scope = MainScope()
 
@@ -75,6 +79,7 @@ internal class PdfViewAdapter(
             currentBoundPage = position
             hasRealBitmap = false
             hasRetried = false
+            bindGeneration++
             scope = MainScope()
 
             val zoomScale = parentView.getZoomScale()
@@ -129,6 +134,7 @@ internal class PdfViewAdapter(
 
         private fun renderAndApplyBitmap(page: Int, width: Int, height: Int) {
             val bitmap = CommonUtils.Companion.BitmapPool.getBitmap(width, maxOf(1, height))
+            val expectedGeneration = bindGeneration
 
             renderer.renderPage(page, bitmap) { success, pageNo, rendered ->
                 // *** All bitmap-lifecycle and UI decisions are made here, synchronously on the
@@ -145,6 +151,17 @@ internal class PdfViewAdapter(
                 if (rendered != null && rendered !== bitmap) {
                     CommonUtils.Companion.BitmapPool.recycleBitmap(bitmap)
                     bitmapConsumed = true
+                }
+
+                // Stale callback guard: if bind() was called again since we started this
+                // render (e.g., zoom rebind for the same page), this callback belongs to an
+                // older generation. Just recycle — do NOT retry, because retrying with the
+                // old dimensions would cancel the newer high-res render that replaced us.
+                if (expectedGeneration != bindGeneration) {
+                    if (!bitmapConsumed) {
+                        CommonUtils.Companion.BitmapPool.recycleBitmap(bitmap)
+                    }
+                    return@renderPage
                 }
 
                 if (success && currentBoundPage == pageNo) {
@@ -178,6 +195,7 @@ internal class PdfViewAdapter(
 
         private fun retryRenderOnce(page: Int, width: Int, height: Int) {
             val retryBitmap = CommonUtils.Companion.BitmapPool.getBitmap(width, height)
+            val expectedGeneration = bindGeneration
             renderer.renderPage(page, retryBitmap) { success, retryPageNo, rendered ->
                 // Synchronous on Main thread — track whether the bitmap was consumed so we
                 // can recycle it in every failure path regardless of which branch is taken.
@@ -185,6 +203,13 @@ internal class PdfViewAdapter(
                 if (rendered != null && rendered !== retryBitmap) {
                     CommonUtils.Companion.BitmapPool.recycleBitmap(retryBitmap)
                     bitmapConsumed = true
+                }
+                // Stale callback: bind() was called again since this retry was issued.
+                if (expectedGeneration != bindGeneration) {
+                    if (!bitmapConsumed) {
+                        CommonUtils.Companion.BitmapPool.recycleBitmap(retryBitmap)
+                    }
+                    return@renderPage
                 }
                 if (success && retryPageNo == currentBoundPage && !hasRealBitmap) {
                     if (DEBUG_LOGS_ENABLED) Log.d("PdfViewAdapter", "🔁 Retry success for page $retryPageNo")
