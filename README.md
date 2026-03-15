@@ -108,7 +108,7 @@ dependencies {
 }
 ```
 
-- **R8/minifier stripping** (classes removed during shrinking): The library ships consumer rules in `consumer-rules.pro` that are automatically merged into your build. If they are not being applied (e.g. due to a custom ProGuard configuration), add them manually to your app's `proguard-rules.pro`:
+- **R8/minifier stripping** (classes removed during shrinking): The library ships consumer rules in `consumer-rules.pro` that AGP/R8 automatically merges into your build. These rules will not take effect if `minifyEnabled false` is set for your release build type, if you are using a non-AGP shrinker pipeline, or if shrinker warnings are treated as errors and abort the build. In those cases, add the rules manually to your app's `proguard-rules.pro`:
 
 ```proguard
 -keep,allowobfuscation class androidx.lifecycle.ProcessLifecycleOwner { *; }
