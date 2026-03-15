@@ -105,15 +105,12 @@ class PdfRendererCore private constructor(
         }
 
         scope.launch {
-            // Atomically check size and fetch the cached bitmap in one call.
-            // Returns null when the page is not cached or the cached resolution is too low for
-            // the current zoom, avoiding a full bitmap decode for undersized disk entries.
+            // Size-aware cache lookup: returns null when not cached or cached resolution is too
+            // low for the current zoom, avoiding a full bitmap decode for undersized disk entries.
             val cachedBitmap = cacheManager.getBitmapFromCacheIfAdequate(pageNo, bitmap.width, bitmap.height)
             if (cachedBitmap != null) {
                 // Do NOT recycle the caller-provided bitmap here — renderPage() is public API
-                // and the allocation site (e.g. the adapter or an external caller) owns its
-                // lifecycle.  The adapter recycles it in renderAndApplyBitmap() when it detects
-                // that a different (cached) bitmap was returned.
+                // and the allocation site owns the lifecycle.
                 withContext(Dispatchers.Main) {
                     onBitmapReady?.invoke(true, pageNo, cachedBitmap)
                     Log.d(LOG_TAG, "Page $pageNo loaded from cache")
@@ -121,7 +118,12 @@ class PdfRendererCore private constructor(
                 return@launch
             }
 
-            if (renderJobs[pageNo]?.isActive == true) return@launch
+            // Always cancel any in-progress render and start a fresh one. This is especially
+            // important for zoom-triggered rebinds where the new request may be at a higher
+            // resolution than the currently running job.
+            // Safety: Kotlin coroutines guarantee that withContext(Dispatchers.Main) on a
+            // cancelled coroutine throws CancellationException without executing its block, so
+            // the cancelled job's onBitmapReady callback will never fire after cancellation.
             renderJobs[pageNo]?.cancel()
             renderJobs[pageNo] = launch {
                 var success = false

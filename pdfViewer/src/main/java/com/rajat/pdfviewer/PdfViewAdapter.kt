@@ -64,6 +64,7 @@ internal class PdfViewAdapter(
 
         private var currentBoundPage: Int = -1
         private var hasRealBitmap: Boolean = false
+        private var hasRetried: Boolean = false
         private val fallbackHandler = Handler(Looper.getMainLooper())
         private var scope = MainScope()
 
@@ -73,6 +74,7 @@ internal class PdfViewAdapter(
             cancelJobs()
             currentBoundPage = position
             hasRealBitmap = false
+            hasRetried = false
             scope = MainScope()
 
             val zoomScale = parentView.getZoomScale()
@@ -129,39 +131,47 @@ internal class PdfViewAdapter(
             val bitmap = CommonUtils.Companion.BitmapPool.getBitmap(width, maxOf(1, height))
 
             renderer.renderPage(page, bitmap) { success, pageNo, rendered ->
-                // Recycle the pool-allocated bitmap outside scope.launch so this runs even if
-                // the ViewHolder has been recycled and its scope cancelled between the render
-                // request and this callback.  The callback already fires on the Main thread.
+                // *** All bitmap-lifecycle and UI decisions are made here, synchronously on the
+                // Main thread (renderPage guarantees this callback fires on Dispatchers.Main).
+                // We do NOT delegate to scope.launch so that bitmap recycling is never skipped
+                // if the ViewHolder's coroutine scope has been cancelled. ***
+
+                // Track ownership: set to true when the bitmap is shown to the user or already
+                // recycled, so the terminal cleanup block doesn't double-recycle it.
+                var bitmapConsumed = false
+
+                // When the renderer returned a different (cached) bitmap, recycle the
+                // now-unused pool-allocated one immediately.
                 if (rendered != null && rendered !== bitmap) {
                     CommonUtils.Companion.BitmapPool.recycleBitmap(bitmap)
+                    bitmapConsumed = true
                 }
 
-                scope.launch {
-                    if (success && currentBoundPage == pageNo) {
-                        if (DEBUG_LOGS_ENABLED) Log.d("PdfViewAdapter", "✅ Render complete for page $pageNo")
-                        itemBinding.pageView.setImageBitmap(rendered ?: bitmap)
-                        hasRealBitmap = true
-                        applyFadeInAnimation(itemBinding.pageView)
-                        itemBinding.pageLoadingLayout.pdfViewPageLoadingProgress.visibility = View.GONE
+                if (success && currentBoundPage == pageNo) {
+                    if (DEBUG_LOGS_ENABLED) Log.d("PdfViewAdapter", "✅ Render complete for page $pageNo")
+                    itemBinding.pageView.setImageBitmap(rendered ?: bitmap)
+                    hasRealBitmap = true
+                    applyFadeInAnimation(itemBinding.pageView)
+                    itemBinding.pageLoadingLayout.pdfViewPageLoadingProgress.visibility = View.GONE
+                    bitmapConsumed = true
 
-                        val fallbackHeight = itemBinding.pageView.height.takeIf { it > 0 }
-                            ?: context.resources.displayMetrics.heightPixels
-
-                        renderer.schedulePrefetch(
-                            currentPage = pageNo,
-                            width = width,
-                            height = fallbackHeight,
-                            direction = parentView.getScrollDirection()
-                        )
-                    } else {
-                        if (DEBUG_LOGS_ENABLED) Log.w("PdfViewAdapter", "🚫 Skipping render for page $pageNo — ViewHolder now bound to $currentBoundPage")
-                        // Only recycle if the renderer didn't return a different cached instance
-                        // (that was already recycled above, outside this scope).
-                        if (rendered == null || rendered === bitmap) {
-                            CommonUtils.Companion.BitmapPool.recycleBitmap(bitmap)
-                        }
+                    val fallbackHeight = itemBinding.pageView.height.takeIf { it > 0 }
+                        ?: context.resources.displayMetrics.heightPixels
+                    renderer.schedulePrefetch(pageNo, width, fallbackHeight, parentView.getScrollDirection())
+                } else {
+                    if (DEBUG_LOGS_ENABLED) Log.w("PdfViewAdapter", "🚫 Skipping render for page $pageNo — ViewHolder now bound to $currentBoundPage")
+                    // Only retry once per bind cycle to prevent repeated retries when the
+                    // renderer is temporarily busy (e.g. active render for the same page).
+                    if (currentBoundPage == page && !hasRetried) {
+                        hasRetried = true
                         retryRenderOnce(page, width, height)
                     }
+                }
+
+                // Terminal cleanup: recycle the pool bitmap if it was neither shown nor
+                // already recycled above (covers all remaining failure / page-mismatch paths).
+                if (!bitmapConsumed) {
+                    CommonUtils.Companion.BitmapPool.recycleBitmap(bitmap)
                 }
             }
         }
@@ -169,16 +179,23 @@ internal class PdfViewAdapter(
         private fun retryRenderOnce(page: Int, width: Int, height: Int) {
             val retryBitmap = CommonUtils.Companion.BitmapPool.getBitmap(width, height)
             renderer.renderPage(page, retryBitmap) { success, retryPageNo, rendered ->
-                scope.launch {
-                    if (success && retryPageNo == currentBoundPage && !hasRealBitmap) {
-                        if (DEBUG_LOGS_ENABLED) Log.d("PdfViewAdapter", "🔁 Retry success for page $retryPageNo")
-                        itemBinding.pageView.setImageBitmap(rendered ?: retryBitmap)
-                        hasRealBitmap = true
-                        applyFadeInAnimation(itemBinding.pageView)
-                        itemBinding.pageLoadingLayout.pdfViewPageLoadingProgress.visibility = View.GONE
-                    } else {
-                        CommonUtils.Companion.BitmapPool.recycleBitmap(retryBitmap)
-                    }
+                // Synchronous on Main thread — track whether the bitmap was consumed so we
+                // can recycle it in every failure path regardless of which branch is taken.
+                var bitmapConsumed = false
+                if (rendered != null && rendered !== retryBitmap) {
+                    CommonUtils.Companion.BitmapPool.recycleBitmap(retryBitmap)
+                    bitmapConsumed = true
+                }
+                if (success && retryPageNo == currentBoundPage && !hasRealBitmap) {
+                    if (DEBUG_LOGS_ENABLED) Log.d("PdfViewAdapter", "🔁 Retry success for page $retryPageNo")
+                    itemBinding.pageView.setImageBitmap(rendered ?: retryBitmap)
+                    hasRealBitmap = true
+                    applyFadeInAnimation(itemBinding.pageView)
+                    itemBinding.pageLoadingLayout.pdfViewPageLoadingProgress.visibility = View.GONE
+                    bitmapConsumed = true
+                }
+                if (!bitmapConsumed) {
+                    CommonUtils.Companion.BitmapPool.recycleBitmap(retryBitmap)
                 }
             }
         }

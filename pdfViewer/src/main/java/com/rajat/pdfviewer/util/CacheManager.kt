@@ -10,6 +10,8 @@ import com.rajat.pdfviewer.util.CommonUtils.Companion.MAX_CACHED_PDFS
 import com.rajat.pdfviewer.util.FileUtils.cachedFileNameWithFormat
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.FileOutputStream
@@ -21,6 +23,11 @@ class CacheManager(
 ) {
     private val memoryCache: LruCache<Int, Bitmap> = createMemoryCache()
     private var cacheDir = File(context.cacheDir, "${CACHE_PATH}/$currentOpenedFileName")
+    /**
+     * Guards all [memoryCache] reads and writes so that compound check-then-update sequences
+     * (e.g. in [getBitmapFromCacheIfAdequate]) are serialized across coroutines.
+     */
+    private val memoryCacheMutex = Mutex()
 
     suspend fun initialize() = withContext(Dispatchers.IO) {
         if (cacheStrategy == CacheStrategy.DISABLE_CACHE) return@withContext
@@ -48,31 +55,36 @@ class CacheManager(
     }
 
     suspend fun getBitmapFromCache(pageNo: Int): Bitmap? = withContext(Dispatchers.IO) {
-        memoryCache.get(pageNo)?.let { return@withContext it }
+        memoryCacheMutex.withLock { memoryCache.get(pageNo) }?.let { return@withContext it }
         if (cacheStrategy == CacheStrategy.DISABLE_CACHE) return@withContext null
 
         decodeBitmapFromDiskCache(pageNo)?.also {
-            memoryCache.put(pageNo, it)
+            memoryCacheMutex.withLock { memoryCache.put(pageNo, it) }
         }
     }
 
     /**
      * Returns the cached [Bitmap] for [pageNo] if it exists **and** its dimensions are at least
-     * [minWidth] × [minHeight]; otherwise returns `null`. The size check and full decode are
-     * performed in a single suspend call — for disk-only entries a bounds-only decode is done
-     * first so that no pixel data is allocated when the cached resolution is too small for the
-     * current zoom level. Note: while individual [LruCache] operations are thread-safe, the
-     * compound check-then-fetch sequence is not atomic; a concurrent put by another coroutine
-     * between the bounds check and the full decode is benign (the higher-resolution entry would
-     * simply replace the one being decoded here).
+     * [minWidth] × [minHeight]; otherwise returns `null`. All [memoryCache] reads and writes are
+     * guarded by [memoryCacheMutex] to prevent concurrent modification. For disk-only entries a
+     * bounds-only decode is done first so that no pixel data is allocated when the cached
+     * resolution is too small for the current zoom level. In the unlikely case that two coroutines
+     * race to decode the same disk entry, both produce identical content so the last writer wins
+     * without data corruption.
      */
     suspend fun getBitmapFromCacheIfAdequate(pageNo: Int, minWidth: Int, minHeight: Int): Bitmap? =
         withContext(Dispatchers.IO) {
-            // Memory cache: size check directly on the live bitmap — no decode needed.
-            memoryCache.get(pageNo)?.let { cached ->
-                if (cached.width >= minWidth && cached.height >= minHeight) return@withContext cached
-                else return@withContext null
+            // Memory cache: perform the entire check under the lock so that the size-check and
+            // return are truly atomic, eliminating any window where the bitmap could be evicted
+            // between the get() and the .width access. A boolean tracks whether a (too-small)
+            // entry was found to avoid a spurious disk-cache lookup when the page is already
+            // cached at a lower resolution.
+            var foundInMemoryCache = false
+            val memoryCached = memoryCacheMutex.withLock {
+                memoryCache.get(pageNo)?.also { foundInMemoryCache = true }
+                    ?.takeIf { it.width >= minWidth && it.height >= minHeight }
             }
+            if (foundInMemoryCache) return@withContext memoryCached  // null if too small, bitmap if adequate
             if (cacheStrategy == CacheStrategy.DISABLE_CACHE) return@withContext null
 
             // Disk cache: check bounds first to avoid a full decode for undersized entries.
@@ -86,7 +98,9 @@ class CacheManager(
 
             // Dimensions are adequate — do the full decode.
             ensureActive()
-            decodeBitmapFromDiskCache(pageNo)?.also { memoryCache.put(pageNo, it) }
+            decodeBitmapFromDiskCache(pageNo)?.also {
+                memoryCacheMutex.withLock { memoryCache.put(pageNo, it) }
+            }
         }
 
     private fun decodeBitmapFromDiskCache(pageNo: Int): Bitmap? {
@@ -95,7 +109,7 @@ class CacheManager(
     }
 
     suspend fun addBitmapToCache(pageNo: Int, bitmap: Bitmap) {
-        memoryCache.put(pageNo, bitmap)
+        memoryCacheMutex.withLock { memoryCache.put(pageNo, bitmap) }
         if (cacheStrategy != CacheStrategy.DISABLE_CACHE) {
             writeBitmapToCache(pageNo, bitmap)
         }
