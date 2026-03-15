@@ -9,6 +9,7 @@ import android.graphics.drawable.Drawable
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.os.ParcelFileDescriptor
 import android.os.Parcelable
 import android.util.AttributeSet
 import android.view.LayoutInflater
@@ -23,6 +24,7 @@ import androidx.recyclerview.widget.DividerItemDecoration
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import androidx.recyclerview.widget.RecyclerView.NO_POSITION
+import com.rajat.pdfviewer.util.CacheHelper
 import com.rajat.pdfviewer.util.CacheManager
 import com.rajat.pdfviewer.util.CacheStrategy
 import kotlinx.coroutines.CoroutineScope
@@ -149,20 +151,23 @@ class PdfRendererView @JvmOverloads constructor(
      */
     fun initWithFile(file: File, cacheStrategy: CacheStrategy = CacheStrategy.MAXIMIZE_PERFORMANCE) {
         this.cacheStrategy = cacheStrategy
-        val cacheIdentifier = file.name
+        val cacheIdentifier = CacheHelper.getCacheKey(file.absolutePath)
 
         // Notify loading started
         statusListener?.onPdfRenderStart()
         viewScope.launch {
+            var fileDescriptor: ParcelFileDescriptor? = null
             try {
-                val fileDescriptor = PdfRendererCore.getFileDescriptor(file)
+                fileDescriptor = PdfRendererCore.getFileDescriptor(file)
                 val renderer =
                     PdfRendererCore.create(context, fileDescriptor, cacheIdentifier, cacheStrategy)
+                fileDescriptor = null // ownership transferred to PdfRendererCore
                 withContext(Dispatchers.Main) {
                     initializeRenderer(renderer)
                     statusListener?.onPdfLoadSuccess(file.absolutePath)
                 }
             } catch (e: Exception) {
+                fileDescriptor?.close()
                 withContext(Dispatchers.Main) {
                     statusListener?.onError(e)
                 }
@@ -176,21 +181,24 @@ class PdfRendererView @JvmOverloads constructor(
      * @param uri The Uri to the PDF file.
      */
     fun initWithUri(uri: Uri) {
-        val cacheIdentifier = uri.toString().hashCode().toString()
+        val cacheIdentifier = CacheHelper.getCacheKey(uri.toString())
 
         statusListener?.onPdfRenderStart()
 
         viewScope.launch {
+            var fileDescriptor: ParcelFileDescriptor? = null
             try {
-                val fileDescriptor =
-                    context.contentResolver.openFileDescriptor(uri, "r") ?: return@launch
+                fileDescriptor = context.contentResolver.openFileDescriptor(uri, "r")
+                    ?: throw IllegalArgumentException("Failed to open file descriptor — verify URI is valid and app has read permission")
                 val renderer =
                     PdfRendererCore.create(context, fileDescriptor, cacheIdentifier, cacheStrategy)
+                fileDescriptor = null // ownership transferred to PdfRendererCore
                 withContext(Dispatchers.Main) {
                     initializeRenderer(renderer)
                     statusListener?.onPdfLoadSuccess("uri:$uri")
                 }
             } catch (e: Exception) {
+                fileDescriptor?.close()
                 withContext(Dispatchers.Main) {
                     statusListener?.onError(e)
                 }

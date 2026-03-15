@@ -7,6 +7,7 @@ import android.os.Build
 import android.os.ParcelFileDescriptor
 import android.util.Log
 import android.util.Size
+import com.rajat.pdfviewer.util.CacheHelper
 import com.rajat.pdfviewer.util.CacheManager
 import com.rajat.pdfviewer.util.CacheStrategy
 import com.rajat.pdfviewer.util.CommonUtils
@@ -45,6 +46,16 @@ class PdfRendererCore private constructor(
         var enableDebugMetrics: Boolean = true
         const val prefetchDistance: Int = 2
 
+        /**
+         * Creates a [PdfRendererCore] instance from an already-opened [fileDescriptor].
+         *
+         * **Ownership contract**: on success the returned [PdfRendererCore] owns both the
+         * [fileDescriptor] and the native [PdfRenderer], closing them when [closePdfRender]
+         * is called. On failure (i.e. this function throws) all partially-initialised
+         * resources — including the native [PdfRenderer] — are closed before the exception
+         * propagates. The [fileDescriptor] is *not* closed on failure; the caller is
+         * responsible for closing it in its error path.
+         */
         suspend fun create(
             context: Context,
             fileDescriptor: ParcelFileDescriptor,
@@ -52,10 +63,16 @@ class PdfRendererCore private constructor(
             cacheStrategy: CacheStrategy
         ): PdfRendererCore = withContext(Dispatchers.IO) {
             val pdfRenderer = PdfRenderer(fileDescriptor)
-            val manager = CacheManager(context, cacheIdentifier, cacheStrategy).apply { initialize() }
-            val core = PdfRendererCore(fileDescriptor, manager, pdfRenderer)
-            core.preloadPageDimensions()
-            return@withContext core
+            try {
+                val manager = CacheManager(context, cacheIdentifier, cacheStrategy).apply { initialize() }
+                val core = PdfRendererCore(fileDescriptor, manager, pdfRenderer)
+                core.preloadPageDimensions()
+                return@withContext core
+            } catch (e: Exception) {
+                runCatching { pdfRenderer.close() }
+                    .onFailure { Log.e(LOG_TAG, "Error closing PdfRenderer during cleanup: ${it.message}", it) }
+                throw e
+            }
         }
 
         fun getFileDescriptor(file: File): ParcelFileDescriptor {
@@ -63,7 +80,14 @@ class PdfRendererCore private constructor(
             return ParcelFileDescriptor.open(safeFile, ParcelFileDescriptor.MODE_READ_ONLY)
         }
 
-        fun getCacheIdentifierFromFile(file: File): String = file.name.toString()
+        @Deprecated(
+            message = "Use CacheHelper.getCacheKey(file.absolutePath) directly.",
+            replaceWith = ReplaceWith(
+                "CacheHelper.getCacheKey(file.absolutePath)",
+                "com.rajat.pdfviewer.util.CacheHelper"
+            )
+        )
+        fun getCacheIdentifierFromFile(file: File): String = CacheHelper.getCacheKey(file.absolutePath)
 
         private fun sanitizeFilePath(filePath: String): String {
             return try {
