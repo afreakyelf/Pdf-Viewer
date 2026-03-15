@@ -278,6 +278,50 @@ class PdfRendererView @JvmOverloads constructor(
     }
 
     /**
+     * Scrolls down by one viewport height if the current page extends below the visible area,
+     * otherwise jumps to the next page.
+     *
+     * This is especially useful in landscape mode where a page may be taller than the screen,
+     * allowing the user to scroll through the current page before advancing to the next one.
+     *
+     * Must be called on the main thread, after the PDF has been loaded and the view is attached.
+     */
+    fun scrollToNextPage() {
+        if (!::recyclerView.isInitialized) return
+        val layoutManager = recyclerView.layoutManager as? LinearLayoutManager ?: return
+        val firstVisiblePosition = layoutManager.findFirstVisibleItemPosition()
+        if (firstVisiblePosition == NO_POSITION) return
+        val firstView = layoutManager.findViewByPosition(firstVisiblePosition) ?: return
+        if (layoutManager.getDecoratedBottom(firstView) > recyclerView.height) {
+            recyclerView.smoothScrollBy(0, recyclerView.height)
+        } else {
+            jumpToPage(firstVisiblePosition + 1)
+        }
+    }
+
+    /**
+     * Scrolls up by one viewport height if there is content above the current scroll position,
+     * otherwise jumps to the previous page.
+     *
+     * This is especially useful in landscape mode where a page may be taller than the screen,
+     * allowing the user to scroll back through the current page before going to the previous one.
+     *
+     * Must be called on the main thread, after the PDF has been loaded and the view is attached.
+     */
+    fun scrollToPreviousPage() {
+        if (!::recyclerView.isInitialized) return
+        val layoutManager = recyclerView.layoutManager as? LinearLayoutManager ?: return
+        val firstVisiblePosition = layoutManager.findFirstVisibleItemPosition()
+        if (firstVisiblePosition == NO_POSITION) return
+        val firstView = layoutManager.findViewByPosition(firstVisiblePosition) ?: return
+        if (layoutManager.getDecoratedTop(firstView) < 0) {
+            recyclerView.smoothScrollBy(0, -recyclerView.height)
+        } else {
+            jumpToPage(firstVisiblePosition - 1)
+        }
+    }
+
+    /**
      * Scrolls the RecyclerView to the specified PDF page.
      *
      * @param pageNumber The page number to scroll to (0-based).
