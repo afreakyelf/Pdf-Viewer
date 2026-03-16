@@ -1,5 +1,50 @@
 # CHANGELOG
 
+# [v2.3.9] — 2026-03-16
+
+### Bug Fixes
+- **DISABLE_CACHE blank pages:** Pages no longer render blank when `DISABLE_CACHE` is set; the cache-miss path now correctly triggers a fresh render every time ([#222](https://github.com/afreakyelf/Pdf-Viewer/issues/222)).
+- **Fast-scroll bitmap corruption:** Fixed visual corruption caused by bitmap reuse during rapid scrolling; each render job now operates on its own dedicated bitmap ([#223](https://github.com/afreakyelf/Pdf-Viewer/issues/223)).
+
+### Reverts
+- Reverted "Fix PDF quality degradation on zoom (#247)" due to instability introduced by size-aware cache keys.
+
+### Internal / Build
+- Added regression tests covering DISABLE_CACHE and fast-scroll cache paths.
+- GitHub Actions publishing workflow updated to use newer `actions/checkout` and `actions/setup-java` versions, with tag-based dynamic version resolution.
+- Library version is now resolved at publish time from the Git tag (`PUBLISH_VERSION` Gradle property), enabling fully automated Maven Central releases.
+
+---
+
+# [v2.3.8] — 2026-03-15
+
+### New Features
+- **Zoom controls exposed** (`#246`): `PdfRendererView` and `PdfRendererViewCompose` now expose `zoomIn()`, `zoomOut()`, and `zoomTo(scale)` methods. A Jetpack Compose example using FABs for zoom in/out has been added to the sample app.
+- **Configurable max zoom** (`#239`): Maximum pinch-zoom scale is now configurable via the `pdfView_maxZoom` XML attribute or programmatically via `setMaxZoom(scale)`. Default remains `5×`.
+- **Page navigation helpers** (`#250`): `scrollToNextPage()` and `scrollToPreviousPage()` respect the current zoom level and scroll within a tall zoomed page before advancing to the next/previous one, preventing jarring jumps in landscape or high-zoom states.
+- **Zoom-settled listener alias**: `onZoomSettled` callback added as a stable alias for the zoom-end event so callers do not need to parse raw scale values.
+
+### Bug Fixes
+- **API 33 `getParcelableExtra` NPE** (`#244`, `#245`): Replaced deprecated `getParcelableExtra` call with the type-safe `getParcelableExtra(name, Class)` overload to prevent a `NullPointerException` on Android 13+.
+- **ViewHolder height not reset on rebind** (`#242`): Page view height is now reset to `WRAP_CONTENT` in `onBindViewHolder`, preventing stale height values from a previous page persisting during fast scroll.
+- **PdfRenderer shutdown race** (`#241`): `PdfRendererCore.closePdfRenderProxy()` is now guarded so concurrent close calls cannot cause a `NativeException` from double-close on the native `PdfRenderer`.
+- **Scroll state not restored after re-init** (`#225`): `PdfRendererView` saves and restores the visible page index across `initWith*` re-calls (e.g., after a rotation or back-stack re-attach), so users no longer land back on page 1.
+- **Zoomed-PDF scrolling regression** (`#230`): `smoothScrollBy` delta is now divided by the current zoom scale and clamped to the remaining distance to the page edge, fixing over-scroll and under-scroll at high zoom levels.
+- **Bottom sheet PDF scrolling** (`#231`): `PdfRendererView` now sets `nestedScrollingEnabled = true` so it participates in the nested-scroll protocol; fixes the PDF being unscrollable inside `BottomSheetDialogFragment` and `BottomSheet` Compose containers.
+- **Compose bottom sheet scroll interop** (`#231`): `PdfRendererViewCompose` wraps the view in a `rememberNestedScrollInteropConnection()` modifier, forwarding unhandled scroll events to the Compose bottom-sheet host.
+- **ViewPager tab reattach** (`#235`): Fixed a regression where switching back to a tab containing a `PdfRendererView` after it had been detached would leave the view in a blank state; the adapter now re-binds correctly on reattach.
+- **Cache key collision for same-named PDFs** (`#249`): `CacheHelper.getCacheKey` now hashes the full source path (URL or file absolute path) with SHA-256 instead of using `file.name`, eliminating collisions between identically-named PDFs in different directories.
+- **`ParcelFileDescriptor` and `PdfRenderer` leaks on init failure** (`#249`): `PdfRendererCore.create()` now closes the native `PdfRenderer` if post-init setup fails, and the caller closes the `ParcelFileDescriptor`; both resources are fully guarded via `try/catch` in all `initWith*` paths.
+- **`initWithUri` null file descriptor** (`#249`): A `null` result from `ContentResolver.openFileDescriptor` now routes to `onError` instead of silently returning, ensuring callers always receive failure feedback.
+
+### Java Compatibility Fix
+- **`NoClassDefFoundError` for `lifecycle-process` in Java consumer apps** (`#248`): Added a `constraints` block in `pdfViewer/build.gradle.kts` to pin `lifecycle-process` and `lifecycle-runtime-ktx` to `≥ 2.8.7`, preventing older versions from being resolved when an app's transitive dependency tree downgrades the lifecycle libraries. The library's consumer ProGuard rules now include a `keep` rule for the anonymous `LifecycleObserver` classes generated by the Kotlin compiler.
+
+### Internal / Build
+- Kotlin standard library updated to 2.1.20.
+
+---
+
 # [v2.0.0]
 
 - **Orientation Change Handling:** Improved to maintain the current page position during device orientation changes.
