@@ -80,7 +80,7 @@ internal class PdfViewAdapter(
                 }
 
                 renderer.getPageDimensionsAsync(position) { size ->
-                    val displayWidth = itemBinding.pageView.width.takeIf { it > 0 }
+                    val displayWidth = itemBinding.pageView.width.takeIf { it > 1 }
                         ?: context.resources.displayMetrics.widthPixels
 
                     if (currentBoundPage != position) return@getPageDimensionsAsync
