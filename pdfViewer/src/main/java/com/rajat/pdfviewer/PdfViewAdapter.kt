@@ -4,7 +4,6 @@ import android.content.Context
 import android.graphics.Rect
 import android.os.Handler
 import android.os.Looper
-import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -19,6 +18,7 @@ import kotlinx.coroutines.Runnable
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlin.math.abs
 
 internal class PdfViewAdapter(
     private val context: Context,
@@ -44,30 +44,40 @@ internal class PdfViewAdapter(
         holder.cancelJobs()
     }
 
+    override fun onViewAttachedToWindow(holder: PdfPageViewHolder) {
+        super.onViewAttachedToWindow(holder)
+        holder.renderIfMissing()
+    }
+
+    override fun onViewDetachedFromWindow(holder: PdfPageViewHolder) {
+        super.onViewDetachedFromWindow(holder)
+        holder.handleDetach()
+    }
+
     inner class PdfPageViewHolder(private val itemBinding: ListItemPdfPageBinding) :
         RecyclerView.ViewHolder(itemBinding.root) {
 
         private var currentBoundPage: Int = -1
-        private var hasRealBitmap: Boolean = false
+        private var displayedBitmap: android.graphics.Bitmap? = null
         private var hasRetried: Boolean = false
+        private var hasTriggeredFallbackRender: Boolean = false
         private var bindGeneration: Int = 0
         private val fallbackHandler = Handler(Looper.getMainLooper())
         private var scope = MainScope()
 
-        private val DEBUG_LOGS_ENABLED = false
-
         fun bind(position: Int) {
             cancelJobs()
             currentBoundPage = position
-            hasRealBitmap = false
+            clearDisplayedBitmapReference()
             hasRetried = false
+            hasTriggeredFallbackRender = false
             bindGeneration++
             scope = MainScope()
 
             val displayWidth = itemBinding.pageView.width.takeIf { it > 0 }
                 ?: context.resources.displayMetrics.widthPixels
 
-            itemBinding.pageView.setImageBitmap(null)
+            itemBinding.pageView.setImageDrawable(null)
 
             itemBinding.root.layoutParams = itemBinding.root.layoutParams.apply {
                 this.height = ViewGroup.LayoutParams.WRAP_CONTENT
@@ -81,12 +91,7 @@ internal class PdfViewAdapter(
                     renderer.getBitmapFromCache(position)
                 }
 
-                if (cached != null && currentBoundPage == position) {
-                    if (DEBUG_LOGS_ENABLED) Log.d("PdfViewAdapter", "✅ Loaded page $position from cache")
-                    itemBinding.pageView.setImageBitmap(cached)
-                    hasRealBitmap = true
-                    applyFadeInAnimation(itemBinding.pageView)
-                    itemBinding.pageLoadingLayout.pdfViewPageLoadingProgress.visibility = View.GONE
+                if (cached != null && currentBoundPage == position && applyCachedBitmap(cached, displayWidth)) {
                     return@launch
                 }
 
@@ -116,6 +121,13 @@ internal class PdfViewAdapter(
                     bitmapConsumed = true
                 }
 
+                if (success && rendered === bitmap) {
+                    // PdfRendererCore caches the same bitmap instance before invoking us.
+                    // Once render succeeds, the cache owns this bitmap even if this holder
+                    // has gone stale, so it must not be returned to the reuse pool.
+                    bitmapConsumed = true
+                }
+
                 if (expectedGeneration != bindGeneration) {
                     if (!bitmapConsumed) {
                         CommonUtils.Companion.BitmapPool.recycleBitmap(bitmap)
@@ -124,12 +136,9 @@ internal class PdfViewAdapter(
                 }
 
                 if (success && currentBoundPage == pageNo) {
-                    if (DEBUG_LOGS_ENABLED) Log.d("PdfViewAdapter", "✅ Render complete for page $pageNo")
-                    itemBinding.pageView.setImageBitmap(rendered ?: bitmap)
-                    hasRealBitmap = true
-                    applyFadeInAnimation(itemBinding.pageView)
-                    itemBinding.pageLoadingLayout.pdfViewPageLoadingProgress.visibility = View.GONE
-                    bitmapConsumed = true
+                    if (applyBitmapToView(rendered ?: bitmap, width)) {
+                        bitmapConsumed = true
+                    }
 
                     val fallbackHeight = itemBinding.pageView.height.takeIf { it > 0 }
                         ?: context.resources.displayMetrics.heightPixels
@@ -141,7 +150,6 @@ internal class PdfViewAdapter(
                         direction = parentView.getScrollDirection()
                     )
                 } else {
-                    if (DEBUG_LOGS_ENABLED) Log.w("PdfViewAdapter", "🚫 Skipping render for page $pageNo — ViewHolder now bound to $currentBoundPage")
                     if (currentBoundPage == page && !hasRetried) {
                         hasRetried = true
                         retryRenderOnce(page, width, height)
@@ -165,6 +173,11 @@ internal class PdfViewAdapter(
                     bitmapConsumed = true
                 }
 
+                if (success && rendered === retryBitmap) {
+                    // Successful renders are already stored in cache by PdfRendererCore.
+                    bitmapConsumed = true
+                }
+
                 if (expectedGeneration != bindGeneration) {
                     if (!bitmapConsumed) {
                         CommonUtils.Companion.BitmapPool.recycleBitmap(retryBitmap)
@@ -172,13 +185,10 @@ internal class PdfViewAdapter(
                     return@renderPage
                 }
 
-                if (success && retryPageNo == currentBoundPage && !hasRealBitmap) {
-                    if (DEBUG_LOGS_ENABLED) Log.d("PdfViewAdapter", "🔁 Retry success for page $retryPageNo")
-                    itemBinding.pageView.setImageBitmap(rendered ?: retryBitmap)
-                    hasRealBitmap = true
-                    applyFadeInAnimation(itemBinding.pageView)
-                    itemBinding.pageLoadingLayout.pdfViewPageLoadingProgress.visibility = View.GONE
-                    bitmapConsumed = true
+                if (success && retryPageNo == currentBoundPage && !hasLiveBitmap()) {
+                    if (applyBitmapToView(rendered ?: retryBitmap, width)) {
+                        bitmapConsumed = true
+                    }
                 }
 
                 if (!bitmapConsumed) {
@@ -197,20 +207,25 @@ internal class PdfViewAdapter(
             lateinit var task: Runnable
             task = object : Runnable {
                 override fun run() {
-                    if (currentBoundPage != page || hasRealBitmap) return
+                    if (currentBoundPage != page || hasLiveBitmap()) return
 
                     scope.launch {
                         val cached = withContext(Dispatchers.IO) {
                             renderer.getBitmapFromCache(page)
                         }
 
-                        if (cached != null && currentBoundPage == page) {
-                            if (DEBUG_LOGS_ENABLED) Log.d("PdfViewAdapter", "🕒 Fallback applied for page $page on attempt $attempt")
-                            itemBinding.pageView.setImageBitmap(cached)
-                            hasRealBitmap = true
-                            applyFadeInAnimation(itemBinding.pageView)
-                            itemBinding.pageLoadingLayout.pdfViewPageLoadingProgress.visibility = View.GONE
+                        if (cached != null && currentBoundPage == page && applyCachedBitmap(
+                                cached,
+                                itemBinding.pageView.width.takeIf { it > 0 }
+                                    ?: itemView.width.takeIf { it > 0 }
+                                    ?: context.resources.displayMetrics.widthPixels
+                            )
+                        ) {
                         } else {
+                            if (!hasTriggeredFallbackRender && currentBoundPage == page && !hasLiveBitmap()) {
+                                hasTriggeredFallbackRender = true
+                                triggerFallbackRender(page)
+                            }
                             attempt++
                             if (attempt < retries) {
                                 fallbackHandler.postDelayed(task, delayMs)
@@ -223,6 +238,37 @@ internal class PdfViewAdapter(
             fallbackHandler.postDelayed(task, delayMs)
         }
 
+        private fun triggerFallbackRender(page: Int) {
+            val displayWidth = itemBinding.pageView.width.takeIf { it > 0 }
+                ?: itemView.width.takeIf { it > 0 }
+                ?: context.resources.displayMetrics.widthPixels
+
+            renderer.getPageDimensionsAsync(page) { size ->
+                if (currentBoundPage != page || hasLiveBitmap()) return@getPageDimensionsAsync
+
+                val aspectRatio = size.width.toFloat() / size.height.toFloat()
+                val height = (displayWidth / aspectRatio).toInt()
+                itemBinding.updateLayoutParams(height)
+                renderAndApplyBitmap(page, displayWidth, height)
+            }
+        }
+
+        private fun applyCachedBitmap(bitmap: android.graphics.Bitmap, displayWidth: Int): Boolean {
+            return applyBitmapToView(bitmap, displayWidth)
+        }
+
+        private fun applyBitmapToView(bitmap: android.graphics.Bitmap, displayWidth: Int): Boolean {
+            if (bitmap.isRecycled || bitmap.width <= 0 || bitmap.height <= 0) return false
+            val aspectRatio = bitmap.width.toFloat() / bitmap.height.toFloat()
+            val height = (displayWidth / aspectRatio).toInt()
+            itemBinding.updateLayoutParams(height)
+            itemBinding.pageView.setImageBitmap(bitmap)
+            displayedBitmap = bitmap
+            applyFadeInAnimation(itemBinding.pageView)
+            itemBinding.pageLoadingLayout.pdfViewPageLoadingProgress.visibility = View.GONE
+            return true
+        }
+
         private fun ListItemPdfPageBinding.updateLayoutParams(height: Int) {
             root.layoutParams = root.layoutParams.apply {
                 this.height = height
@@ -230,11 +276,76 @@ internal class PdfViewAdapter(
                     pageSpacing.left, pageSpacing.top, pageSpacing.right, pageSpacing.bottom
                 )
             }
+            root.requestLayout()
+            pageView.requestLayout()
+            runCatching { parentView.recyclerView.requestLayout() }
         }
 
         fun cancelJobs() {
+            cancelPendingRenderIfNeeded()
             scope.cancel()
             fallbackHandler.removeCallbacksAndMessages(null)
+        }
+
+        fun renderIfMissing() {
+            val page = currentBoundPage
+            if (page == RecyclerView.NO_POSITION) {
+                return
+            }
+            hasRetried = false
+            hasTriggeredFallbackRender = false
+            scope.cancel()
+            scope = MainScope()
+
+            val displayWidth = itemBinding.pageView.width.takeIf { it > 0 }
+                ?: itemView.width.takeIf { it > 0 }
+                ?: context.resources.displayMetrics.widthPixels
+
+            renderer.getPageDimensionsAsync(page) { size ->
+                if (currentBoundPage != page) return@getPageDimensionsAsync
+
+                val aspectRatio = size.width.toFloat() / size.height.toFloat()
+                val height = (displayWidth / aspectRatio).toInt()
+                val hasBitmap = hasLiveBitmap()
+                val layoutHeight = itemBinding.root.layoutParams?.height ?: 0
+                val measuredHeight = itemBinding.root.height
+                val hasUsableHeight = measuredHeight > 0
+                val heightMismatch = abs(layoutHeight - height) > 1 || (hasUsableHeight && abs(measuredHeight - height) > 1)
+
+                if (!hasBitmap || !hasUsableHeight || heightMismatch) {
+                    itemBinding.updateLayoutParams(height)
+                }
+
+                if (!hasBitmap) {
+                    renderAndApplyBitmap(page, displayWidth, height)
+                    startPersistentFallbackRender(page, retries = 3, delayMs = 150L)
+                } else {
+                    itemBinding.pageLoadingLayout.pdfViewPageLoadingProgress.visibility = View.GONE
+                }
+            }
+        }
+
+        fun handleDetach() {
+            cancelPendingRenderIfNeeded()
+            scope.cancel()
+            fallbackHandler.removeCallbacksAndMessages(null)
+        }
+
+        private fun cancelPendingRenderIfNeeded() {
+            val page = currentBoundPage
+            if (page == RecyclerView.NO_POSITION || page < 0 || hasLiveBitmap()) {
+                return
+            }
+            renderer.cancelRender(page)
+        }
+
+        private fun clearDisplayedBitmapReference() {
+            displayedBitmap = null
+        }
+
+        private fun hasLiveBitmap(): Boolean {
+            val bitmap = displayedBitmap ?: return false
+            return !bitmap.isRecycled && bitmap.width > 0 && bitmap.height > 0
         }
 
         private fun applyFadeInAnimation(view: View) {

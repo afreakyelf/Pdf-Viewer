@@ -83,9 +83,12 @@ class CacheManager(
     }
 
     suspend fun pageExistsInCache(pageNo: Int): Boolean = withContext(Dispatchers.IO) {
+        if (memoryCache.get(pageNo) != null) return@withContext true
         if (cacheStrategy == CacheStrategy.DISABLE_CACHE) return@withContext false
         File(cacheDir, cachedFileNameWithFormat(pageNo)).exists()
     }
+
+    fun shouldPrefetch(): Boolean = cacheStrategy != CacheStrategy.DISABLE_CACHE
 
     companion object {
         const val CACHE_PATH = "___pdf___cache___"
