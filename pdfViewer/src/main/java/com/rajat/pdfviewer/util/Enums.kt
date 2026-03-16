@@ -13,7 +13,7 @@ enum class saveTo {
 }
 
 enum class CacheStrategy {
-    MINIMIZE_CACHE,  // Keep only one file at a time
-    MAXIMIZE_PERFORMANCE, // Store up to 5 PDFs using LRU eviction
-    DISABLE_CACHE // Disable caching
+    MINIMIZE_CACHE,  // Keep only the current document cache on disk and reuse pages in memory.
+    MAXIMIZE_PERFORMANCE, // Retain recent document/page cache for fastest reopen and scrolling.
+    DISABLE_CACHE // Disable persistent cache and prefetch while keeping visible rendering correct.
 }

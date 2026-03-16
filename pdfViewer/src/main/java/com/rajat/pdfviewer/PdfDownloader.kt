@@ -4,9 +4,10 @@ import android.content.Context
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
+import com.rajat.pdfviewer.util.CacheHelper
 import com.rajat.pdfviewer.util.CacheManager
+import com.rajat.pdfviewer.util.CachePolicy
 import com.rajat.pdfviewer.util.CacheStrategy
-import com.rajat.pdfviewer.util.FileUtils.getCachedFileName
 import com.rajat.pdfviewer.util.FileUtils.isValidPdf
 import com.rajat.pdfviewer.util.FileUtils.writeFile
 import kotlinx.coroutines.CoroutineScope
@@ -25,10 +26,12 @@ class PdfDownloader(
     private val coroutineScope: CoroutineScope,
     private val headers: HeaderData,
     private val url: String,
+    private val cachedFileName: String,
     private val cacheStrategy: CacheStrategy,
     private val listener: StatusListener,
     private val httpClient: OkHttpClient = defaultHttpClient()
 ) {
+    private val cachePolicy = CachePolicy.from(cacheStrategy)
 
     interface StatusListener {
         fun getContext(): Context
@@ -66,29 +69,31 @@ class PdfDownloader(
     }
 
     private suspend fun checkAndDownload(downloadUrl: String) {
-        val cachedFileName = getCachedFileName(downloadUrl)
-
-        if (cacheStrategy != CacheStrategy.DISABLE_CACHE){
-            CacheManager.clearCacheDir(listener.getContext())
-        }
-
         val cacheDir = File(
             listener.getContext().cacheDir,
-            "___pdf___cache___/$cachedFileName"
-        ).apply { mkdirs() }
+            "${CacheManager.CACHE_PATH}/$cachedFileName"
+        )
+        prepareDownloadDirectory(cacheDir)
 
         val pdfFile = File(cacheDir, cachedFileName)
 
-        if (cacheStrategy != CacheStrategy.DISABLE_CACHE && pdfFile.exists() && isValidPdf(pdfFile)) {
-            withContext(Dispatchers.Main) {
-                listener.onDownloadSuccess(pdfFile)
-            }
+        if (cachePolicy.reuseRemoteFile && pdfFile.exists() && isValidPdf(pdfFile)) {
+            completeSuccessfulDownload(cacheDir, pdfFile)
         } else {
-            retryDownload(downloadUrl, pdfFile)
+            retryDownload(downloadUrl, cacheDir, pdfFile)
         }
     }
 
-    private suspend fun retryDownload(downloadUrl: String, pdfFile: File) {
+    private fun prepareDownloadDirectory(cacheDir: File) {
+        if (!cachePolicy.persistRemoteFile && cacheDir.exists()) {
+            // Transient sessions always start from a clean folder so they never reuse
+            // stale persisted files when the strategy says "no persistent cache".
+            cacheDir.deleteRecursively()
+        }
+        cacheDir.mkdirs()
+    }
+
+    private suspend fun retryDownload(downloadUrl: String, cacheDir: File, pdfFile: File) {
         Log.d(TAG, "Retrying download for: $downloadUrl")
         withContext(Dispatchers.Main) {
             listener.onDownloadStart()
@@ -97,6 +102,7 @@ class PdfDownloader(
         while (attempt < MAX_RETRIES) {
             try {
                 downloadFile(downloadUrl, pdfFile)
+                completeSuccessfulDownload(cacheDir, pdfFile)
                 return
             } catch (e: IOException) {
                 if (isInvalidFileError(e)) {
@@ -122,6 +128,15 @@ class PdfDownloader(
                     }
                 }
             }
+        }
+    }
+
+    private suspend fun completeSuccessfulDownload(cacheDir: File, pdfFile: File) {
+        if (cachePolicy.persistRemoteFile) {
+            CacheHelper.applyDocumentRetention(TAG, cacheDir, cachePolicy)
+        }
+        withContext(Dispatchers.Main) {
+            listener.onDownloadSuccess(pdfFile)
         }
     }
 
@@ -165,10 +180,6 @@ class PdfDownloader(
                 }
 
                 Log.d(TAG, "Downloaded PDF to: ${pdfFile.absolutePath}")
-
-                withContext(Dispatchers.Main) {
-                    listener.onDownloadSuccess(pdfFile)
-                }
             } catch (e: Exception) {
                 tempFile.delete()
                 throw e

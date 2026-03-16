@@ -16,9 +16,10 @@ import android.view.LayoutInflater
 import android.view.WindowManager
 import android.widget.FrameLayout
 import android.widget.TextView
+import androidx.lifecycle.DefaultLifecycleObserver
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleCoroutineScope
-import androidx.lifecycle.LifecycleObserver
+import androidx.lifecycle.LifecycleOwner
 import androidx.recyclerview.widget.DefaultItemAnimator
 import androidx.recyclerview.widget.DividerItemDecoration
 import androidx.recyclerview.widget.LinearLayoutManager
@@ -26,7 +27,9 @@ import androidx.recyclerview.widget.RecyclerView
 import androidx.recyclerview.widget.RecyclerView.NO_POSITION
 import com.rajat.pdfviewer.util.CacheHelper
 import com.rajat.pdfviewer.util.CacheManager
+import com.rajat.pdfviewer.util.CachePolicy
 import com.rajat.pdfviewer.util.CacheStrategy
+import com.rajat.pdfviewer.util.FileUtils.getCachedFileName
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -34,6 +37,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.jetbrains.annotations.TestOnly
 import java.io.File
+import java.util.UUID
 
 /**
  * Created by Rajat on 11,July,2020
@@ -41,7 +45,7 @@ import java.io.File
 
 class PdfRendererView @JvmOverloads constructor(
     context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0
-) : FrameLayout(context, attrs, defStyleAttr), LifecycleObserver {
+) : FrameLayout(context, attrs, defStyleAttr), DefaultLifecycleObserver {
 
     // region Core rendering
     private lateinit var pdfRendererCore: PdfRendererCore
@@ -63,6 +67,8 @@ class PdfRendererView @JvmOverloads constructor(
     private var restoredScrollOffset: Int = 0
     private var lastDy: Int = 0
     private var pendingJumpPage: Int? = null
+    private var activeDocumentCleanupAction: (() -> Unit)? = null
+    private var observedLifecycle: Lifecycle? = null
     // endregion
 
     // region Flags
@@ -120,12 +126,17 @@ class PdfRendererView @JvmOverloads constructor(
         lifecycle: Lifecycle,
         cacheStrategy: CacheStrategy = CacheStrategy.MAXIMIZE_PERFORMANCE
     ) {
-        lifecycle.addObserver(this) // Register as LifecycleObserver
+        registerLifecycleObserver(lifecycle)
         this.cacheStrategy = cacheStrategy
+        // Persistent strategies reuse a stable remote key; DISABLE_CACHE gets a
+        // per-session key so its cleanup stays isolated from retained cache.
+        val remoteDocumentCacheKey =
+            getCachedFileName(url, cacheStrategy, sessionToken = UUID.randomUUID().toString())
         PdfDownloader(
             lifecycleCoroutineScope,
             headers,
             url,
+            remoteDocumentCacheKey,
             cacheStrategy,
             PdfDownloadCallback(
                 context,
@@ -134,12 +145,13 @@ class PdfRendererView @JvmOverloads constructor(
                     statusListener?.onPdfLoadProgress(progress, current, total)
                 },
                 onSuccess = {
-                    try {
-                        initWithFile(it, cacheStrategy)
-                        statusListener?.onPdfLoadSuccess(it.absolutePath)
-                    } catch (e: Exception) {
-                        statusListener?.onError(e)
-                    }
+                    val documentCleanupAction = buildDocumentCleanupAction(it, cacheStrategy)
+                    initWithFileInternal(
+                        file = it,
+                        cacheStrategy = cacheStrategy,
+                        documentCleanupAction = documentCleanupAction,
+                        cacheIdentifierOverride = remoteDocumentCacheKey
+                    )
                 },
                 onError = { statusListener?.onError(it) }
             )).start()
@@ -152,8 +164,17 @@ class PdfRendererView @JvmOverloads constructor(
      * @param cacheStrategy Cache strategy to apply.
      */
     fun initWithFile(file: File, cacheStrategy: CacheStrategy = CacheStrategy.MAXIMIZE_PERFORMANCE) {
+        initWithFileInternal(file, cacheStrategy, null, null)
+    }
+
+    private fun initWithFileInternal(
+        file: File,
+        cacheStrategy: CacheStrategy,
+        documentCleanupAction: (() -> Unit)?,
+        cacheIdentifierOverride: String?
+    ) {
         this.cacheStrategy = cacheStrategy
-        val cacheIdentifier = CacheHelper.getCacheKey(file.absolutePath)
+        val cacheIdentifier = cacheIdentifierOverride ?: CacheHelper.getCacheKey(file.absolutePath)
 
         // Notify loading started
         statusListener?.onPdfRenderStart()
@@ -165,11 +186,12 @@ class PdfRendererView @JvmOverloads constructor(
                     PdfRendererCore.create(context, fileDescriptor, cacheIdentifier, cacheStrategy)
                 fileDescriptor = null // ownership transferred to PdfRendererCore
                 withContext(Dispatchers.Main) {
-                    initializeRenderer(renderer)
+                    initializeRenderer(renderer, documentCleanupAction)
                     statusListener?.onPdfLoadSuccess(file.absolutePath)
                 }
             } catch (e: Exception) {
                 fileDescriptor?.close()
+                documentCleanupAction?.invoke()
                 withContext(Dispatchers.Main) {
                     statusListener?.onError(e)
                 }
@@ -196,7 +218,7 @@ class PdfRendererView @JvmOverloads constructor(
                     PdfRendererCore.create(context, fileDescriptor, cacheIdentifier, cacheStrategy)
                 fileDescriptor = null // ownership transferred to PdfRendererCore
                 withContext(Dispatchers.Main) {
-                    initializeRenderer(renderer)
+                    initializeRenderer(renderer, null)
                     statusListener?.onPdfLoadSuccess("uri:$uri")
                 }
             } catch (e: Exception) {
@@ -208,9 +230,13 @@ class PdfRendererView @JvmOverloads constructor(
         }
     }
 
-    private fun initializeRenderer(renderer: PdfRendererCore) {
+    private fun initializeRenderer(
+        renderer: PdfRendererCore,
+        documentCleanupAction: (() -> Unit)?
+    ) {
         // If re-initializing, clear old views & adapter
         if (pdfRendererCoreInitialised) {
+            releaseCurrentDocumentSession()
             resetViewScope()
             removeAllViews()
             if (this::recyclerView.isInitialized) {
@@ -221,6 +247,7 @@ class PdfRendererView @JvmOverloads constructor(
         PdfRendererCore.enableDebugMetrics = true
         pdfRendererCore = renderer
         pdfRendererCoreInitialised = true
+        activeDocumentCleanupAction = documentCleanupAction
 
         // Inflate layout first — ensures RecyclerView references are valid
         val v = LayoutInflater.from(context).inflate(R.layout.pdf_rendererview, this, false)
@@ -471,11 +498,47 @@ class PdfRendererView @JvmOverloads constructor(
      * Closes the current PDF rendering session and frees associated resources.
      */
     fun closePdfRender() {
+        releaseCurrentDocumentSession()
+        resetViewScope()
+    }
+
+    override fun onDestroy(owner: LifecycleOwner) {
+        closePdfRender()
+        if (observedLifecycle === owner.lifecycle) {
+            observedLifecycle = null
+        }
+        owner.lifecycle.removeObserver(this)
+    }
+
+    private fun registerLifecycleObserver(lifecycle: Lifecycle) {
+        if (observedLifecycle === lifecycle) return
+        observedLifecycle?.removeObserver(this)
+        lifecycle.addObserver(this)
+        observedLifecycle = lifecycle
+    }
+
+    private fun releaseCurrentDocumentSession() {
         if (pdfRendererCoreInitialised) {
             pdfRendererCore.closePdfRender()
             pdfRendererCoreInitialised = false
         }
-        resetViewScope()
+        runCatching {
+            activeDocumentCleanupAction?.invoke()
+        }
+        activeDocumentCleanupAction = null
+    }
+
+    private fun buildDocumentCleanupAction(
+        file: File,
+        cacheStrategy: CacheStrategy
+    ): (() -> Unit)? {
+        val cachePolicy = CachePolicy.from(cacheStrategy)
+        if (cachePolicy.persistRemoteFile) {
+            return null
+        }
+        return {
+            CacheHelper.cleanupTransientDocument(file)
+        }
     }
 
     private suspend fun getBitmapByPage(page: Int): Bitmap? {

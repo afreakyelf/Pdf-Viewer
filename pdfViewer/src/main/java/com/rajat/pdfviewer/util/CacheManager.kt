@@ -18,22 +18,27 @@ class CacheManager(
     private val currentOpenedFileName: String,
     private val cacheStrategy: CacheStrategy = CacheStrategy.MAXIMIZE_PERFORMANCE
 ) {
+    private val cachePolicy = CachePolicy.from(cacheStrategy, MAX_CACHED_PDFS)
     private val memoryCache: LruCache<Int, Bitmap> = createMemoryCache()
     private var cacheDir = File(context.cacheDir, "${CACHE_PATH}/$currentOpenedFileName")
 
     suspend fun initialize() = withContext(Dispatchers.IO) {
-        if (cacheStrategy == CacheStrategy.DISABLE_CACHE) return@withContext
-
         cacheDir = File(context.cacheDir, "$CACHE_PATH/$currentOpenedFileName")
-        if (!cacheDir.exists()) {
-            cacheDir.mkdirs()
+        if (!cachePolicy.useDiskBitmapCache) {
+            // If a document was previously opened under a more persistent strategy,
+            // drop any stale disk page cache before this stricter session starts.
+            purgeDiskBitmapFiles()
         }
+        if (cachePolicy.maxRetainedDocuments <= 0) {
+            return@withContext
+        }
+
+        cacheDir.mkdirs()
 
         handleCacheStrategy(
             "CacheManager",
             cacheDir,
             cacheStrategy,
-            currentOpenedFileName,
             MAX_CACHED_PDFS
         )
     }
@@ -46,12 +51,28 @@ class CacheManager(
         }
     }
 
+    private fun purgeDiskBitmapFiles() {
+        if (!cacheDir.exists()) return
+        cacheDir.walkTopDown()
+            .filter { it.isFile && it.extension.equals("jpg", ignoreCase = true) }
+            .forEach { file ->
+                file.delete()
+            }
+        if (cacheDir.exists() && cacheDir.listFiles().isNullOrEmpty()) {
+            cacheDir.deleteRecursively()
+        }
+    }
+
     suspend fun getBitmapFromCache(pageNo: Int): Bitmap? = withContext(Dispatchers.IO) {
-        memoryCache.get(pageNo)?.let { return@withContext it }
-        if (cacheStrategy == CacheStrategy.DISABLE_CACHE) return@withContext null
+        if (cachePolicy.useMemoryBitmapCache) {
+            memoryCache.get(pageNo)?.let { return@withContext it }
+        }
+        if (!cachePolicy.useDiskBitmapCache) return@withContext null
 
         decodeBitmapFromDiskCache(pageNo)?.also {
-            memoryCache.put(pageNo, it)
+            if (cachePolicy.useMemoryBitmapCache) {
+                memoryCache.put(pageNo, it)
+            }
         }
     }
 
@@ -61,8 +82,10 @@ class CacheManager(
     }
 
     suspend fun addBitmapToCache(pageNo: Int, bitmap: Bitmap) {
-        memoryCache.put(pageNo, bitmap)
-        if (cacheStrategy != CacheStrategy.DISABLE_CACHE) {
+        if (cachePolicy.useMemoryBitmapCache) {
+            memoryCache.put(pageNo, bitmap)
+        }
+        if (cachePolicy.useDiskBitmapCache) {
             writeBitmapToCache(pageNo, bitmap)
         }
     }
@@ -83,12 +106,14 @@ class CacheManager(
     }
 
     suspend fun pageExistsInCache(pageNo: Int): Boolean = withContext(Dispatchers.IO) {
-        if (memoryCache.get(pageNo) != null) return@withContext true
-        if (cacheStrategy == CacheStrategy.DISABLE_CACHE) return@withContext false
+        if (cachePolicy.useMemoryBitmapCache && memoryCache.get(pageNo) != null) {
+            return@withContext true
+        }
+        if (!cachePolicy.useDiskBitmapCache) return@withContext false
         File(cacheDir, cachedFileNameWithFormat(pageNo)).exists()
     }
 
-    fun shouldPrefetch(): Boolean = cacheStrategy != CacheStrategy.DISABLE_CACHE
+    fun shouldPrefetch(): Boolean = cachePolicy.enablePrefetch
 
     companion object {
         const val CACHE_PATH = "___pdf___cache___"

@@ -1,6 +1,8 @@
 package com.rajat.pdfviewer
 
 import com.rajat.pdfviewer.util.CacheHelper
+import com.rajat.pdfviewer.util.CacheStrategy
+import com.rajat.pdfviewer.util.FileUtils
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertTrue
@@ -40,5 +42,23 @@ class CacheHelperTest {
         val url1 = "https://example.com/dir1/10.pdf"
         val url2 = "https://example.com/dir2/10.pdf"
         assertNotEquals(CacheHelper.getCacheKey(url1), CacheHelper.getCacheKey(url2))
+    }
+
+    @Test
+    fun `remote document cache key matches cached file name`() {
+        val url = "https://example.com/document.pdf"
+        assertEquals(CacheHelper.getRemoteDocumentCacheKey(url), FileUtils.getCachedFileName(url))
+        assertTrue(CacheHelper.getRemoteDocumentCacheKey(url).endsWith(".pdf"))
+    }
+
+    @Test
+    fun `disable cache remote keys are isolated from persistent keys`() {
+        val url = "https://example.com/document.pdf"
+        val persistentKey = CacheHelper.getRemoteDocumentCacheKey(url, CacheStrategy.MAXIMIZE_PERFORMANCE, "fixed-session")
+        val transientKey = CacheHelper.getRemoteDocumentCacheKey(url, CacheStrategy.DISABLE_CACHE, "fixed-session")
+
+        assertNotEquals(persistentKey, transientKey)
+        assertTrue(transientKey.startsWith("session_"))
+        assertTrue(transientKey.endsWith(".pdf"))
     }
 }

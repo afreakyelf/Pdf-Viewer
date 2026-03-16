@@ -100,6 +100,9 @@ class PdfRendererCore private constructor(
     private var slowestRenderTime = 0L
     private var slowestPage: Int? = null
 
+    // Keep render job/callback bookkeeping atomic without relying on API 24
+    // ConcurrentHashMap helpers such as remove(key, value) / compute(...).
+    private val renderStateLock = Any()
     private val renderJobs = ConcurrentHashMap<Int, Job>()
     private val renderCallbacks = ConcurrentHashMap<Int, CopyOnWriteArrayList<(Boolean, Int, Bitmap?) -> Unit>>()
     private val pageDimensionCache = mutableMapOf<Int, Size>()
@@ -153,47 +156,63 @@ class PdfRendererCore private constructor(
                 return@launch
             }
 
-            if (!replaceActive && renderJobs[pageNo]?.isActive == true) {
-                withContext(Dispatchers.Main) {
-                    onBitmapReady?.invoke(false, pageNo, null)
-                }
-                return@launch
-            }
-
-            if (replaceActive && renderJobs[pageNo]?.isActive == true) {
-                enqueueRenderCallback(pageNo, onBitmapReady)
-                return@launch
-            }
-
-            enqueueRenderCallback(pageNo, onBitmapReady)
-            renderJobs[pageNo] = launch {
-                var success = false
-                var renderedBitmap: Bitmap? = null
-
-                try {
-                    // Reopen the page for each render so revisits do not depend on
-                    // long-lived PdfRenderer.Page instances remaining valid.
-                    val rendered = withPdfPage(pageNo) { pdfPage ->
-                        pdfPage.render(
-                            bitmap,
-                            null,
-                            null,
-                            PdfRenderer.Page.RENDER_MODE_FOR_DISPLAY
-                        )
+            val renderDecision = synchronized(renderStateLock) {
+                val activeRenderExists = renderJobs[pageNo]?.isActive == true
+                when {
+                    !replaceActive && activeRenderExists -> RenderDecision.Skip
+                    replaceActive && activeRenderExists -> {
+                        enqueueRenderCallbackLocked(pageNo, onBitmapReady)
+                        RenderDecision.JoinExisting
                     }
 
-                    if (rendered != null) {
-                        addBitmapToMemoryCache(pageNo, bitmap)
-                        success = true
-                        renderedBitmap = bitmap
+                    else -> {
+                        enqueueRenderCallbackLocked(pageNo, onBitmapReady)
+                        val renderJob = launch(start = CoroutineStart.LAZY) {
+                            var success = false
+                            var renderedBitmap: Bitmap? = null
+
+                            try {
+                                // Reopen the page for each render so revisits do not depend on
+                                // long-lived PdfRenderer.Page instances remaining valid.
+                                val rendered = withPdfPage(pageNo) { pdfPage ->
+                                    pdfPage.render(
+                                        bitmap,
+                                        null,
+                                        null,
+                                        PdfRenderer.Page.RENDER_MODE_FOR_DISPLAY
+                                    )
+                                }
+
+                                if (rendered != null) {
+                                    addBitmapToMemoryCache(pageNo, bitmap)
+                                    success = true
+                                    renderedBitmap = bitmap
+                                }
+                            } catch (e: Exception) {
+                                Log.e(LOG_TAG, "Error rendering page $pageNo: ${e.message}", e)
+                            } finally {
+                                clearRenderJob(pageNo, coroutineContext[Job] as? Job)
+                                deliverRenderCallbacks(pageNo, success, renderedBitmap)
+                            }
+                        }
+                        renderJobs[pageNo] = renderJob
+                        RenderDecision.Start(renderJob)
                     }
-                } catch (e: Exception) {
-                    Log.e(LOG_TAG, "Error rendering page $pageNo: ${e.message}", e)
-                } finally {
-                    renderJobs.remove(pageNo, coroutineContext[Job])
-                    deliverRenderCallbacks(pageNo, success, renderedBitmap)
                 }
             }
+
+            when (renderDecision) {
+                RenderDecision.Skip -> {
+                    withContext(Dispatchers.Main) {
+                        onBitmapReady?.invoke(false, pageNo, null)
+                    }
+                }
+
+                RenderDecision.JoinExisting -> Unit
+                is RenderDecision.Start -> renderDecision.job.start()
+            }
+
+            return@launch
         }
     }
 
@@ -202,18 +221,45 @@ class PdfRendererCore private constructor(
         onBitmapReady: ((success: Boolean, pageNo: Int, bitmap: Bitmap?) -> Unit)?
     ) {
         if (onBitmapReady == null) return
-        renderCallbacks.compute(pageNo) { _, callbacks ->
-            (callbacks ?: CopyOnWriteArrayList()).also { it.add(onBitmapReady) }
+        synchronized(renderStateLock) {
+            enqueueRenderCallbackLocked(pageNo, onBitmapReady)
+        }
+    }
+
+    private fun enqueueRenderCallbackLocked(
+        pageNo: Int,
+        onBitmapReady: ((success: Boolean, pageNo: Int, bitmap: Bitmap?) -> Unit)?
+    ) {
+        if (onBitmapReady == null) return
+        val callbacks = renderCallbacks[pageNo] ?: CopyOnWriteArrayList<(Boolean, Int, Bitmap?) -> Unit>().also {
+            renderCallbacks[pageNo] = it
+        }
+        callbacks.add(onBitmapReady)
+    }
+
+    private fun clearRenderJob(pageNo: Int, completedJob: Job?) {
+        synchronized(renderStateLock) {
+            if (renderJobs[pageNo] === completedJob) {
+                renderJobs.remove(pageNo)
+            }
         }
     }
 
     private suspend fun deliverRenderCallbacks(pageNo: Int, success: Boolean, bitmap: Bitmap?) {
-        val callbacks = renderCallbacks.remove(pageNo) ?: return
+        val callbacks = synchronized(renderStateLock) {
+            renderCallbacks.remove(pageNo)
+        } ?: return
         withContext(NonCancellable + Dispatchers.Main) {
             callbacks.forEach { callback ->
                 callback(success, pageNo, bitmap)
             }
         }
+    }
+
+    private sealed interface RenderDecision {
+        data object Skip : RenderDecision
+        data object JoinExisting : RenderDecision
+        data class Start(val job: Job) : RenderDecision
     }
 
     suspend fun renderPageAsync(pageNo: Int, width: Int, height: Int): Bitmap? =
