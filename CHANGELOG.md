@@ -1,5 +1,40 @@
 # CHANGELOG
 
+# [v2.4.0] — 2026-03-16
+
+This release aligns the three cache strategies with their intended behavior and adds broad regression coverage around caching, rendering, and embedded-view lifecycle cleanup.
+
+### Cache Strategy Alignment
+
+The `CacheStrategy` enum behavior is now clearly defined and consistently enforced:
+
+| Strategy | Remote PDF reuse | Page bitmaps in memory | Page bitmaps on disk | Prefetch |
+|---|---|---|---|---|
+| `MAXIMIZE_PERFORMANCE` | ✅ Reuse persistent cache | ✅ Yes | ✅ Yes | ✅ Enabled |
+| `MINIMIZE_CACHE` | ✅ Reuse current session | ✅ Yes | ❌ No | ✅ Enabled |
+| `DISABLE_CACHE` | ❌ Transient only | ✅ Yes (visible only) | ❌ No | ❌ Disabled |
+
+### Bug Fixes
+- **Incorrect remote cache retention across strategies:** `MAXIMIZE_PERFORMANCE` now correctly persists and reuses remote PDFs across sessions; `DISABLE_CACHE` now operates transiently without polluting or deleting the persistent cache used by other strategies.
+- **Stale disk page-bitmap artifacts on strategy downgrade:** Reopening a document under a stricter strategy (e.g. switching from `MAXIMIZE_PERFORMANCE` to `MINIMIZE_CACHE`) no longer serves stale page bitmaps from a previous higher-retention session.
+- **`PdfRendererView.initWithUrl` transient file not cleaned up:** When `PdfRendererView` is embedded directly (outside `PdfViewerActivity`) and `DISABLE_CACHE` is used, the transient remote file is now deleted on lifecycle destroy. Previously, cleanup only happened inside `PdfViewerActivity`.
+- **DISABLE_CACHE blank pages** ([#222](https://github.com/afreakyelf/Pdf-Viewer/issues/222)): Pages no longer render blank when `DISABLE_CACHE` is set; the cache-miss path correctly triggers a fresh render every time.
+- **Fast-scroll bitmap corruption** ([#223](https://github.com/afreakyelf/Pdf-Viewer/issues/223)): Fixed visual corruption caused by bitmap reuse during rapid scrolling; each render job now operates on a dedicated bitmap.
+- **Render job and callback bookkeeping hardened:** `PdfRendererCore` render-job tracking and completion callbacks are now guarded with minSdk-21-safe logic, preventing stale callbacks from racing with new render requests.
+
+### Internal / Testing
+- Introduced a dedicated internal `CachePolicy` abstraction to centralize and express per-strategy behavior, replacing scattered conditionals.
+- Added unit tests covering: cache policy mapping, document retention rules, and transient cleanup behavior.
+- Added hermetic instrumented tests covering: local PDF behavior under all three strategies, remote PDF reuse vs. non-reuse, embedded `PdfRendererView` lifecycle cleanup, and strategy-downgrade stale-bitmap behavior.
+- Added a debug-only embedded host activity to verify `PdfRendererView` cleanup outside `PdfViewerActivity`.
+- GitHub Actions publishing workflow updated to use newer `actions/checkout` and `actions/setup-java` versions, with tag-based dynamic version resolution.
+- Library version is now resolved at publish time from the Git tag (`PUBLISH_VERSION` Gradle property), enabling fully automated Maven Central releases.
+
+### Compatibility
+- No public API breaking changes. Existing `CacheStrategy` APIs are unchanged; behavior is now more consistent and predictable.
+
+---
+
 # [v2.3.9] — 2026-03-16
 
 ### Bug Fixes
