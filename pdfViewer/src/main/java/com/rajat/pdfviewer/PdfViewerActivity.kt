@@ -82,6 +82,12 @@ class PdfViewerActivity : AppCompatActivity() {
         const val FROM_ASSETS = "from_assests"
         const val TITLE_BEHAVIOR = "title_behavior"
         const val ENABLE_ZOOM = "enable_zoom"
+        // Persist source-type and download-destination flags as intent extras so they survive
+        // process death + activity restoration. Plain companion-object `var`s reset to their
+        // declared defaults when Android reclaims the process, which broke local-file viewing
+        // after restore (see issue #219).
+        const val IS_FROM_PATH = "is_pdf_from_path"
+        const val SAVE_TO_DOWNLOADS_KEY = "save_to_downloads"
         var enableDownload = false
         var isPDFFromPath = false
         var isFromAssets = false
@@ -110,6 +116,8 @@ class PdfViewerActivity : AppCompatActivity() {
                 intent.putExtra(TITLE_BEHAVIOR, it.ordinal)
             }
             intent.putExtra(CACHE_STRATEGY, cacheStrategy.ordinal)
+            intent.putExtra(IS_FROM_PATH, false)
+            intent.putExtra(SAVE_TO_DOWNLOADS_KEY, saveTo == com.rajat.pdfviewer.util.saveTo.DOWNLOADS)
             isPDFFromPath = false
             SAVE_TO_DOWNLOADS = saveTo == com.rajat.pdfviewer.util.saveTo.DOWNLOADS
             return intent
@@ -135,6 +143,8 @@ class PdfViewerActivity : AppCompatActivity() {
             }
             intent.putExtra(ENABLE_ZOOM, enableZoom)
             intent.putExtra(CACHE_STRATEGY, cacheStrategy.ordinal)
+            intent.putExtra(IS_FROM_PATH, true)
+            intent.putExtra(SAVE_TO_DOWNLOADS_KEY, saveTo == com.rajat.pdfviewer.util.saveTo.DOWNLOADS)
             isPDFFromPath = true
             SAVE_TO_DOWNLOADS = saveTo == com.rajat.pdfviewer.util.saveTo.DOWNLOADS
             return intent
@@ -218,6 +228,12 @@ class PdfViewerActivity : AppCompatActivity() {
     private fun extractIntentExtras() {
         enableDownload = intent.getBooleanExtra(ENABLE_FILE_DOWNLOAD, false)
         isFromAssets = intent.getBooleanExtra(FROM_ASSETS, false)
+        // Re-derive source-type + download-destination flags from the persisted intent so
+        // they survive process death. If the extras are missing (caller used a custom Intent
+        // that didn't go through the launchPdfFromX helpers), fall back to the companion's
+        // current static value rather than silently flipping the default.
+        isPDFFromPath = intent.getBooleanExtra(IS_FROM_PATH, isPDFFromPath)
+        SAVE_TO_DOWNLOADS = intent.getBooleanExtra(SAVE_TO_DOWNLOADS_KEY, SAVE_TO_DOWNLOADS)
 
         // Use deprecated getParcelableExtra on Android 13 (API 33) as the new method generates
         // throws a NPE. See: https://github.com/afreakyelf/Pdf-Viewer/issues/244
