@@ -35,6 +35,17 @@ internal class PdfViewAdapter(
 
     override fun getItemCount(): Int = renderer.getPageCount()
 
+    // Pages must be sized against the width they will actually be displayed at — the
+    // RecyclerView's width — not the full display width. When the view is embedded in
+    // a split pane, padded container, or multi-window (i.e. narrower than the screen),
+    // using displayMetrics.widthPixels overestimates the page height, and the page's
+    // fitCenter image gets centered inside an over-tall row with white bands above and
+    // below it. Fall back to the display width only until the RecyclerView is laid out.
+    private fun viewportWidth(): Int {
+        val recyclerWidth = runCatching { parentView.recyclerView.width }.getOrDefault(0)
+        return recyclerWidth.takeIf { it > 0 } ?: context.resources.displayMetrics.widthPixels
+    }
+
     override fun onBindViewHolder(holder: PdfPageViewHolder, position: Int) {
         holder.bind(position)
     }
@@ -75,7 +86,7 @@ internal class PdfViewAdapter(
             scope = MainScope()
 
             val displayWidth = itemBinding.pageView.width.takeIf { it > 0 }
-                ?: context.resources.displayMetrics.widthPixels
+                ?: viewportWidth()
 
             itemBinding.pageView.setImageDrawable(null)
 
@@ -218,7 +229,7 @@ internal class PdfViewAdapter(
                                 cached,
                                 itemBinding.pageView.width.takeIf { it > 0 }
                                     ?: itemView.width.takeIf { it > 0 }
-                                    ?: context.resources.displayMetrics.widthPixels
+                                    ?: viewportWidth()
                             )
                         ) {
                         } else {
@@ -241,7 +252,7 @@ internal class PdfViewAdapter(
         private fun triggerFallbackRender(page: Int) {
             val displayWidth = itemBinding.pageView.width.takeIf { it > 0 }
                 ?: itemView.width.takeIf { it > 0 }
-                ?: context.resources.displayMetrics.widthPixels
+                ?: viewportWidth()
 
             renderer.getPageDimensionsAsync(page) { size ->
                 if (currentBoundPage != page || hasLiveBitmap()) return@getPageDimensionsAsync
@@ -299,7 +310,7 @@ internal class PdfViewAdapter(
 
             val displayWidth = itemBinding.pageView.width.takeIf { it > 0 }
                 ?: itemView.width.takeIf { it > 0 }
-                ?: context.resources.displayMetrics.widthPixels
+                ?: viewportWidth()
 
             renderer.getPageDimensionsAsync(page) { size ->
                 if (currentBoundPage != page) return@getPageDimensionsAsync
